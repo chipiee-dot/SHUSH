@@ -2,6 +2,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import { COOKIE_NAME, requireAuth } from '../middleware/requireAuth.js';
+import { isDatabaseDown } from '../services/errors.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FACULTY_ID_PATTERN = /^FAC-\d{4}-\d{4}$/;
@@ -10,14 +11,6 @@ const LONG_SESSION = '30d';
 const LONG_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 
 const asString = (value) => (typeof value === 'string' ? value : '');
-
-// Errors raised when SQL Server can't be reached (as opposed to a bad request).
-function isDatabaseDown(err) {
-  return (
-    err?.name === 'ConnectionError' ||
-    ['ESOCKET', 'ELOGIN', 'ETIMEOUT', 'ECONNCLOSED', 'ENOTOPEN', 'EINSTLOOKUP'].includes(err?.code)
-  );
-}
 
 function handleError(res, err) {
   console.error('[auth]', err);
@@ -132,6 +125,7 @@ export function createAuthRouter(db, config) {
         firstName: row.FirstName,
         lastName: row.LastName,
         email: row.Email,
+        role: row.Role === 'Admin' ? 'Admin' : 'Faculty',
       };
 
       const token = jwt.sign(user, config.jwtSecret, {
@@ -163,8 +157,8 @@ export function createAuthRouter(db, config) {
 
   // ---- GET /api/auth/me -----------------------------------------------------
   router.get('/me', requireAuth(config), (req, res) => {
-    const { id, facultyId, firstName, lastName, email } = req.user;
-    res.json({ user: { id, facultyId, firstName, lastName, email } });
+    const { id, facultyId, firstName, lastName, email, role } = req.user;
+    res.json({ user: { id, facultyId, firstName, lastName, email, role: role ?? 'Faculty' } });
   });
 
   return router;

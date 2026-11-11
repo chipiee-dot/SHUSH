@@ -4,6 +4,10 @@ import express from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { createAuthRouter } from './routes/auth.js';
+import { createFacultyRouter } from './routes/faculty.js';
+import { createSettingsRouter } from './routes/settings.js';
+import { createStudentRouter } from './routes/student.js';
+import { isDatabaseDown } from './services/errors.js';
 
 export function createApp({ db, config }) {
   const app = express();
@@ -45,6 +49,9 @@ export function createApp({ db, config }) {
   });
 
   app.use('/api/auth', createAuthRouter(db, config));
+  app.use('/api/student', createStudentRouter(db, config));
+  app.use('/api/settings', createSettingsRouter(db, config));
+  app.use('/api', createFacultyRouter(db, config));
   app.use('/api', (req, res) => res.status(404).json({ message: 'Not found.' }));
 
   // ---- Built React app (after `npm run build`) --------------------------------
@@ -64,6 +71,9 @@ export function createApp({ db, config }) {
       return res.status(413).json({ message: 'Request too large.' });
     }
     console.error('[server]', err);
+    if (isDatabaseDown(err)) {
+      return res.status(503).json({ message: 'The database is unavailable right now. Please try again shortly.' });
+    }
     res.status(500).json({ message: 'Something went wrong. Please try again.' });
   });
 

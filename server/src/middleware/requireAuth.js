@@ -18,3 +18,13 @@ export function requireAuth(config) {
     }
   };
 }
+
+/** Use after requireAuth. Rejects the request with 403 unless the user has the role. */
+export function requireRole(role) {
+  return (req, res, next) => {
+    if (req.user?.role !== role) {
+      return res.status(403).json({ message: 'Administrators only.' });
+    }
+    return next();
+  };
+}

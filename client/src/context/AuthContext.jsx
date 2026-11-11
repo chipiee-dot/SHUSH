@@ -34,7 +34,13 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const value = useMemo(() => ({ user, checking, login, logout }), [user, checking, login, logout]);
+  // Called when the server says the session has ended (for example while polling).
+  const expireSession = useCallback(() => setUser(null), []);
+
+  const value = useMemo(
+    () => ({ user, checking, login, logout, expireSession }),
+    [user, checking, login, logout, expireSession]
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

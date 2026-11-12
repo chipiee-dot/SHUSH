@@ -23,14 +23,22 @@
   flex: none;
   width: 84px;
   margin: 0;
-  padding: 22px 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 24px;
   border-radius: 0 40px 40px 0;
   background: linear-gradient(180deg, #6a5be6 0%, #5b4bdb 100%);
   box-shadow: 0 12px 30px rgba(91, 75, 219, 0.35);
+}
+
+.shell .rail-inner {
+  height: 65%;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
 }
 
 .shell .brand {

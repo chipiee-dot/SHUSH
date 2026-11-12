@@ -5,6 +5,7 @@ import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
+import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 
 const INPUT =
   'mt-2 block w-full rounded-xl border border-[#d6cfbe] bg-transparent px-4 py-3 text-lg tracking-widest text-slate-800 placeholder:text-slate-400 focus:border-[#1b2d5a] focus:ring-1 focus:ring-[#1b2d5a]';
@@ -63,17 +64,11 @@ export default function StudentLogin() {
           <label htmlFor="student-no" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
             Student number
           </label>
-          <input
+          <StudentNumberInput
             id="student-no"
-            name="student-no"
-            inputMode="numeric"
-            autoComplete="off"
-            autoFocus
-            placeholder="21-0001"
-            maxLength={7}
             value={raw}
-            onChange={(e) => setRaw(formatStudentNumberInput(e.target.value))}
-            className={INPUT}
+            onChange={(d) => setRaw(formatStudentNumberInput(d))}
+            autoFocus
           />
         </div>
         <button
@@ -86,17 +81,17 @@ export default function StudentLogin() {
       </form>
 
       <div className="mt-6 space-y-3">
-        <p className="text-sm text-slate-600">
+        <p className="text-center text-sm text-slate-600">
           New here?{' '}
-          <Link to="/student/signup" className="font-medium text-[#1b2d5a] underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1">
+          <Link to="/student/signup" className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1">
             Sign up with your student number
           </Link>
         </p>
         
-        <p className="text-center text-sm text-slate-600">
+        <p className="mt-2 text-center text-sm text-slate-600">
           <Link 
             to="/login" 
-            className="font-medium text-[#1b2d5a] underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
+            className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
           >
             Faculty sign-in
           </Link>

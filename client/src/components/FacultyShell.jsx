@@ -104,6 +104,7 @@ export default function FacultyShell() {
     <div className="shell">
       <div className="app">
         <aside className="side" aria-label="Faculty console navigation">
+          <div className="rail-inner">
           <span className="brand" aria-hidden="true">
             <Logo className="h-6 w-6 text-white" />
           </span>
@@ -124,6 +125,7 @@ export default function FacultyShell() {
               </NavLink>
             ))}
           </nav>
+          </div>
         </aside>
 
         <div className="main">

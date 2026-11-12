@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import { SECTION_RE, STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
+import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 
 const LABEL = 'text-xs font-semibold uppercase tracking-wider text-slate-600';
 const INPUT =
@@ -74,15 +75,10 @@ export default function StudentSignUp() {
 
         <div className="sm:col-span-2">
           <label htmlFor="su-student-no" className={LABEL}>Student number</label>
-          <input
+          <StudentNumberInput
             id="su-student-no"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="21-0001"
-            maxLength={7}
             value={form.studentNo}
-            onChange={(e) => setForm((f) => ({ ...f, studentNo: formatStudentNumberInput(e.target.value) }))}
-            className={INPUT}
+            onChange={(d) => setForm((f) => ({ ...f, studentNo: formatStudentNumberInput(d) }))}
           />
         </div>
 
@@ -128,9 +124,9 @@ export default function StudentSignUp() {
         </div>
       </form>
 
-      <p className="mt-6 text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-slate-600">
         Already registered?{' '}
-        <Link to="/student/login" className="font-medium text-[#1b2d5a] underline-offset-4 hover:underline">
+        <Link to="/student/login" className="font-medium text-[#1b2d5a] underline underline-offset-4">
           Sign in
         </Link>
       </p>

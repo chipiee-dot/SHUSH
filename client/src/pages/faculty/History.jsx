@@ -15,7 +15,7 @@ const KINDS = [
 ];
 
 const selectClass =
-  'mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]';
+  'mt-1 block w-full rounded-xl border-slate-200 bg-white text-sm focus:border-[#1e40af] focus:ring-[#1e40af]';
 
 function downloadCsv(rows, filename) {
   const header = ['Time', 'Type', 'Table', 'Summary', 'Details', 'Sample data'];
@@ -83,7 +83,7 @@ export default function History() {
         <button
           type="button"
           onClick={exportReport}
-          className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a]"
+          className="rounded-xl bg-[#1e40af] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a]"
         >
           Export CSV
         </button>
@@ -147,8 +147,8 @@ export default function History() {
           <p className="p-5 text-sm text-slate-500">Nothing matches these filters.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-[#f1ede3] text-sm">
-              <thead className="bg-[#f7f5ed] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <table className="min-w-full divide-y divide-slate-100 text-sm">
+              <thead className="bg-[#f4f6fb] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Time</th>
                   <th className="px-4 py-3">Type</th>
@@ -157,7 +157,7 @@ export default function History() {
                   <th className="px-4 py-3">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f1ede3]">
+              <tbody className="divide-y divide-slate-100">
                 {data.rows.map((r, i) => {
                   const meta = HISTORY_KIND_META[r.kind];
                   return (

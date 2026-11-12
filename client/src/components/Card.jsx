@@ -1,6 +1,6 @@
 export default function Card({ title, subtitle, action, children, className = '' }) {
   return (
-    <section className={`rounded-xl border border-[#d6cfbe] px-5 py-4 ${className}`}>
+    <section className={`rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_16px_rgba(16,24,40,0.06)] ${className}`}>
       {(title || action) && (
         <header className="mb-4 flex items-start justify-between gap-3">
           <div>

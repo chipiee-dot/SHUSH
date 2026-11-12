@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
+import Toast from '../../components/Toast.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
@@ -67,11 +68,11 @@ export default function StudentLogin() {
 
   return (
     <div className="mx-auto max-w-md">
+      {notice && <Toast type={notice.type} onClose={() => setNotice(null)}>{notice.text}</Toast>}
       <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">Sign in</h1>
       <p className="mt-2 text-sm text-slate-600">Enter your student number. You will confirm your name next.</p>
 
       <form onSubmit={handleContinue} className="mt-8 space-y-4" noValidate>
-        {notice && <Alert type={notice.type}>{notice.text}</Alert>}
         <Alert>{error}</Alert>
         <div>
           <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-slate-600">

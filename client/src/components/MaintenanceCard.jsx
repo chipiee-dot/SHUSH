@@ -55,7 +55,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
   }
 
   const inputClass =
-    'mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]';
+    'mt-1 block w-full rounded-xl border-slate-200 bg-white text-sm focus:border-[#1e40af] focus:ring-[#1e40af]';
 
   return (
     <Card
@@ -63,7 +63,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
       subtitle="Suspend alerts for one table or all tables for a set time. Every window is recorded in History."
     >
       {active.length > 0 && (
-        <ul className="mb-5 divide-y divide-[#f1ede3] rounded-xl border border-[#ece7da]">
+        <ul className="mb-5 divide-y divide-slate-100 rounded-xl border border-slate-100">
           {active.map((w) => (
             <li key={w.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
               <div>
@@ -77,7 +77,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
               <button
                 type="button"
                 onClick={() => handleEnd(w.id)}
-                className="rounded-lg border border-[#d6cfbe] px-3 py-1.5 text-xs font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-[#1e40af] transition hover:bg-[#1e40af] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-1"
               >
                 End now
               </button>
@@ -128,7 +128,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-xl bg-[#1b2d5a] px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+            className="rounded-xl bg-[#1e40af] px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-2"
           >
             {busy ? 'Starting…' : 'Start maintenance'}
           </button>

@@ -79,7 +79,7 @@ export default function Dashboard() {
           {dashboard.devices.length === 0 ? (
             <p className="text-sm text-slate-500">No devices are registered yet.</p>
           ) : (
-            <ul className="divide-y divide-[#f1ede3]">
+            <ul className="divide-y divide-slate-100">
               {dashboard.devices.map((t) => (
                 <li key={t.device.code} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
@@ -104,7 +104,7 @@ export default function Dashboard() {
           {dashboard.alerts.length === 0 ? (
             <p className="text-sm text-slate-500">No alerts in the last 24 hours.</p>
           ) : (
-            <ul className="divide-y divide-[#f1ede3]">
+            <ul className="divide-y divide-slate-100">
               {dashboard.alerts.map((a) => (
                 <li key={a.id} className="py-3 text-sm">
                   <div className="flex items-center justify-between gap-2">

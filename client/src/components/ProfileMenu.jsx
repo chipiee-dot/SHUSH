@@ -33,12 +33,12 @@ export default function ProfileMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Profile menu"
         aria-expanded={open}
-        className="flex h-10 items-center gap-2.5 rounded-xl bg-[#1b2d5a] px-2.5 text-white shadow-sm transition hover:bg-[#16254a]"
+        className="flex h-10 items-center gap-2.5 rounded-xl bg-white px-2.5 text-slate-800 shadow-sm transition hover:bg-slate-50"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-xs font-bold tracking-wide text-white">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1e40af] text-xs font-bold tracking-wide text-white">
           {initials || '?'}
         </span>
-        <span className="hidden pr-1 text-sm font-medium text-white sm:inline">
+        <span className="hidden pr-1 text-sm font-medium text-slate-800 sm:inline">
           {user?.firstName} {user?.lastName}
         </span>
         <svg
@@ -58,14 +58,14 @@ export default function ProfileMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-[#d6cfbe] bg-white text-slate-800 shadow-xl">
-          <div className="border-b border-[#ece7da] px-4 py-3">
+        <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-xl">
+          <div className="border-b border-slate-100 px-4 py-3">
             <div className="text-sm font-semibold text-[#152549]">
               {user?.firstName} {user?.lastName}
             </div>
             <div className="mt-0.5 break-all text-xs text-slate-500">{user?.email}</div>
             <div className="mt-2 flex items-center gap-2 text-xs">
-              <span className="rounded-full bg-[#e9ecf5] px-2 py-0.5 font-medium text-[#1b2d5a]">{roleLabel}</span>
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-[#1e40af]">{roleLabel}</span>
               <span className="text-slate-500">{user?.facultyId}</span>
             </div>
           </div>
@@ -73,7 +73,7 @@ export default function ProfileMenu() {
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="w-full px-4 py-3 text-left text-sm font-medium text-[#1b2d5a] transition hover:bg-[#f7f5ed] disabled:opacity-60"
+            className="w-full px-4 py-3 text-left text-sm font-medium text-[#1e40af] transition hover:bg-[#f4f6fb] disabled:opacity-60"
           >
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>

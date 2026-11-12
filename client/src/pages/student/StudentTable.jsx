@@ -1,68 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
+import Logo from '../../components/Logo.jsx';
+import Toast from '../../components/Toast.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { formatTime } from '../../lib/format.js';
 
-const MAX_GROUP = 10;
 const REFRESH_MS = 20000;
-
-function GroupSizePicker({ value, onChange }) {
-  return (
-    <div>
-      <div className="text-sm font-semibold text-[#152549]">How many are in your group?</div>
-      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Group size">
-        {Array.from({ length: MAX_GROUP }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            type="button"
-            aria-pressed={value === n}
-            onClick={() => onChange(n)}
-            className={`h-11 w-11 rounded-xl border text-sm font-semibold transition ${
-              value === n
-                ? 'border-[#1b2d5a] bg-[#1b2d5a] text-white shadow-md'
-                : 'border-[#d6cfbe] bg-transparent text-[#1b2d5a] hover:border-[#1b2d5a]'
-            }`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TableTile({ table, selected, onSelect }) {
-  const disabled = !table.fits;
-  const reason = table.underMaintenance ? 'Under maintenance' : table.free === 0 ? 'Full' : `Only ${table.free} free`;
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      aria-pressed={selected}
-      onClick={() => onSelect(table.tableNo)}
-      className={`rounded-xl border px-4 py-4 text-left transition ${
-        selected
-          ? 'border-[#1b2d5a] bg-[#1b2d5a] text-white shadow-md'
-          : disabled
-          ? 'cursor-not-allowed border-dashed border-[#d6cfbe] text-slate-400'
-          : 'border-[#d6cfbe] text-[#152549] hover:border-[#1b2d5a] hover:shadow-sm'
-      }`}
-    >
-      <div className="text-base font-semibold">Table {table.tableNo}</div>
-      <div className={`mt-1 text-xs ${selected ? 'text-blue-100' : disabled ? 'text-slate-400' : 'text-slate-500'}`}>
-        {disabled ? reason : `${table.free} of ${table.seats} seats free`}
-      </div>
-    </button>
-  );
-}
+const GROUP_SIZE = 1; // the new design has no group selector
 
 export default function StudentTable() {
   const { student, session, checking, refresh, logout } = useStudentAuth();
   const navigate = useNavigate();
-  const [groupSize, setGroupSize] = useState(1);
   const [tables, setTables] = useState([]);
   const [selected, setSelected] = useState(null);
   const [confirming, setConfirming] = useState(false);
@@ -70,9 +20,11 @@ export default function StudentTable() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
 
-  const loadTables = useCallback(async (size) => {
+  const seated = Boolean(session);
+
+  const loadTables = useCallback(async () => {
     try {
-      const data = await api.studentTables(size);
+      const data = await api.studentTables(GROUP_SIZE);
       setTables(data.tables);
       setSelected((current) => (data.tables.some((t) => t.tableNo === current && t.fits) ? current : null));
     } catch (err) {
@@ -80,9 +32,7 @@ export default function StudentTable() {
     }
   }, []);
 
-  const seated = Boolean(session);
-
-  // If the student already has a table open, show it (with End session) instead of the picker.
+  // If the student already has a table open, show it instead of the picker.
   useEffect(() => {
     if (student) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,22 +40,29 @@ export default function StudentTable() {
 
   useEffect(() => {
     if (!student || seated) return undefined;
-    loadTables(groupSize);
-    const timer = setInterval(() => loadTables(groupSize), REFRESH_MS);
+    loadTables();
+    const timer = setInterval(loadTables, REFRESH_MS);
     return () => clearInterval(timer);
-  }, [student, seated, groupSize, loadTables]);
+  }, [student, seated, loadTables]);
 
   if (!checking && !student) return <Navigate to="/student/login" replace />;
-  if (checking || !student) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (checking || !student) return <p className="p-8 text-sm text-slate-500">Loading…</p>;
 
-  const firstName = student.firstName;
   const chosen = tables.find((t) => t.tableNo === selected) ?? null;
+
+  async function handleSignOut() {
+    try {
+      await logout();
+    } finally {
+      navigate('/student/login', { replace: true });
+    }
+  }
 
   async function handleStart() {
     setBusy(true);
     setMessage(null);
     try {
-      await api.studentStartSession(selected, groupSize);
+      await api.studentStartSession(selected, GROUP_SIZE);
       setConfirming(false);
       // Back to sign-in. The session stays open until the student signs in again or 2 hours pass.
       navigate('/student/login', {
@@ -124,7 +81,7 @@ export default function StudentTable() {
         await refresh();
       } else {
         setMessage({ type: 'error', text: err.message });
-        loadTables(groupSize);
+        loadTables();
       }
     } finally {
       setBusy(false);
@@ -150,34 +107,58 @@ export default function StudentTable() {
     }
   }
 
+  const header = (
+    <header className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Logo className="h-7 w-7 text-blue-700" />
+        <div>
+          <div className="text-xl font-bold leading-none tracking-tight text-slate-900">SHUSH</div>
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Student check-in</div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1"
+      >
+        Sign out
+      </button>
+    </header>
+  );
+
+  const toast = message && (
+    <Toast type={message.type} onClose={() => setMessage(null)}>
+      {message.text}
+    </Toast>
+  );
+
   if (seated) {
     return (
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6 rounded-3xl bg-white p-8 shadow-2xl">
+        {toast}
+        {header}
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">You are seated, {firstName}</h1>
-          <p className="mt-1 text-sm text-slate-600">Enjoy your time at the library. End your session when you leave.</p>
+          <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">You are seated, {student.firstName}</h1>
+          <p className="mt-2 text-sm font-medium text-slate-500 md:text-base">Enjoy your time at the library. End your session when you leave.</p>
         </div>
-        <Alert type={message?.type ?? 'success'}>{message?.text}</Alert>
-        <div className="rounded-xl border border-[#d6cfbe] px-5 py-4">
-          <dl className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Table</dt>
-              <dd className="mt-1 text-2xl font-semibold text-[#152549]">{session.tableNo}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Group</dt>
-              <dd className="mt-1 text-2xl font-semibold text-[#152549]">{session.groupSize}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Since</dt>
-              <dd className="mt-1 text-2xl font-semibold text-[#152549]">{formatTime(session.startedAt)}</dd>
-            </div>
-          </dl>
-        </div>
+        <dl className="grid gap-4 rounded-2xl border border-slate-200 p-5 sm:grid-cols-3">
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Table</dt>
+            <dd className="mt-1 text-2xl font-semibold text-slate-900">{session.tableNo}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Group</dt>
+            <dd className="mt-1 text-2xl font-semibold text-slate-900">{session.groupSize}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Since</dt>
+            <dd className="mt-1 text-2xl font-semibold text-slate-900">{formatTime(session.startedAt)}</dd>
+          </div>
+        </dl>
         <button
           type="button"
           onClick={() => setEnding(true)}
-          className="rounded-xl border border-[#d6cfbe] px-5 py-3 text-sm font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white"
+          className="self-start rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md"
         >
           End session
         </button>
@@ -191,60 +172,77 @@ export default function StudentTable() {
           onCancel={() => setEnding(false)}
           busy={busy}
         >
-          You are leaving Table {session.tableNo}. Your visit will be recorded as finished.
+          You are leaving Table {session.tableNo}. You will be signed out after this.
         </ConfirmDialog>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">Hi, {firstName}</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {student.section} · choose a table for your visit.
-        </p>
+    <div className="flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+      {toast}
+      <div className="p-8 pb-4">{header}</div>
+
+      <div className="px-8 py-4">
+        <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">Hi, {student.firstName}</h1>
+        <p className="mt-2 text-sm font-medium text-slate-500 md:text-base">{student.section} · choose a table for your visit.</p>
       </div>
 
-      <Alert type={message?.type ?? 'error'}>{message?.text}</Alert>
-
-      <GroupSizePicker
-        value={groupSize}
-        onChange={(n) => {
-          setGroupSize(n);
-          setSelected(null);
-        }}
-      />
-
-      <div>
-        <div className="text-sm font-semibold text-[#152549]">Choose a table</div>
-        {tables.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Loading tables…</p>
-        ) : (
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {tables.map((t) => (
-              <TableTile key={t.tableNo} table={t} selected={t.tableNo === selected} onSelect={setSelected} />
-            ))}
-          </div>
-        )}
-        {tables.length > 0 && !tables.some((t) => t.fits) && (
-          <p className="mt-3 text-sm text-slate-600">
-            No table has {groupSize} free seats right now. Try a smaller group or check back soon.
-          </p>
-        )}
+      <div className="mb-6 flex-1 px-8 py-4">
+        <h2 className="mb-4 text-sm font-bold text-slate-900">Choose a table</h2>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+          {tables.map((table) => {
+            const isSelected = selected === table.tableNo;
+            const disabled = !table.fits;
+            const label = table.underMaintenance
+              ? 'Under maintenance'
+              : table.free === 0
+              ? 'Full'
+              : `${table.free} of ${table.seats} seats free`;
+            return (
+              <button
+                key={table.tableNo}
+                type="button"
+                onClick={() => !disabled && setSelected(table.tableNo)}
+                disabled={disabled}
+                aria-pressed={isSelected}
+                className={`relative rounded-2xl border-2 p-5 text-left transition-all duration-200 focus:border-blue-600 focus:outline-none ${
+                  disabled
+                    ? 'cursor-not-allowed border-slate-100 bg-slate-50 opacity-50'
+                    : isSelected
+                    ? 'border-blue-600 bg-blue-50/50 shadow-sm'
+                    : 'cursor-pointer border-slate-100 bg-white hover:border-blue-300 hover:bg-slate-50/50 hover:shadow-sm'
+                }`}
+              >
+                <div className={`mb-1 text-base font-bold ${isSelected ? 'text-blue-900' : 'text-slate-900'}`}>Table {table.tableNo}</div>
+                <div className={`text-xs font-medium ${isSelected ? 'text-blue-700' : 'text-slate-500'}`}>{label}</div>
+                {isSelected && <div className="absolute right-4 top-4 h-2 w-2 rounded-full bg-blue-600" />}
+              </button>
+            );
+          })}
+        </div>
+        {tables.length === 0 && <p className="text-sm text-slate-500">Loading tables…</p>}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#d6cfbe] px-5 py-4">
-        <div className="text-sm text-slate-700">
-          {chosen
-            ? <>Table <b className="text-[#152549]">{chosen.tableNo}</b> for <b className="text-[#152549]">{groupSize}</b> {groupSize === 1 ? 'person' : 'people'}</>
-            : 'Select a table to continue.'}
+      <div className="mt-auto flex flex-col items-center justify-between gap-4 border-t border-slate-200/60 bg-slate-50 p-6 px-8 sm:flex-row">
+        <div className="text-sm font-medium text-slate-600">
+          {chosen ? (
+            <span>
+              Ready to check in at <strong className="text-blue-700">Table {chosen.tableNo}</strong>.
+            </span>
+          ) : (
+            'Select a table to continue.'
+          )}
         </div>
         <button
           type="button"
           disabled={!chosen}
           onClick={() => setConfirming(true)}
-          className="rounded-xl bg-[#1b2d5a] px-5 py-3 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-40"
+          className={`w-full rounded-xl px-8 py-3 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 sm:w-auto ${
+            chosen
+              ? 'bg-blue-600 text-white hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-md'
+              : 'cursor-not-allowed bg-slate-200 text-slate-400'
+          }`}
         >
           Continue
         </button>
@@ -260,11 +258,9 @@ export default function StudentTable() {
         busy={busy}
       >
         {chosen && (
-          <div className="rounded-xl border border-[#d6cfbe] bg-white px-4 py-3">
-            <div className="text-lg font-semibold text-[#152549]">Table {chosen.tableNo}</div>
-            <div className="text-sm text-slate-600">
-              {groupSize} {groupSize === 1 ? 'person' : 'people'} · {chosen.free} seats were free
-            </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <div className="text-lg font-semibold text-slate-900">Table {chosen.tableNo}</div>
+            <div className="text-sm text-slate-600">{chosen.free} of {chosen.seats} seats free</div>
           </div>
         )}
       </ConfirmDialog>

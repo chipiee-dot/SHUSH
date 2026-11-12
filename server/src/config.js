@@ -12,6 +12,9 @@ const isProd = env.NODE_ENV === 'production';
 const bool = (value, fallback) =>
   value === undefined || value === '' ? fallback : String(value).toLowerCase() === 'true';
 
+const num = (value, fallback) =>
+  value === undefined || value === '' || Number.isNaN(Number(value)) ? fallback : Number(value);
+
 let jwtSecret = env.JWT_SECRET;
 if (!jwtSecret) {
   if (isProd) {
@@ -33,6 +36,14 @@ export const config = {
   cookieSecure: bool(env.COOKIE_SECURE, false),
   trustProxy: bool(env.TRUST_PROXY, false),
   clientDist: path.resolve(here, '../../client/dist'),
+
+  // The library's clock, used for "today", "this week" and "this month".
+  // Times are stored in UTC. 480 = Philippines (UTC+8).
+  utcOffsetMinutes: num(env.LIBRARY_UTC_OFFSET_MINUTES, 480),
+
+  // A device that has not reported for this long is shown as offline.
+  deviceOfflineAfterMs: num(env.DEVICE_OFFLINE_SECONDS, 120) * 1000,
+
   db: {
     server: env.DB_SERVER || 'localhost',
     database: env.DB_DATABASE || 'SHUSH',

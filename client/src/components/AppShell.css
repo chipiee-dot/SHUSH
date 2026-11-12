@@ -1,0 +1,238 @@
+/* Faculty console shell: purple icon rail, text header, full-height scrolling page. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #f7f5ed;
+  color: #1f2937;
+}
+
+.shell .app {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Rounded purple rail on the left (the shape from the reference). */
+.shell .side {
+  position: relative;
+  z-index: 20;
+  flex: none;
+  align-self: center;
+  width: 72px;
+  height: 70%;
+  margin: 0 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 48px 12px 12px 48px;
+  background: linear-gradient(180deg, #6a5be6 0%, #5b4bdb 100%);
+  box-shadow: 0 12px 30px rgba(91, 75, 219, 0.35);
+}
+
+.shell .rail-inner {
+  height: 65%;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.shell .brand {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.shell .nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.shell .it {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 90ms ease-out;
+}
+
+.shell .it svg {
+  width: 20px;
+  height: 20px;
+}
+
+.shell .it:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.shell .it.on {
+  background: #ffffff;
+  color: #5b4bdb;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.shell .it:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.shell .it:active {
+  transform: scale(0.96);
+}
+
+/* Page name shown beside the icon, outside the rail, on hover or keyboard focus. */
+.shell .tip {
+  position: absolute;
+  left: calc(100% + 16px);
+  top: 50%;
+  z-index: 50;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #152549;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.18);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-6px, -50%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.shell .tip::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  margin-top: -6px;
+  border: 6px solid transparent;
+  border-right-color: #ffffff;
+}
+
+.shell .it:hover .tip,
+.shell .it:focus-visible .tip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+/* Main column */
+.shell .main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.shell .top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 72px;
+  padding: 0 28px;
+}
+
+/* Header is plain text: breadcrumb only. */
+.shell .crumb {
+  font-size: 15px;
+  color: #66666b;
+}
+
+.shell .crumb span {
+  margin: 0 8px;
+  color: #b8b2a2;
+}
+
+.shell .crumb b {
+  font-weight: 600;
+  color: #152549;
+}
+
+.shell .top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shell .page-container {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 28px 28px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 759px) {
+  .shell .side {
+    width: 68px;
+    margin-left: 12px;
+  }
+
+  .shell .it {
+    width: 44px;
+    height: 44px;
+  }
+
+  .shell .top {
+    padding: 0 16px;
+  }
+
+  .shell .page-container {
+    padding: 8px 16px 20px;
+  }
+
+  .shell .crumb {
+    font-size: 14px;
+  }
+}
+
+/* Glow button effect (used on the Table layout page). */
+.glow-btn {
+  position: relative;
+  overflow: hidden;
+  --glow-x: 50%;
+  --glow-y: 50%;
+}
+
+.glow-btn .glow-light {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle 62px at var(--glow-x) var(--glow-y), rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.12) 45%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0;
+  transition: opacity 400ms ease;
+  pointer-events: none;
+}
+
+.glow-btn:hover .glow-light,
+.glow-btn:focus-visible .glow-light {
+  opacity: 1;
+}
+
+.glow-btn .glow-text {
+  position: relative;
+  z-index: 1;
+}
+
+.glow-btn:active {
+  transform: scale(0.97);
+  transition-duration: 90ms;
+}

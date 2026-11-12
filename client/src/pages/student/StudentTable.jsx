@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
@@ -60,7 +60,8 @@ function TableTile({ table, selected, onSelect }) {
 }
 
 export default function StudentTable() {
-  const { student, session, checking, refresh } = useStudentAuth();
+  const { student, session, checking, refresh, logout } = useStudentAuth();
+  const navigate = useNavigate();
   const [groupSize, setGroupSize] = useState(1);
   const [tables, setTables] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -98,10 +99,19 @@ export default function StudentTable() {
     setBusy(true);
     setMessage(null);
     try {
-      const result = await api.studentStartSession(selected, groupSize);
+      await api.studentStartSession(selected, groupSize);
       setConfirming(false);
-      setMessage({ type: 'success', text: result.message });
-      await refresh();
+      // Back to sign-in. The session stays open until the student signs in again or 2 hours pass.
+      navigate('/student/login', {
+        replace: true,
+        state: {
+          notice: {
+            type: 'success',
+            text: `You are seated at Table ${selected}. To end your session, sign in with your student number again.`,
+          },
+        },
+      });
+      await logout();
     } catch (err) {
       setConfirming(false);
       setMessage({ type: 'error', text: err.message });

@@ -1,36 +1,36 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
-import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
-import { STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
-
-const INPUT =
-  'mt-2 block w-full rounded-xl border border-[#d6cfbe] bg-transparent px-4 py-3 text-lg tracking-widest text-slate-800 placeholder:text-slate-400 focus:border-[#1b2d5a] focus:ring-1 focus:ring-[#1b2d5a]';
+import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
+import { formatTime } from '../../lib/format.js';
+import { STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
 
 export default function StudentLogin() {
-  const { student, checking, setStudent } = useStudentAuth();
+  const { setStudent, logout } = useStudentAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [raw, setRaw] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [found, setFound] = useState(null);
+  const [found, setFound] = useState(null); // { student, session }
+  const [notice, setNotice] = useState(location.state?.notice ?? null);
 
-  if (!checking && student) return <Navigate to="/student/table" replace />;
+  const seated = Boolean(found?.session);
 
   async function handleContinue(e) {
     e.preventDefault();
     setError('');
+    setNotice(null);
     if (!STUDENT_NO_RE.test(raw)) {
       setError('Enter your student number, like 21-0001.');
       return;
     }
     setBusy(true);
     try {
-      const data = await api.studentLookup(raw);
-      setFound(data.student);
+      setFound(await api.studentLookup(raw));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -42,9 +42,21 @@ export default function StudentLogin() {
     setBusy(true);
     setError('');
     try {
-      const data = await api.studentLogin(found.studentNo);
-      setStudent(data.student);
-      navigate('/student/table', { replace: true });
+      const data = await api.studentLogin(found.student.studentNo);
+      if (data.session) {
+        // Signing in again while seated ends the session.
+        await api.studentEndSession();
+        await logout();
+        setFound(null);
+        setRaw('');
+        setNotice({
+          type: 'success',
+          text: `Your session at Table ${data.session.tableNo} has ended. Thank you for visiting.`,
+        });
+      } else {
+        setStudent(data.student);
+        navigate('/student/table', { replace: true });
+      }
     } catch (err) {
       setError(err.message);
       setFound(null);
@@ -59,17 +71,20 @@ export default function StudentLogin() {
       <p className="mt-2 text-sm text-slate-600">Enter your student number. You will confirm your name next.</p>
 
       <form onSubmit={handleContinue} className="mt-8 space-y-4" noValidate>
+        {notice && <Alert type={notice.type}>{notice.text}</Alert>}
         <Alert>{error}</Alert>
         <div>
-          <label htmlFor="student-no" className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+          <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-slate-600">
             Student number
           </label>
-          <StudentNumberInput
-            id="student-no"
-            value={raw}
-            onChange={(d) => setRaw(formatStudentNumberInput(d))}
-            autoFocus
-          />
+          <div className="mt-3">
+            <StudentNumberInput
+              id="student-no"
+              value={raw}
+              onChange={(d) => setRaw(formatStudentNumberInput(d))}
+              autoFocus
+            />
+          </div>
         </div>
         <button
           type="submit"
@@ -80,29 +95,30 @@ export default function StudentLogin() {
         </button>
       </form>
 
-      <div className="mt-6 space-y-3">
-        <p className="text-center text-sm text-slate-600">
-          New here?{' '}
-          <Link to="/student/signup" className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1">
-            Sign up with your student number
-          </Link>
-        </p>
-        
-        <p className="mt-2 text-center text-sm text-slate-600">
-          <Link 
-            to="/login" 
-            className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
-          >
-            Faculty sign-in
-          </Link>
-        </p>
-      </div>
+      <p className="mt-6 text-center text-sm text-slate-600">
+        New here?{' '}
+        <Link
+          to="/student/signup"
+          className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
+        >
+          Sign up with your student number
+        </Link>
+      </p>
+
+      <p className="mt-2 text-center text-sm text-slate-600">
+        <Link
+          to="/login"
+          className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
+        >
+          Faculty sign-in
+        </Link>
+      </p>
 
       <ConfirmDialog
         open={Boolean(found)}
-        title="Is this you?"
-        confirmLabel="Yes, that's me"
-        cancelLabel="No, go back"
+        title={seated ? 'End your session?' : 'Is this you?'}
+        confirmLabel={seated ? 'Yes, end my session' : "Yes, that's me"}
+        cancelLabel={seated ? 'Not me' : 'No, go back'}
         onConfirm={handleConfirm}
         onCancel={() => setFound(null)}
         busy={busy}
@@ -110,10 +126,15 @@ export default function StudentLogin() {
         {found && (
           <div className="rounded-xl border border-[#d6cfbe] bg-white px-4 py-3">
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Name</div>
-            <div className="text-lg font-semibold text-[#152549]">{found.name}</div>
+            <div className="text-lg font-semibold text-[#152549]">{found.student.name}</div>
             <div className="mt-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Section</div>
-            <div className="font-medium text-[#152549]">{found.section}</div>
-            <div className="mt-2 text-xs text-slate-500">Student number {found.studentNo}</div>
+            <div className="font-medium text-[#152549]">{found.student.section}</div>
+            <div className="mt-2 text-xs text-slate-500">Student number {found.student.studentNo}</div>
+            {seated && (
+              <p className="mt-3 text-sm text-slate-700">
+                You are seated at Table {found.session.tableNo}, since {formatTime(found.session.startedAt)}.
+              </p>
+            )}
           </div>
         )}
       </ConfirmDialog>

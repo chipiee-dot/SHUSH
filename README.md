@@ -108,7 +108,7 @@ Run the server tests with `npm test --prefix server`.
 - Start page at `/` offers **Student check-in** and **Faculty console**.
 - Sign up at `/student/signup`: student number (`21-0001`, the dash is added automatically), last name, first name, optional middle initial, and section such as `BSIT-3D`, `BSCS-1D` or `BSEE-2D`.
 - Sign in at `/student/login`: enter the student number, confirm the name shown in the pop-up, and sign in.
-- At `/student/table`: choose a group size, choose a table with enough free seats, and confirm. A session ends when the student taps **End session**, or after 8 hours.
+- At `/student/table`: choose a group size, choose a table with enough free seats, and confirm. After confirming a table, the student returns to sign-in. Signing in again ends the session. A session also ends automatically after 2 hours.
 - Student sessions are written to the same tables the faculty pages read, so the dashboard, table layout, rewards and history update from real visits.
 
 Students use their own cookie (`shush_student`) and cannot open faculty pages, and faculty cookies do not work on student routes.

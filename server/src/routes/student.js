@@ -26,6 +26,12 @@ function displayName(student) {
   return `${student.firstName}${middle} ${student.lastName}`;
 }
 
+function sessionInfo(current) {
+  return current
+    ? { sessionId: current.sessionId, tableNo: current.tableNo, groupSize: current.groupSize, startedAt: current.startedAt }
+    : null;
+}
+
 function publicStudent(row) {
   return {
     id: row.id,
@@ -88,7 +94,9 @@ export function createStudentRouter(db, config) {
       if (!row) {
         return res.status(404).json({ message: 'We could not find that student number. Please sign up first.' });
       }
-      return res.json({ student: publicStudent(row) });
+      await db.closeStaleSessions(new Date(), MAX_SESSION_HOURS);
+      const current = await db.getActiveStudentSession(row.id);
+      return res.json({ student: publicStudent(row), session: sessionInfo(current) });
     })
   );
 
@@ -115,7 +123,9 @@ export function createStudentRouter(db, config) {
         secure: config.cookieSecure,
         maxAge: SESSION_MS,
       });
-      return res.json({ student });
+      await db.closeStaleSessions(new Date(), MAX_SESSION_HOURS);
+      const current = await db.getActiveStudentSession(row.id);
+      return res.json({ student, session: sessionInfo(current) });
     })
   );
 

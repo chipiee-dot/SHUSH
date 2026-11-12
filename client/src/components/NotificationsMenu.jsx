@@ -42,7 +42,7 @@ export default function NotificationsMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label={count ? `Notifications, ${count} new` : 'Notifications'}
         aria-expanded={open}
-        className="relative rounded-xl p-2 text-[#1b2d5a] transition hover:bg-[#1b2d5a]/10"
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#d6cfbe] bg-white text-[#1b2d5a] shadow-sm transition hover:bg-[#f1ede3]"
       >
         <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
           <path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z" strokeLinejoin="round" />

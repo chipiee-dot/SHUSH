@@ -33,10 +33,13 @@ export default function ProfileMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Profile menu"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-[#1b2d5a]/10"
+        className="flex h-10 items-center gap-2.5 rounded-xl bg-[#1b2d5a] px-2.5 text-white shadow-sm transition hover:bg-[#16254a]"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1b2d5a] text-xs font-bold tracking-wide text-white">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-xs font-bold tracking-wide text-white">
           {initials || '?'}
+        </span>
+        <span className="hidden pr-1 text-sm font-medium text-white sm:inline">
+          {user?.firstName} {user?.lastName}
         </span>
       </button>
 

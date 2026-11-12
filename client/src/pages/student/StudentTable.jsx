@@ -139,7 +139,7 @@ export default function StudentTable() {
       setEnding(false);
       navigate('/student/login', {
         replace: true,
-        state: { notice: { type: 'success', text: `Your session has ended. Thank you for visiting.` } },
+        state: { notice: { type: 'success', text: 'You have been logged out of your session. Thank you for visiting.' } },
       });
       await logout();
     } catch (err) {

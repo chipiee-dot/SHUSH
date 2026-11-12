@@ -51,7 +51,7 @@ export default function StudentLogin() {
         setRaw('');
         setNotice({
           type: 'success',
-          text: `Your session at Table ${data.session.tableNo} has ended. Thank you for visiting.`,
+          text: `You have been logged out of your session at Table ${data.session.tableNo}. Thank you for visiting.`,
         });
       } else {
         setStudent(data.student);
@@ -116,8 +116,8 @@ export default function StudentLogin() {
 
       <ConfirmDialog
         open={Boolean(found)}
-        title={seated ? 'End your session?' : 'Is this you?'}
-        confirmLabel={seated ? 'Yes, end my session' : "Yes, that's me"}
+        title={seated ? 'Log out of your session?' : 'Is this you?'}
+        confirmLabel={seated ? 'Yes, log me out' : "Yes, that's me"}
         cancelLabel={seated ? 'Not me' : 'No, go back'}
         onConfirm={handleConfirm}
         onCancel={() => setFound(null)}

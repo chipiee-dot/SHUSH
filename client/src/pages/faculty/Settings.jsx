@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Alert from '../../components/Alert.jsx';
@@ -17,6 +18,8 @@ const inputClass =
 // Only administrators see the settings. The server checks the same rule on every request.
 export default function Settings() {
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const focusNo = Number(params.get('table')) || null;
   if (user?.role !== 'Admin') {
     return (
       <div className="space-y-6">
@@ -33,19 +36,19 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="Tables, seats and device thresholds. Administrators only." />
-      <TableSettings />
-      <DeviceSettings />
+      <TableSettings focusNo={focusNo} />
+      <DeviceSettings focusNo={focusNo} />
       <SampleDataSettings />
     </div>
   );
 }
 
-function TableSettings() {
+function TableSettings({ focusNo }) {
   const { data, error, loading, reload } = usePolling(api.adminTables, 0);
   const [drafts, setDrafts] = useState({});
   const [rowMessages, setRowMessages] = useState({});
   const [savingNo, setSavingNo] = useState(null);
-  const [newTable, setNewTable] = useState({ tableNo: '', seats: '4', col: '', row: '' });
+  const [newTable, setNewTable] = useState({ tableNo: '', seats: '4' });
   const [addMessage, setAddMessage] = useState(null);
   const [adding, setAdding] = useState(false);
 
@@ -78,13 +81,9 @@ function TableSettings() {
     setAdding(true);
     try {
       const body = { tableNo: newTable.tableNo, seats: newTable.seats };
-      if (newTable.col !== '' || newTable.row !== '') {
-        body.col = newTable.col;
-        body.row = newTable.row;
-      }
       const result = await api.addTable(body);
       setAddMessage({ type: 'success', text: result.message });
-      setNewTable({ tableNo: '', seats: '4', col: '', row: '' });
+      setNewTable({ tableNo: '', seats: '4' });
       reload();
     } catch (err) {
       setAddMessage({ type: 'error', text: err.message });
@@ -96,7 +95,7 @@ function TableSettings() {
   return (
     <Card
       title="Tables and seats"
-      subtitle="Change how many seats a table has, or add a table by its number. Leave column and row empty to place the new table automatically."
+      subtitle="Change how many seats a table has, or add a table by its number. The new table is placed automatically on the floor plan."
     >
       {error && <Alert>{error}</Alert>}
       {!data ? (
@@ -121,7 +120,7 @@ function TableSettings() {
                 const dirty = draft !== String(t.seats);
                 const message = rowMessages[t.tableNo];
                 return (
-                  <tr key={t.tableNo} className="align-top">
+                  <tr key={t.tableNo} className={`align-top ${t.tableNo === focusNo ? 'bg-[#ece7da]' : ''}`}>
                     <td className="py-3 pr-4 font-semibold text-[#152549]">
                       <div className="flex items-center gap-2">
                         Table {t.tableNo}
@@ -166,7 +165,7 @@ function TableSettings() {
         </div>
       )}
 
-      <form onSubmit={addTable} className="mt-6 grid gap-4 border-t border-[#ece7da] pt-5 sm:grid-cols-5">
+      <form onSubmit={addTable} className="mt-6 grid gap-4 border-t border-[#ece7da] pt-5 sm:grid-cols-3">
         <label className="text-sm font-medium text-slate-700">
           Table number
           <input className={inputClass} type="number" min={1} max={999} required value={newTable.tableNo}
@@ -176,16 +175,6 @@ function TableSettings() {
           Seats
           <input className={inputClass} type="number" min={1} max={20} required value={newTable.seats}
             onChange={(e) => setNewTable((t) => ({ ...t, seats: e.target.value }))} />
-        </label>
-        <label className="text-sm font-medium text-slate-700">
-          Column <span className="font-normal text-slate-500">(optional)</span>
-          <input className={inputClass} type="number" min={0} max={11} value={newTable.col}
-            onChange={(e) => setNewTable((t) => ({ ...t, col: e.target.value }))} />
-        </label>
-        <label className="text-sm font-medium text-slate-700">
-          Row <span className="font-normal text-slate-500">(optional)</span>
-          <input className={inputClass} type="number" min={0} max={99} value={newTable.row}
-            onChange={(e) => setNewTable((t) => ({ ...t, row: e.target.value }))} />
         </label>
         <div className="flex items-end">
           <button type="submit" disabled={adding}
@@ -201,7 +190,7 @@ function TableSettings() {
   );
 }
 
-function DeviceSettings() {
+function DeviceSettings({ focusNo }) {
   const { data, error, loading, reload } = usePolling(api.devices, 0);
   const [drafts, setDrafts] = useState({});
   const [rowMessages, setRowMessages] = useState({});
@@ -263,7 +252,7 @@ function DeviceSettings() {
                 const dirty = draft !== String(d.threshold);
                 const message = rowMessages[d.deviceCode];
                 return (
-                  <tr key={d.deviceCode} className="align-top">
+                  <tr key={d.deviceCode} className={`align-top ${d.tableNo === focusNo ? 'bg-[#ece7da]' : ''}`}>
                     <td className="py-3 pr-4 font-semibold text-[#152549]">Table {d.tableNo}</td>
                     <td className="py-3 pr-4 font-mono text-xs text-slate-600">
                       <div className="flex items-center gap-2">

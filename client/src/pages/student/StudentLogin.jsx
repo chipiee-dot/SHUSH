@@ -98,7 +98,7 @@ export default function StudentLogin() {
             to="/login" 
             className="font-medium text-[#1b2d5a] underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
           >
-            ← Faculty sign-in
+            Faculty sign-in
           </Link>
         </p>
       </div>

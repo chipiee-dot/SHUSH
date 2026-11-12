@@ -57,7 +57,7 @@ function TableTile({ table, selected, onSelect }) {
   );
 }
 
-function TableDetails({ table }) {
+function TableDetails({ table, isAdmin }) {
   const rows = [
     ['Status', STATUS_META[table.status].label],
     ['Seated', `${table.occupancy.groupSize} of ${table.seats}`],
@@ -68,7 +68,20 @@ function TableDetails({ table }) {
     ['Last seen', table.device ? timeAgo(table.device.lastSeenAt) : '—'],
   ];
   return (
-    <Card title={`Table ${table.tableNo}`} subtitle="Selected table">
+    <Card
+      title={`Table ${table.tableNo}`}
+      subtitle="Selected table"
+      action={
+        isAdmin && (
+          <Link
+            to={`/console/settings?table=${table.tableNo}`}
+            className="rounded-xl bg-[#1b2d5a] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+          >
+            Edit table
+          </Link>
+        )
+      }
+    >
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {rows.map(([label, value]) => (
           <div key={label}>
@@ -254,7 +267,7 @@ export default function TableLayout() {
         </p>
       </Card>
 
-      {selected && <TableDetails table={selected} />}
+      {selected && <TableDetails table={selected} isAdmin={user?.role === 'Admin'} />}
     </div>
   );
 }

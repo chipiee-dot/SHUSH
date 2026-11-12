@@ -1,5 +1,6 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useStudentAuth } from '../context/StudentAuthContext.jsx';
+import BokehBackground from './BokehBackground.jsx';
 import Logo from './Logo.jsx';
 
 export default function StudentShell() {
@@ -15,9 +16,10 @@ export default function StudentShell() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1b2d5a] font-sans antialiased flex items-start justify-center p-4 sm:p-8 md:p-12 selection:bg-[#1b2d5a] selection:text-white">
-      <div className="w-full max-w-3xl bg-[#f7f5ed] rounded-[2.5rem] shadow-2xl p-6 sm:p-10">
-        <header className="flex items-center justify-between gap-4">
+    <div className="relative min-h-screen font-sans antialiased flex items-start justify-center p-4 sm:p-8 md:p-12 selection:bg-[#1b2d5a] selection:text-white">
+      <BokehBackground />
+      <div className="relative z-10 w-full max-w-3xl bg-[#f7f5ed] rounded-[2.5rem] shadow-2xl p-6 sm:p-10">
+        <header className="relative flex items-center justify-center">
           <div className="flex items-center gap-3">
             <Logo className="h-8 w-8 text-[#1b2d5a]" />
             <div className="leading-tight">
@@ -29,7 +31,7 @@ export default function StudentShell() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="rounded-xl border border-[#d6cfbe] px-4 py-2 text-sm font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white"
+              className="absolute right-0 top-1/2 -translate-y-1/2 rounded-xl border border-[#d6cfbe] px-4 py-2 text-sm font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white"
             >
               Sign out
             </button>

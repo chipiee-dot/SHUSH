@@ -104,27 +104,50 @@ export default function FacultyShell() {
     <div className="shell">
       <div className="app">
         <aside className="side" aria-label="Faculty console navigation">
-          <div className="rail-inner">
-          <span className="brand" aria-hidden="true">
-            <Logo className="h-6 w-6 text-white" />
-          </span>
+          {/* Organic concave/convex purple rail background matching reference */}
+          <svg
+            className="side-bg"
+            viewBox="0 0 76 540"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="navRailGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#6a5be6" />
+                <stop offset="100%" stopColor="#5b4bdb" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M 0,0 
+                 C 0,36 76,44 76,84 
+                 L 76,456 
+                 C 76,496 0,504 0,540 
+                 Z"
+              fill="url(#navRailGrad)"
+            />
+          </svg>
 
-          <nav className="nav" aria-label="Main">
-            {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.to === '/console/dashboard'}
-                className={({ isActive }) => `it ${isActive ? 'on' : ''}`}
-                aria-label={link.label}
-              >
-                {link.icon}
-                <span className="tip" aria-hidden="true">
-                  {link.label}
-                </span>
-              </NavLink>
-            ))}
-          </nav>
+          <div className="rail-inner">
+            <span className="brand" aria-hidden="true">
+              <Logo className="h-6 w-6 text-white" />
+            </span>
+
+            <nav className="nav" aria-label="Main">
+              {links.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.to === '/console/dashboard'}
+                  className={({ isActive }) => `it ${isActive ? 'on' : ''}`}
+                  aria-label={link.label}
+                >
+                  {link.icon}
+                  <span className="tip" aria-hidden="true">
+                    {link.label}
+                  </span>
+                </NavLink>
+              ))}
+            </nav>
           </div>
         </aside>
 

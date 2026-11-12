@@ -16,7 +16,7 @@ export default function StudentShell() {
   }
 
   return (
-    <div className="relative min-h-screen font-sans antialiased flex items-start justify-center p-4 sm:p-8 md:p-12 selection:bg-[#1b2d5a] selection:text-white">
+    <div className="relative min-h-screen font-sans antialiased flex items-center justify-center p-4 sm:p-8 md:p-12 selection:bg-[#1b2d5a] selection:text-white">
       <BokehBackground />
       <div className="relative z-10 w-full max-w-3xl bg-[#f7f5ed] rounded-[2.5rem] shadow-2xl p-6 sm:p-10">
         <header className="relative flex items-center justify-center">

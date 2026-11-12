@@ -24,34 +24,13 @@
   align-self: center;
   width: 72px;
   height: 70%;
-  margin: 0 0 0 32px;
+  margin: 0 0 0 12px;
   padding: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 0;
+  border-radius: 40px 0 0 40px;
   background: linear-gradient(180deg, #6a5be6 0%, #5b4bdb 100%);
   box-shadow: 0 12px 30px rgba(91, 75, 219, 0.35);
-}
-
-/* Concave curves on the left edge where the bar meets the top and bottom: the bar flares out to the left. */
-.shell .side::before,
-.shell .side::after {
-  content: "";
-  position: absolute;
-  left: -32px;
-  width: 32px;
-  height: 32px;
-  pointer-events: none;
-}
-
-.shell .side::before {
-  top: 0;
-  background: radial-gradient(circle at 0 100%, transparent 32px, #6a5be6 32.5px);
-}
-
-.shell .side::after {
-  bottom: 0;
-  background: radial-gradient(circle at 0 0, transparent 32px, #5b4bdb 32.5px);
 }
 
 .shell .rail-inner {
@@ -205,7 +184,7 @@
 @media (max-width: 759px) {
   .shell .side {
     width: 68px;
-    margin-left: 32px;
+    margin-left: 12px;
   }
 
   .shell .it {

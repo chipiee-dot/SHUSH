@@ -142,6 +142,8 @@
 }
 
 .shell .top {
+  position: relative;
+  z-index: 30;
   flex: none;
   display: flex;
   align-items: center;

@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
-import Toast from '../../components/Toast.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
@@ -10,30 +9,34 @@ import { formatTime } from '../../lib/format.js';
 import { STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
 
 export default function StudentLogin() {
+  const { notify } = useToast();
   const { setStudent, logout } = useStudentAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [raw, setRaw] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [found, setFound] = useState(null); // { student, session }
-  const [notice, setNotice] = useState(location.state?.notice ?? null);
 
   const seated = Boolean(found?.session);
 
+  // Messages passed from the table page appear as a toast.
+  useEffect(() => {
+    const n = location.state?.notice;
+    if (n) notify(n.type, n.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleContinue(e) {
     e.preventDefault();
-    setError('');
-    setNotice(null);
     if (!STUDENT_NO_RE.test(raw)) {
-      setError('Enter your student number, like 21-0001.');
+      notify('error', 'Enter your student number, like 21-0001.');
       return;
     }
     setBusy(true);
     try {
       setFound(await api.studentLookup(raw));
     } catch (err) {
-      setError(err.message);
+      notify('error', err.message);
     } finally {
       setBusy(false);
     }
@@ -41,7 +44,6 @@ export default function StudentLogin() {
 
   async function handleConfirm() {
     setBusy(true);
-    setError('');
     try {
       const data = await api.studentLogin(found.student.studentNo);
       if (data.session) {
@@ -50,16 +52,13 @@ export default function StudentLogin() {
         await logout();
         setFound(null);
         setRaw('');
-        setNotice({
-          type: 'success',
-          text: `You have been logged out of your session at Table ${data.session.tableNo}. Thank you for visiting.`,
-        });
+        notify('success', `You have been logged out of your session at Table ${data.session.tableNo}. Thank you for visiting.`);
       } else {
         setStudent(data.student);
         navigate('/student/table', { replace: true });
       }
     } catch (err) {
-      setError(err.message);
+      notify('error', err.message);
       setFound(null);
     } finally {
       setBusy(false);
@@ -68,12 +67,10 @@ export default function StudentLogin() {
 
   return (
     <div className="mx-auto max-w-md">
-      {notice && <Toast type={notice.type} onClose={() => setNotice(null)}>{notice.text}</Toast>}
       <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">Sign in</h1>
       <p className="mt-2 text-sm text-slate-600">Enter your student number. You will confirm your name next.</p>
 
       <form onSubmit={handleContinue} className="mt-8 space-y-4" noValidate>
-        <Alert>{error}</Alert>
         <div>
           <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-slate-600">
             Student number

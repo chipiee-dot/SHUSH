@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import Alert from '../../components/Alert.jsx';
 import Card from '../../components/Card.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import SampleBadge from '../../components/SampleBadge.jsx';
 import usePolling from '../../hooks/usePolling.js';
@@ -44,24 +45,23 @@ export default function Settings() {
 }
 
 function TableSettings({ focusNo }) {
+  const { notify } = useToast();
   const { data, error, loading, reload } = usePolling(api.adminTables, 0);
   const [drafts, setDrafts] = useState({});
-  const [rowMessages, setRowMessages] = useState({});
   const [savingNo, setSavingNo] = useState(null);
   const [newTable, setNewTable] = useState({ tableNo: '', seats: '4' });
-  const [addMessage, setAddMessage] = useState(null);
   const [adding, setAdding] = useState(false);
 
   async function saveSeats(table) {
     const seats = Number(drafts[table.tableNo] ?? String(table.seats));
     if (!Number.isInteger(seats) || seats < 1 || seats > 20) {
-      setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: 'Enter a whole number from 1 to 20.' } }));
+      notify('error', 'Enter a whole number from 1 to 20.');
       return;
     }
     setSavingNo(table.tableNo);
     try {
       const result = await api.setTableSeats(table.tableNo, seats);
-      setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'success', text: result.message } }));
+      notify('success', result.message);
       setDrafts((d) => {
         const next = { ...d };
         delete next[table.tableNo];
@@ -69,7 +69,7 @@ function TableSettings({ focusNo }) {
       });
       reload();
     } catch (err) {
-      setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: err.message } }));
+      notify('error', err.message);
     } finally {
       setSavingNo(null);
     }
@@ -77,16 +77,15 @@ function TableSettings({ focusNo }) {
 
   async function addTable(e) {
     e.preventDefault();
-    setAddMessage(null);
     setAdding(true);
     try {
       const body = { tableNo: newTable.tableNo, seats: newTable.seats };
       const result = await api.addTable(body);
-      setAddMessage({ type: 'success', text: result.message });
+      notify('success', result.message);
       setNewTable({ tableNo: '', seats: '4' });
       reload();
     } catch (err) {
-      setAddMessage({ type: 'error', text: err.message });
+      notify('error', err.message);
     } finally {
       setAdding(false);
     }
@@ -118,7 +117,6 @@ function TableSettings({ focusNo }) {
               {data.tables.map((t) => {
                 const draft = drafts[t.tableNo] ?? String(t.seats);
                 const dirty = draft !== String(t.seats);
-                const message = rowMessages[t.tableNo];
                 return (
                   <tr key={t.tableNo} className={`align-top ${t.tableNo === focusNo ? 'bg-blue-50' : ''}`}>
                     <td className="py-3 pr-4 font-semibold text-[#152549]">
@@ -140,11 +138,6 @@ function TableSettings({ focusNo }) {
                         onChange={(e) => setDrafts((prev) => ({ ...prev, [t.tableNo]: e.target.value }))}
                         className="w-24 rounded-xl border-slate-200 text-sm focus:border-[#1e40af] focus:ring-[#1e40af]"
                       />
-                      {message && (
-                        <p className={`mt-1 text-xs ${message.type === 'error' ? 'text-red-700' : 'text-emerald-800'}`}>
-                          {message.text}
-                        </p>
-                      )}
                     </td>
                     <td className="py-3 pr-4 text-slate-600">{t.hasDevice ? 'Connected' : 'Not connected'}</td>
                     <td className="py-3">
@@ -182,34 +175,28 @@ function TableSettings({ focusNo }) {
             {adding ? 'Adding…' : 'Add table'}
           </button>
         </div>
-        <div className="sm:col-span-5">
-          <Alert type={addMessage?.type ?? 'error'}>{addMessage?.text}</Alert>
-        </div>
       </form>
     </Card>
   );
 }
 
 function DeviceSettings({ focusNo }) {
+  const { notify } = useToast();
   const { data, error, loading, reload } = usePolling(api.devices, 0);
   const [drafts, setDrafts] = useState({});
-  const [rowMessages, setRowMessages] = useState({});
   const [savingCode, setSavingCode] = useState(null);
 
   async function save(device) {
     const raw = drafts[device.deviceCode] ?? String(device.threshold);
     const value = Number(raw);
     if (!Number.isInteger(value) || value < 0 || value > MAX_THRESHOLD) {
-      setRowMessages((m) => ({
-        ...m,
-        [device.deviceCode]: { type: 'error', text: `Enter a whole number from 0 to ${MAX_THRESHOLD}.` },
-      }));
+      notify('error', `Enter a whole number from 0 to ${MAX_THRESHOLD}.`);
       return;
     }
     setSavingCode(device.deviceCode);
     try {
       const result = await api.saveThreshold(device.deviceCode, value);
-      setRowMessages((m) => ({ ...m, [device.deviceCode]: { type: 'success', text: result.message } }));
+      notify('success', result.message);
       setDrafts((d) => {
         const next = { ...d };
         delete next[device.deviceCode];
@@ -217,7 +204,7 @@ function DeviceSettings({ focusNo }) {
       });
       reload();
     } catch (err) {
-      setRowMessages((m) => ({ ...m, [device.deviceCode]: { type: 'error', text: err.message } }));
+      notify('error', err.message);
     } finally {
       setSavingCode(null);
     }
@@ -250,7 +237,6 @@ function DeviceSettings({ focusNo }) {
               {data.devices.map((d) => {
                 const draft = drafts[d.deviceCode] ?? String(d.threshold);
                 const dirty = draft !== String(d.threshold);
-                const message = rowMessages[d.deviceCode];
                 return (
                   <tr key={d.deviceCode} className={`align-top ${d.tableNo === focusNo ? 'bg-blue-50' : ''}`}>
                     <td className="py-3 pr-4 font-semibold text-[#152549]">Table {d.tableNo}</td>
@@ -275,11 +261,6 @@ function DeviceSettings({ focusNo }) {
                         onChange={(e) => setDrafts((prev) => ({ ...prev, [d.deviceCode]: e.target.value }))}
                         className="w-32 rounded-xl border-slate-200 text-sm focus:border-[#1e40af] focus:ring-[#1e40af]"
                       />
-                      {message && (
-                        <p className={`mt-1 text-xs ${message.type === 'error' ? 'text-red-700' : 'text-emerald-800'}`}>
-                          {message.text}
-                        </p>
-                      )}
                     </td>
                     <td className="py-3">
                       <button
@@ -303,18 +284,17 @@ function DeviceSettings({ focusNo }) {
 }
 
 function SampleDataSettings() {
+  const { notify } = useToast();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
 
   async function clear() {
     setBusy(true);
-    setMessage(null);
     try {
       const result = await api.clearSampleData();
-      setMessage({ type: 'success', text: result.message });
+      notify('success', result.message);
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      notify('error', err.message);
     } finally {
       setBusy(false);
       setConfirming(false);
@@ -338,7 +318,6 @@ function SampleDataSettings() {
           Remove sample data
         </button>
       </div>
-      {message && <div className="mt-4"><Alert type={message.type}>{message.text}</Alert></div>}
       <ConfirmDialog
         open={confirming}
         title="Remove sample data?"

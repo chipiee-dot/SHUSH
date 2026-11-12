@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
+import { ToastProvider } from './context/ToastContext.jsx';
 import { StudentAuthProvider } from './context/StudentAuthContext.jsx';
 import FacultyShell from './components/FacultyShell.jsx';
 import StudentShell from './components/StudentShell.jsx';
@@ -35,6 +36,7 @@ function GuestOnly({ children }) {
 
 export default function App() {
   return (
+    <ToastProvider>
     <Routes>
       <Route path="/" element={<StartPage />} />
 
@@ -63,5 +65,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ToastProvider>
   );
 }

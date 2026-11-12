@@ -30,26 +30,29 @@ function SeatDots({ seats, occupied }) {
 }
 
 function TableTile({ table, selected, onSelect }) {
-  const meta = STATUS_META[table.status];
   const { col, row, width, height } = table.grid;
+  const free = table.seats - table.occupancy.groupSize;
   return (
     <button
       type="button"
       onClick={() => onSelect(table.tableNo)}
       aria-pressed={selected}
       style={{ gridColumn: `${col + 1} / span ${width}`, gridRow: `${row + 1} / span ${height}` }}
-      className={`flex min-w-0 flex-col justify-between rounded-2xl border border-l-4 bg-white p-3 text-left shadow-sm transition hover:shadow-md ${meta.edge} ${
-        selected ? 'border-[#1e40af] ring-2 ring-[#1e40af]/30' : 'border-slate-200'
+      className={`flex min-w-0 flex-col justify-between rounded-2xl bg-white p-5 text-left shadow-sm transition hover:shadow-md ${
+        selected ? 'ring-2 ring-[#1e40af]' : 'ring-1 ring-slate-200'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-base font-semibold text-[#152549]">Table {table.tableNo}</span>
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Table</div>
+          <div className="text-2xl font-bold text-slate-900">{table.tableNo}</div>
+        </div>
         <StatusPill status={table.status} />
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <SeatDots seats={table.seats} occupied={table.occupancy.groupSize} />
-        <div className="truncate text-xs text-slate-600">
-          {table.occupancy.groupSize}/{table.seats} seated
+        <div className="truncate text-xs font-medium text-slate-500">
+          {free} of {table.seats} seats free
           {table.device ? ` · ${table.device.code}` : ' · no device'}
         </div>
       </div>

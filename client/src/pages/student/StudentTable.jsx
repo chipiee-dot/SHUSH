@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import Logo from '../../components/Logo.jsx';
-import Toast from '../../components/Toast.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { formatTime } from '../../lib/format.js';
 
@@ -11,6 +11,7 @@ const REFRESH_MS = 20000;
 const GROUP_SIZE = 1; // the new design has no group selector
 
 export default function StudentTable() {
+  const { notify } = useToast();
   const { student, session, checking, refresh, logout } = useStudentAuth();
   const navigate = useNavigate();
   const [tables, setTables] = useState([]);
@@ -18,7 +19,6 @@ export default function StudentTable() {
   const [confirming, setConfirming] = useState(false);
   const [ending, setEnding] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
 
   const seated = Boolean(session);
 
@@ -28,7 +28,7 @@ export default function StudentTable() {
       setTables(data.tables);
       setSelected((current) => (data.tables.some((t) => t.tableNo === current && t.fits) ? current : null));
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      notify('error', err.message);
     }
   }, []);
 
@@ -60,7 +60,6 @@ export default function StudentTable() {
 
   async function handleStart() {
     setBusy(true);
-    setMessage(null);
     try {
       await api.studentStartSession(selected, GROUP_SIZE);
       setConfirming(false);
@@ -80,7 +79,7 @@ export default function StudentTable() {
       if (/already have a table/i.test(err.message)) {
         await refresh();
       } else {
-        setMessage({ type: 'error', text: err.message });
+        notify('error', err.message);
         loadTables();
       }
     } finally {
@@ -90,7 +89,6 @@ export default function StudentTable() {
 
   async function handleEnd() {
     setBusy(true);
-    setMessage(null);
     try {
       await api.studentEndSession();
       setEnding(false);
@@ -101,7 +99,7 @@ export default function StudentTable() {
       await logout();
     } catch (err) {
       setEnding(false);
-      setMessage({ type: 'error', text: err.message });
+      notify('error', err.message);
     } finally {
       setBusy(false);
     }
@@ -126,16 +124,10 @@ export default function StudentTable() {
     </header>
   );
 
-  const toast = message && (
-    <Toast type={message.type} onClose={() => setMessage(null)}>
-      {message.text}
-    </Toast>
-  );
 
   if (seated) {
     return (
       <div className="flex flex-col gap-6 rounded-3xl bg-white p-8 shadow-2xl">
-        {toast}
         {header}
         <div>
           <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">You are seated, {student.firstName}</h1>
@@ -180,7 +172,6 @@ export default function StudentTable() {
 
   return (
     <div className="flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-      {toast}
       <div className="p-8 pb-4">{header}</div>
 
       <div className="px-8 py-4">

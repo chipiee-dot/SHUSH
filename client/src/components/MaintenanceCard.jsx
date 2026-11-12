@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '../context/ToastContext.jsx';
 import { api } from '../api.js';
 import { formatTime } from '../lib/format.js';
 import Alert from './Alert.jsx';
@@ -13,17 +14,16 @@ const DURATIONS = [
 ];
 
 export default function MaintenanceCard({ tables, active, onChanged }) {
+  const { notify } = useToast();
   const [scope, setScope] = useState('all');
   const [minutes, setMinutes] = useState(30);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
 
   async function handleStart(event) {
     event.preventDefault();
-    setMessage(null);
     if (reason.trim().length < 3) {
-      setMessage({ type: 'error', text: 'Enter a reason of at least 3 characters.' });
+      notify('error', 'Enter a reason of at least 3 characters.');
       return;
     }
     setBusy(true);
@@ -33,24 +33,23 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
         durationMinutes: minutes,
         reason: reason.trim(),
       });
-      setMessage({ type: 'success', text: result.message });
+      notify('success', result.message);
       setReason('');
       onChanged();
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      notify('error', err.message);
     } finally {
       setBusy(false);
     }
   }
 
   async function handleEnd(id) {
-    setMessage(null);
     try {
       const result = await api.endMaintenance(id);
-      setMessage({ type: 'success', text: result.message });
+      notify('success', result.message);
       onChanged();
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      notify('error', err.message);
     }
   }
 
@@ -121,10 +120,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
           />
         </label>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2">
-          <div className="min-w-0 flex-1">
-            <Alert type={message?.type ?? 'error'}>{message?.text}</Alert>
-          </div>
+        <div className="flex justify-end sm:col-span-2">
           <button
             type="submit"
             disabled={busy}

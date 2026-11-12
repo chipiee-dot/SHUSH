@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const STYLES = {
   info: { bar: 'bg-blue-200', icon: 'bg-blue-500' },
@@ -28,15 +28,16 @@ const ICONS = {
 
 // Pops in at the top right. Dismisses itself after `duration` ms or when X is pressed.
 export default function Toast({ type = 'success', children, onClose, duration = 5000 }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    if (!onClose) return undefined;
-    const timer = setTimeout(onClose, duration);
+    const timer = setTimeout(() => closeRef.current?.(), duration);
     return () => clearTimeout(timer);
-  }, [onClose, duration]);
+  }, [duration]);
 
   const style = STYLES[type] ?? STYLES.info;
   return (
-    <div role="status" aria-live="polite" className="fixed right-4 top-4 z-50 w-[min(92vw,380px)]">
+    <div role="status" aria-live="polite" className="w-full">
       <div className={`flex items-center gap-3 rounded-2xl px-3 py-3 shadow-lg ${style.bar}`}>
         <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl text-white shadow-md ${style.icon}`}>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import Alert from '../../components/Alert.jsx';
 import Card from '../../components/Card.jsx';
+import GlowButton from '../../components/GlowButton.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatusPill from '../../components/StatusPill.jsx';
 import usePolling from '../../hooks/usePolling.js';
@@ -45,7 +48,7 @@ function TableTile({ table, selected, onSelect }) {
       </div>
       <div className="space-y-1.5">
         <SeatDots seats={table.seats} occupied={table.occupancy.groupSize} />
-        <div className="truncate text-xs text-slate-500">
+        <div className="truncate text-xs text-slate-600">
           {table.occupancy.groupSize}/{table.seats} seated
           {table.device ? ` · ${table.device.code}` : ' · no device'}
         </div>
@@ -69,7 +72,7 @@ function TableDetails({ table }) {
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {rows.map(([label, value]) => (
           <div key={label}>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-600">{label}</dt>
             <dd className="mt-0.5 text-sm font-medium text-[#152549]">{value}</dd>
           </div>
         ))}
@@ -84,8 +87,36 @@ function TableDetails({ table }) {
 }
 
 export default function TableLayout() {
+  const { user } = useAuth();
   const { data, error, loading, updatedAt } = usePolling(api.layout, REFRESH_MS);
   const [selectedNo, setSelectedNo] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addFormData, setAddFormData] = useState({ tableNo: '', seats: '4' });
+  const [addError, setAddError] = useState('');
+  const [addBusy, setAddBusy] = useState(false);
+
+  const isAdmin = user?.role === 'Admin';
+
+  // Debug: log user object to console
+  console.log('TableLayout - User:', user);
+  console.log('TableLayout - isAdmin:', isAdmin);
+
+  async function handleAddTable(e) {
+    e.preventDefault();
+    setAddError('');
+    setAddBusy(true);
+    try {
+      const body = { tableNo: addFormData.tableNo, seats: addFormData.seats };
+      await api.addTable(body);
+      setShowAddForm(false);
+      setAddFormData({ tableNo: '', seats: '4' });
+      // Reload is handled by polling
+    } catch (err) {
+      setAddError(err.message);
+    } finally {
+      setAddBusy(false);
+    }
+  }
 
   if (!data) {
     return loading ? (
@@ -106,9 +137,75 @@ export default function TableLayout() {
         title="Table layout"
         sample={sample}
         subtitle={`Live · updated ${formatTime(updatedAt)} · ${seatedTotal} of ${seatTotal} seats taken`}
-      />
+      >
+        {isAdmin && (
+          <GlowButton
+            onClick={() => setShowAddForm(true)}
+            className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+          >
+            Add table
+          </GlowButton>
+        )}
+      </PageHeader>
 
       {error && <Alert>{error}</Alert>}
+
+      {showAddForm && (
+        <Card title="Add a new table" subtitle="Table will be placed automatically on the floor plan">
+          <form onSubmit={handleAddTable} className="space-y-4">
+            <Alert>{addError}</Alert>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-medium text-slate-700">
+                Table number <span className="text-red-600">*</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  required
+                  value={addFormData.tableNo}
+                  onChange={(e) => setAddFormData((d) => ({ ...d, tableNo: e.target.value }))}
+                  className="mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                  placeholder="e.g. 12"
+                />
+              </label>
+              <label className="text-sm font-medium text-slate-700">
+                Seats <span className="text-red-600">*</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  required
+                  value={addFormData.seats}
+                  onChange={(e) => setAddFormData((d) => ({ ...d, seats: e.target.value }))}
+                  className="mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                  placeholder="e.g. 6"
+                />
+              </label>
+            </div>
+            <div className="flex gap-3">
+              <GlowButton
+                type="submit"
+                disabled={addBusy}
+                className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+              >
+                {addBusy ? 'Adding…' : 'Add table'}
+              </GlowButton>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setAddError('');
+                  setAddFormData({ tableNo: '', seats: '4' });
+                }}
+                disabled={addBusy}
+                className="rounded-xl border border-[#d6cfbe] px-4 py-2.5 text-sm font-medium text-[#1b2d5a] transition hover:bg-[#f1ede3] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Card>
+      )}
 
       <Card>
         <ul className="mb-5 flex flex-wrap gap-2" aria-label="Status key">
@@ -120,7 +217,7 @@ export default function TableLayout() {
         </ul>
 
         {tables.length === 0 ? (
-          <p className="text-sm text-slate-500">No tables are set up yet.</p>
+          <p className="text-sm text-slate-600">No tables are set up yet. {isAdmin && 'Add the first one above.'}</p>
         ) : (
           <div className="overflow-x-auto">
             <div
@@ -140,8 +237,20 @@ export default function TableLayout() {
             </div>
           </div>
         )}
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-slate-600">
           Click a table to see its details. Filled seats are students currently seated.
+          {isAdmin && (
+            <>
+              {' '}
+              <Link
+                to="/console/settings"
+                className="font-medium text-[#1b2d5a] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1 rounded"
+              >
+                Edit seat counts in Settings
+              </Link>
+              .
+            </>
+          )}
         </p>
       </Card>
 

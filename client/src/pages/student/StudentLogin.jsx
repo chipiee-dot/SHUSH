@@ -85,12 +85,23 @@ export default function StudentLogin() {
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-slate-600">
-        New here?{' '}
-        <Link to="/student/signup" className="font-medium text-[#1b2d5a] underline-offset-4 hover:underline">
-          Sign up with your student number
-        </Link>
-      </p>
+      <div className="mt-6 space-y-3">
+        <p className="text-sm text-slate-600">
+          New here?{' '}
+          <Link to="/student/signup" className="font-medium text-[#1b2d5a] underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1">
+            Sign up with your student number
+          </Link>
+        </p>
+        
+        <p className="text-center text-sm text-slate-600">
+          <Link 
+            to="/login" 
+            className="font-medium text-[#1b2d5a] underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
+          >
+            ← Faculty sign-in
+          </Link>
+        </p>
+      </div>
 
       <ConfirmDialog
         open={Boolean(found)}

@@ -3,45 +3,45 @@
 export const STATUS_META = {
   QUIET: {
     label: 'Quiet',
-    pill: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    pill: 'bg-emerald-50 text-emerald-900 border-emerald-200',
     dot: 'bg-emerald-500',
     edge: 'border-l-emerald-500',
   },
   LOUD: {
     label: 'Loud',
-    pill: 'bg-amber-50 text-amber-800 border-amber-200',
+    pill: 'bg-amber-50 text-amber-900 border-amber-200',
     dot: 'bg-amber-500',
     edge: 'border-l-amber-500',
   },
   ALERT: {
     label: 'Alert',
-    pill: 'bg-red-50 text-red-700 border-red-200',
+    pill: 'bg-red-50 text-red-900 border-red-200',
     dot: 'bg-red-500',
     edge: 'border-l-red-500',
   },
   MAINTENANCE: {
     label: 'Maintenance',
-    pill: 'bg-sky-50 text-sky-800 border-sky-200',
+    pill: 'bg-sky-50 text-sky-900 border-sky-200',
     dot: 'bg-sky-500',
     edge: 'border-l-sky-500',
   },
   OFFLINE: {
     label: 'Offline',
-    pill: 'bg-slate-100 text-slate-600 border-slate-300',
+    pill: 'bg-slate-100 text-slate-700 border-slate-300',
     dot: 'bg-slate-400',
     edge: 'border-l-slate-400',
   },
   NO_DEVICE: {
     label: 'No device',
-    pill: 'bg-white text-slate-500 border-dashed border-slate-300',
+    pill: 'bg-white text-slate-700 border-dashed border-slate-400',
     dot: 'bg-slate-300',
     edge: 'border-l-slate-300',
   },
 };
 
 export const HISTORY_KIND_META = {
-  alert: { label: 'Alert', pill: 'bg-red-50 text-red-700 border-red-200' },
-  maintenance: { label: 'Maintenance', pill: 'bg-sky-50 text-sky-800 border-sky-200' },
+  alert: { label: 'Alert', pill: 'bg-red-50 text-red-900 border-red-200' },
+  maintenance: { label: 'Maintenance', pill: 'bg-sky-50 text-sky-900 border-sky-200' },
   session: { label: 'Session', pill: 'bg-[#e9ecf5] text-[#1b2d5a] border-[#c9d1e6]' },
 };
 

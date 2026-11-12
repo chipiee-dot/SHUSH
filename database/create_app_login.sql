@@ -14,7 +14,7 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'shush_app')
     CREATE LOGIN shush_app
-        WITH PASSWORD = N'ChangeThis!Str0ngPassw0rd',
+      WITH PASSWORD = N'QuezonCityU06',
              CHECK_POLICY = ON,
              DEFAULT_DATABASE = SHUSH;
 GO
@@ -54,3 +54,6 @@ GRANT EXECUTE ON dbo.usp_Table_Add             TO shush_app;
 GRANT EXECUTE ON dbo.usp_Table_SetSeats        TO shush_app;
 GRANT EXECUTE ON dbo.usp_SampleData_Clear      TO shush_app;
 GO
+
+
+ALTER LOGIN shush_app WITH PASSWORD = N'QuezonCityU06';

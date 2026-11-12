@@ -70,14 +70,14 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
                 <div className="font-medium text-[#152549]">
                   {w.allTables ? 'All tables' : `Table ${w.tableNo}`} · until {formatTime(w.endsAt)}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-600">
                   {w.reason} · started by {w.createdBy}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => handleEnd(w.id)}
-                className="rounded-lg border border-[#d6cfbe] px-3 py-1.5 text-xs font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white"
+                className="rounded-lg border border-[#d6cfbe] px-3 py-1.5 text-xs font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1"
               >
                 End now
               </button>
@@ -128,7 +128,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-xl bg-[#1b2d5a] px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60"
+            className="rounded-xl bg-[#1b2d5a] px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
           >
             {busy ? 'Starting…' : 'Start maintenance'}
           </button>

@@ -67,7 +67,7 @@ export default function Rewards() {
               type="button"
               aria-pressed={period === p.value}
               onClick={() => setPeriod(p.value)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1 ${
                 period === p.value ? 'bg-[#1b2d5a] text-white' : 'text-[#1b2d5a] hover:bg-[#f1ede3]'
               }`}
             >

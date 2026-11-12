@@ -233,12 +233,23 @@ export default function Login() {
                 </div>
               </div>
 
-              <p className="text-center text-xs text-slate-600">
-                Need an account?
-                <Link className="font-medium text-[#1b2d5a] hover:underline underline-offset-2 ml-1" to="/signup">
-                  Create your workspace
-                </Link>
-              </p>
+              <div className="space-y-3">
+                <p className="text-center text-xs text-slate-600">
+                  <Link 
+                    className="font-medium text-[#1b2d5a] hover:underline underline-offset-2 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1" 
+                    to="/student/login"
+                  >
+                    Student check-in →
+                  </Link>
+                </p>
+
+                <p className="text-center text-xs text-slate-600">
+                  Need an account?
+                  <Link className="font-medium text-[#1b2d5a] hover:underline underline-offset-2 ml-1 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1" to="/signup">
+                    Create your workspace
+                  </Link>
+                </p>
+              </div>
             </div>
           </section>
         </div>

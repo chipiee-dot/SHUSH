@@ -82,6 +82,12 @@ export default function StudentTable() {
 
   const seated = Boolean(session);
 
+  // If the student already has a table open, show it (with End session) instead of the picker.
+  useEffect(() => {
+    if (student) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!student || seated) return undefined;
     loadTables(groupSize);
@@ -114,8 +120,12 @@ export default function StudentTable() {
       await logout();
     } catch (err) {
       setConfirming(false);
-      setMessage({ type: 'error', text: err.message });
-      loadTables(groupSize);
+      if (/already have a table/i.test(err.message)) {
+        await refresh();
+      } else {
+        setMessage({ type: 'error', text: err.message });
+        loadTables(groupSize);
+      }
     } finally {
       setBusy(false);
     }
@@ -125,11 +135,13 @@ export default function StudentTable() {
     setBusy(true);
     setMessage(null);
     try {
-      const result = await api.studentEndSession();
+      await api.studentEndSession();
       setEnding(false);
-      setMessage({ type: 'success', text: `${result.message} Thank you for visiting.` });
-      setSelected(null);
-      await refresh();
+      navigate('/student/login', {
+        replace: true,
+        state: { notice: { type: 'success', text: `Your session has ended. Thank you for visiting.` } },
+      });
+      await logout();
     } catch (err) {
       setEnding(false);
       setMessage({ type: 'error', text: err.message });

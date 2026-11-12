@@ -179,3 +179,21 @@ test('free spot finder avoids overlaps', () => {
   const full = findFreeSpot(Array.from({ length: 6 }, (_, i) => ({ grid: { col: (i % 6) * 2, row: 0, width: 2, height: 2 } })));
   assert.deepEqual(full, { col: 0, row: 2, width: 2, height: 2 });
 });
+
+test('signing in while seated returns the open session, so the student can end it', async () => {
+  const start = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1, groupSize: 1 } });
+  assert.equal(start.status, 201);
+
+  const lookup = await call('POST', '/api/student/lookup', { body: { studentNo: '21-0001' } });
+  assert.equal(lookup.status, 200);
+  assert.equal(lookup.body.session.tableNo, 1);
+
+  const login = await call('POST', '/api/student/login', { body: { studentNo: '21-0001' } });
+  assert.equal(login.body.session.tableNo, 1);
+
+  const end = await call('POST', '/api/student/session/end', { cookie: student() });
+  assert.equal(end.status, 200);
+
+  const after = await call('POST', '/api/student/lookup', { body: { studentNo: '21-0001' } });
+  assert.equal(after.body.session, null);
+});

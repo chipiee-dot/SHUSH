@@ -21,7 +21,9 @@
   position: relative;
   z-index: 20;
   flex: none;
+  align-self: center;
   width: 84px;
+  height: 75%;
   margin: 0;
   padding: 0;
   display: flex;

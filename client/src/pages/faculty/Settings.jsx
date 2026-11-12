@@ -13,7 +13,7 @@ import { formatNumber, timeAgo } from '../../lib/format.js';
 const MAX_THRESHOLD = 4095;
 
 const inputClass =
-  'mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]';
+  'mt-1 block w-full rounded-xl border-slate-200 bg-white text-sm focus:border-[#1e40af] focus:ring-[#1e40af]';
 
 // Only administrators see the settings. The server checks the same rule on every request.
 export default function Settings() {
@@ -114,13 +114,13 @@ function TableSettings({ focusNo }) {
                 <th className="py-2"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f1ede3]">
+            <tbody className="divide-y divide-slate-100">
               {data.tables.map((t) => {
                 const draft = drafts[t.tableNo] ?? String(t.seats);
                 const dirty = draft !== String(t.seats);
                 const message = rowMessages[t.tableNo];
                 return (
-                  <tr key={t.tableNo} className={`align-top ${t.tableNo === focusNo ? 'bg-[#ece7da]' : ''}`}>
+                  <tr key={t.tableNo} className={`align-top ${t.tableNo === focusNo ? 'bg-blue-50' : ''}`}>
                     <td className="py-3 pr-4 font-semibold text-[#152549]">
                       <div className="flex items-center gap-2">
                         Table {t.tableNo}
@@ -138,7 +138,7 @@ function TableSettings({ focusNo }) {
                         aria-label={`Seats for table ${t.tableNo}`}
                         value={draft}
                         onChange={(e) => setDrafts((prev) => ({ ...prev, [t.tableNo]: e.target.value }))}
-                        className="w-24 rounded-xl border-[#d6cfbe] text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                        className="w-24 rounded-xl border-slate-200 text-sm focus:border-[#1e40af] focus:ring-[#1e40af]"
                       />
                       {message && (
                         <p className={`mt-1 text-xs ${message.type === 'error' ? 'text-red-700' : 'text-emerald-800'}`}>
@@ -152,7 +152,7 @@ function TableSettings({ focusNo }) {
                         type="button"
                         disabled={!dirty || savingNo === t.tableNo}
                         onClick={() => saveSeats(t)}
-                        className="rounded-xl bg-[#1b2d5a] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-40"
+                        className="rounded-xl bg-[#1e40af] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a] disabled:opacity-40"
                       >
                         {savingNo === t.tableNo ? 'Saving…' : 'Save'}
                       </button>
@@ -165,7 +165,7 @@ function TableSettings({ focusNo }) {
         </div>
       )}
 
-      <form onSubmit={addTable} className="mt-6 grid gap-4 border-t border-[#ece7da] pt-5 sm:grid-cols-3">
+      <form onSubmit={addTable} className="mt-6 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-3">
         <label className="text-sm font-medium text-slate-700">
           Table number
           <input className={inputClass} type="number" min={1} max={999} required value={newTable.tableNo}
@@ -178,7 +178,7 @@ function TableSettings({ focusNo }) {
         </label>
         <div className="flex items-end">
           <button type="submit" disabled={adding}
-            className="w-full rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60">
+            className="w-full rounded-xl bg-[#1e40af] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a] disabled:opacity-60">
             {adding ? 'Adding…' : 'Add table'}
           </button>
         </div>
@@ -246,13 +246,13 @@ function DeviceSettings({ focusNo }) {
                 <th className="py-2"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f1ede3]">
+            <tbody className="divide-y divide-slate-100">
               {data.devices.map((d) => {
                 const draft = drafts[d.deviceCode] ?? String(d.threshold);
                 const dirty = draft !== String(d.threshold);
                 const message = rowMessages[d.deviceCode];
                 return (
-                  <tr key={d.deviceCode} className={`align-top ${d.tableNo === focusNo ? 'bg-[#ece7da]' : ''}`}>
+                  <tr key={d.deviceCode} className={`align-top ${d.tableNo === focusNo ? 'bg-blue-50' : ''}`}>
                     <td className="py-3 pr-4 font-semibold text-[#152549]">Table {d.tableNo}</td>
                     <td className="py-3 pr-4 font-mono text-xs text-slate-600">
                       <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ function DeviceSettings({ focusNo }) {
                         aria-label={`New threshold for ${d.deviceCode}`}
                         value={draft}
                         onChange={(e) => setDrafts((prev) => ({ ...prev, [d.deviceCode]: e.target.value }))}
-                        className="w-32 rounded-xl border-[#d6cfbe] text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                        className="w-32 rounded-xl border-slate-200 text-sm focus:border-[#1e40af] focus:ring-[#1e40af]"
                       />
                       {message && (
                         <p className={`mt-1 text-xs ${message.type === 'error' ? 'text-red-700' : 'text-emerald-800'}`}>
@@ -286,7 +286,7 @@ function DeviceSettings({ focusNo }) {
                         type="button"
                         disabled={!dirty || savingCode === d.deviceCode}
                         onClick={() => save(d)}
-                        className="rounded-xl bg-[#1b2d5a] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-40"
+                        className="rounded-xl bg-[#1e40af] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a] disabled:opacity-40"
                       >
                         {savingCode === d.deviceCode ? 'Saving…' : 'Save'}
                       </button>
@@ -333,7 +333,7 @@ function SampleDataSettings() {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="rounded-xl border border-[#d6cfbe] px-4 py-2.5 text-sm font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white"
+          className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-[#1e40af] transition hover:bg-[#1e40af] hover:text-white"
         >
           Remove sample data
         </button>

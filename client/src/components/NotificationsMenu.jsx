@@ -42,7 +42,7 @@ export default function NotificationsMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label={count ? `Notifications, ${count} new` : 'Notifications'}
         aria-expanded={open}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[#d6cfbe] bg-white text-[#1b2d5a] shadow-sm transition hover:bg-[#f1ede3]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#1e40af] shadow-sm transition hover:bg-slate-100"
       >
         <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
           <path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z" strokeLinejoin="round" />
@@ -56,14 +56,14 @@ export default function NotificationsMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-2xl border border-[#d6cfbe] bg-white text-slate-800 shadow-xl sm:w-96">
-          <div className="flex items-center justify-between border-b border-[#ece7da] px-4 py-3">
+        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-xl sm:w-96">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <span className="text-sm font-semibold text-[#152549]">Notifications</span>
             <button
               type="button"
               onClick={markAllRead}
               disabled={unreadAlerts.length === 0}
-              className="text-xs font-medium text-[#1b2d5a] hover:underline disabled:cursor-default disabled:text-slate-400 disabled:no-underline"
+              className="text-xs font-medium text-[#1e40af] hover:underline disabled:cursor-default disabled:text-slate-400 disabled:no-underline"
             >
               Mark alerts as read
             </button>
@@ -76,11 +76,11 @@ export default function NotificationsMenu() {
 
             {ending.length > 0 && (
               <div>
-                <div className="bg-[#f7f5ed] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <div className="bg-[#f4f6fb] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Maintenance ending soon
                 </div>
                 {ending.map((w) => (
-                  <div key={`m-${w.id}`} className="border-b border-[#f1ede3] px-4 py-3 text-sm">
+                  <div key={`m-${w.id}`} className="border-b border-slate-100 px-4 py-3 text-sm">
                     <div className="font-medium text-[#152549]">
                       {w.allTables ? 'All tables' : `Table ${w.tableNo}`} · ends {formatTime(w.endsAt)}
                     </div>
@@ -92,13 +92,13 @@ export default function NotificationsMenu() {
 
             {alerts.length > 0 && (
               <div>
-                <div className="bg-[#f7f5ed] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <div className="bg-[#f4f6fb] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Alerts, last 24 hours
                 </div>
                 {alerts.map((a) => {
                   const unread = !readIds.has(String(a.id));
                   return (
-                    <div key={`a-${a.id}`} className="flex gap-3 border-b border-[#f1ede3] px-4 py-3 text-sm">
+                    <div key={`a-${a.id}`} className="flex gap-3 border-b border-slate-100 px-4 py-3 text-sm">
                       <span className={`mt-1.5 h-2 w-2 flex-none rounded-full ${unread ? 'bg-red-500' : 'bg-slate-200'}`} aria-hidden="true" />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 font-medium text-[#152549]">

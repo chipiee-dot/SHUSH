@@ -21,7 +21,7 @@ function SeatDots({ seats, occupied }) {
         <span
           key={i}
           className={`h-2.5 w-2.5 rounded-full border ${
-            i < occupied ? 'border-[#1b2d5a] bg-[#1b2d5a]' : 'border-slate-300 bg-white'
+            i < occupied ? 'border-[#1e40af] bg-[#1e40af]' : 'border-slate-300 bg-white'
           }`}
         />
       ))}
@@ -39,7 +39,7 @@ function TableTile({ table, selected, onSelect }) {
       aria-pressed={selected}
       style={{ gridColumn: `${col + 1} / span ${width}`, gridRow: `${row + 1} / span ${height}` }}
       className={`flex min-w-0 flex-col justify-between rounded-2xl border border-l-4 bg-white p-3 text-left shadow-sm transition hover:shadow-md ${meta.edge} ${
-        selected ? 'border-[#1b2d5a] ring-2 ring-[#1b2d5a]/30' : 'border-[#d6cfbe]'
+        selected ? 'border-[#1e40af] ring-2 ring-[#1e40af]/30' : 'border-slate-200'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -75,7 +75,7 @@ function TableDetails({ table, isAdmin }) {
         isAdmin && (
           <Link
             to={`/console/settings?table=${table.tableNo}`}
-            className="rounded-xl bg-[#1b2d5a] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+            className="rounded-xl bg-[#1e40af] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-2"
           >
             Edit table
           </Link>
@@ -154,7 +154,7 @@ export default function TableLayout() {
         {isAdmin && (
           <GlowButton
             onClick={() => setShowAddForm(true)}
-            className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+            className="rounded-xl bg-[#1e40af] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-2"
           >
             Add table
           </GlowButton>
@@ -177,7 +177,7 @@ export default function TableLayout() {
                   required
                   value={addFormData.tableNo}
                   onChange={(e) => setAddFormData((d) => ({ ...d, tableNo: e.target.value }))}
-                  className="mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                  className="mt-1 block w-full rounded-xl border-slate-200 bg-white text-sm focus:border-[#1e40af] focus:ring-[#1e40af]"
                   placeholder="e.g. 12"
                 />
               </label>
@@ -190,7 +190,7 @@ export default function TableLayout() {
                   required
                   value={addFormData.seats}
                   onChange={(e) => setAddFormData((d) => ({ ...d, seats: e.target.value }))}
-                  className="mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                  className="mt-1 block w-full rounded-xl border-slate-200 bg-white text-sm focus:border-[#1e40af] focus:ring-[#1e40af]"
                   placeholder="e.g. 6"
                 />
               </label>
@@ -199,7 +199,7 @@ export default function TableLayout() {
               <GlowButton
                 type="submit"
                 disabled={addBusy}
-                className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+                className="rounded-xl bg-[#1e40af] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#1e3a8a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-2"
               >
                 {addBusy ? 'Adding…' : 'Add table'}
               </GlowButton>
@@ -211,7 +211,7 @@ export default function TableLayout() {
                   setAddFormData({ tableNo: '', seats: '4' });
                 }}
                 disabled={addBusy}
-                className="rounded-xl border border-[#d6cfbe] px-4 py-2.5 text-sm font-medium text-[#1b2d5a] transition hover:bg-[#f1ede3] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-[#1e40af] transition hover:bg-slate-100 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-2"
               >
                 Cancel
               </button>
@@ -257,7 +257,7 @@ export default function TableLayout() {
               {' '}
               <Link
                 to="/console/settings"
-                className="font-medium text-[#1b2d5a] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1 rounded"
+                className="font-medium text-[#1e40af] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-1 rounded"
               >
                 Edit seat counts in Settings
               </Link>

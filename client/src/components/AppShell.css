@@ -6,7 +6,7 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #f7f5ed;
+  background: #f4f6fb;
   color: #1f2937;
 }
 
@@ -16,69 +16,57 @@
   min-height: 0;
 }
 
-/* Edge-docked organic purple rail on the left */
+/* Rounded purple rail on the left (the shape from the reference). */
 .shell .side {
   position: relative;
   z-index: 20;
   flex: none;
   align-self: center;
-  width: 76px;
-  height: auto;
-  min-height: 460px;
-  margin: 0; /* Docked flush to the left edge */
-  padding: 76px 0; /* Vertical padding accommodates the top/bottom SVG curves */
+  width: 72px;
+  height: 70%;
+  margin: 0 0 0 12px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-}
-
-.shell .side-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  pointer-events: none;
-  filter: drop-shadow(4px 10px 20px rgba(91, 75, 219, 0.25));
+  border-radius: 48px 12px 12px 48px;
+  background: linear-gradient(180deg, #2d56c8 0%, #1e40af 100%);
+  box-shadow: 0 12px 30px rgba(30, 64, 175, 0.3);
 }
 
 .shell .rail-inner {
-  position: relative;
-  z-index: 1;
+  height: 65%;
+  margin: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* Clean brand logo without heavy box so active nav item stands out */
 .shell .brand {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
-  color: #ffffff;
-  opacity: 0.95;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .shell .nav {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .shell .it {
   position: relative;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  color: rgba(255, 255, 255, 0.78);
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
   transition: background-color 0.2s ease, color 0.2s ease, transform 90ms ease-out;
 }
@@ -89,15 +77,14 @@
 }
 
 .shell .it:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
 }
 
-/* Active state: crisp white rounded square with purple icon */
 .shell .it.on {
   background: #ffffff;
-  color: #5b4bdb;
-  box-shadow: 0 6px 16px rgba(28, 20, 88, 0.22);
+  color: #1e40af;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 .shell .it:focus-visible {
@@ -112,7 +99,7 @@
 /* Page name shown beside the icon, outside the rail, on hover or keyboard focus. */
 .shell .tip {
   position: absolute;
-  left: calc(100% + 18px);
+  left: calc(100% + 16px);
   top: 50%;
   z-index: 50;
   padding: 8px 12px;
@@ -196,13 +183,13 @@
 
 @media (max-width: 759px) {
   .shell .side {
-    width: 66px;
-    padding: 64px 0;
+    width: 68px;
+    margin-left: 12px;
   }
 
   .shell .it {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
   }
 
   .shell .top {

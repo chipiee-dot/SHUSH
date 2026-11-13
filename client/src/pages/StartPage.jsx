@@ -27,11 +27,6 @@ export default function StartPage() {
             <Logo className="landing-logo-icon" />
             <span className="landing-wordmark">SHUSH</span>
           </div>
-
-          <span className="landing-pill">
-            <span className="status-dot" aria-hidden="true" />
-            Quiet-Zone Console
-          </span>
         </header>
 
         {/* Welcome Header */}
@@ -99,7 +94,7 @@ export default function StartPage() {
           >
             <span className="glow-light" aria-hidden="true" />
             <div className="role-card-top">
-              <span className="role-icon role-icon--purple" aria-hidden="true">
+              <span className="role-icon role-icon--warm" aria-hidden="true">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"

@@ -10,8 +10,12 @@
   min-height: 100dvh;
   padding: 24px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 35%, #1e3262 0%, #152549 65%, #0f1b38 100%);
-  color: #152549;
+  background:
+    radial-gradient(60rem 40rem at 12% -10%, rgba(254, 237, 168, 0.85), transparent 60%),
+    radial-gradient(48rem 36rem at 92% 0%, rgba(251, 108, 48, 0.2), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 110%, rgba(249, 231, 145, 0.55), transparent 65%),
+    linear-gradient(180deg, var(--shush-cream) 0%, var(--shush-cream-deep) 100%);
+  color: var(--shush-ink);
 }
 
 /* Subtle concentric acoustic wave rings */
@@ -27,25 +31,24 @@
 .acoustic-rings span {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(253, 80, 4, 0.12);
 }
 
 .acoustic-rings span:nth-child(1) { width: 680px; height: 680px; }
 .acoustic-rings span:nth-child(2) { width: 980px; height: 980px; }
 .acoustic-rings span:nth-child(3) { width: 1320px; height: 1320px; }
 
-/* Main Warm Cream Container */
+/* Main White Container (Cloud Theme) */
 .landing-card {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 660px;
+  max-width: 1080px;
   padding: 44px 48px 36px;
-  border-radius: 32px;
-  background: #f7f5ed;
-  box-shadow:
-    0 24px 60px rgba(8, 14, 32, 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
+  border-radius: var(--shush-radius);
+  background: var(--shush-white);
+  border: 1px solid var(--shush-line);
+  box-shadow: var(--shush-shadow);
 }
 
 /* Brand Header Row */
@@ -61,40 +64,20 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #152549;
+  color: var(--shush-orange);
 }
 
 .landing-logo-icon {
   width: 24px;
   height: 24px;
-  color: #152549;
+  color: var(--shush-orange);
 }
 
 .landing-wordmark {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #152549;
-}
-
-.landing-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(21, 37, 73, 0.06);
-  color: #66666b;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #5b4bdb;
-  box-shadow: 0 0 0 3px rgba(91, 75, 219, 0.18);
+  color: var(--shush-ink);
 }
 
 /* Welcome Typography */
@@ -107,13 +90,13 @@
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #152549;
+  color: var(--shush-ink);
 }
 
 .landing-subtitle {
   margin: 0;
   font-size: 15px;
-  color: #66666b;
+  color: var(--shush-ink-soft);
 }
 
 /* Role Selection Grid */
@@ -131,10 +114,10 @@
   gap: 20px;
   padding: 22px;
   border-radius: 20px;
-  background: #fbfaf5;
-  border: 1px solid #e4e0d3;
+  background: var(--shush-cream);
+  border: 1px solid var(--shush-line);
   text-decoration: none;
-  color: #152549;
+  color: var(--shush-ink);
   transition:
     transform 0.18s ease,
     border-color 0.2s ease,
@@ -144,13 +127,13 @@
 
 .role-card:hover {
   transform: translateY(-2px);
-  background: #ffffff;
-  border-color: rgba(91, 75, 219, 0.45);
-  box-shadow: 0 12px 26px rgba(21, 37, 73, 0.08);
+  background: var(--shush-gold-soft);
+  border-color: var(--shush-orange-soft);
+  box-shadow: 0 12px 26px rgba(253, 80, 4, 0.12);
 }
 
 .role-card:focus-visible {
-  outline: 2px solid #5b4bdb;
+  outline: 2px solid var(--shush-orange);
   outline-offset: 2px;
 }
 
@@ -170,24 +153,24 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: rgba(21, 37, 73, 0.07);
-  color: #152549;
+  background: var(--shush-cream-deep);
+  color: var(--shush-orange);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.role-icon--purple {
-  background: rgba(91, 75, 219, 0.12);
-  color: #5b4bdb;
+.role-icon--warm {
+  background: var(--shush-cream-deep);
+  color: var(--shush-orange);
 }
 
 .role-card:hover .role-icon {
-  background: #152549;
-  color: #ffffff;
+  background: var(--shush-orange);
+  color: var(--shush-white);
 }
 
-.role-card--faculty:hover .role-icon--purple {
-  background: linear-gradient(180deg, #6a5be6 0%, #5b4bdb 100%);
-  color: #ffffff;
+.role-card--faculty:hover .role-icon--warm {
+  background: linear-gradient(180deg, var(--shush-orange) 0%, var(--shush-orange-600) 100%);
+  color: var(--shush-white);
 }
 
 .role-icon svg,
@@ -202,12 +185,12 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  color: #9ca3af;
+  color: var(--shush-muted);
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .role-card:hover .role-arrow {
-  color: #5b4bdb;
+  color: var(--shush-orange);
   transform: translateX(3px);
 }
 
@@ -215,17 +198,17 @@
   margin: 0 0 6px;
   font-size: 16px;
   font-weight: 700;
-  color: #152549;
+  color: var(--shush-ink);
 }
 
 .role-desc {
   margin: 0;
   font-size: 13.5px;
   line-height: 1.5;
-  color: #66666b;
+  color: var(--shush-ink-soft);
 }
 
-/* Cursor-Tracking Glow Effect (Subtle Purple Light on Cream Surface) */
+/* Cursor-Tracking Glow Effect (Subtle Orange Light on Cream Surface) */
 .landing-shell .glow-btn {
   position: relative;
   overflow: hidden;
@@ -238,9 +221,9 @@
   inset: 0;
   background: radial-gradient(
     circle 90px at var(--glow-x) var(--glow-y),
-    rgba(91, 75, 219, 0.14) 0%,
-    rgba(91, 75, 219, 0.05) 50%,
-    rgba(91, 75, 219, 0) 100%
+    rgba(253, 80, 4, 0.3) 0%,
+    rgba(253, 80, 4, 0.1) 50%,
+    rgba(253, 80, 4, 0) 100%
   );
   opacity: 0;
   transition: opacity 350ms ease;
@@ -261,10 +244,10 @@
 .landing-footer {
   margin-top: 28px;
   padding-top: 18px;
-  border-top: 1px solid rgba(21, 37, 73, 0.08);
+  border-top: 1px solid var(--shush-line);
   text-align: center;
   font-size: 12.5px;
-  color: #828287;
+  color: var(--shush-muted);
 }
 
 /* Mobile Breakpoint */

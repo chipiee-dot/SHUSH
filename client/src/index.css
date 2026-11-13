@@ -2,18 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --shush-orange: #FD5004;
+  --shush-orange-soft: #FB6C30;
+  --shush-orange-600: #D93F00;
+  --shush-orange-700: #B83700;
+  --shush-amber: #FBB144;
+  --shush-gold: #F9E791;
+  --shush-gold-soft: #FEEDA8;
+  --shush-cream: #FFF8F0;
+  --shush-cream-deep: #FCEEDF;
+  --shush-white: #FFFFFF;
+  --shush-ink: #2A1A12;
+  --shush-ink-soft: #6B4A3A;
+  --shush-muted: #8A6A57;
+  --shush-line: #F0D9C6;
+  --shush-line-strong: #E4C3A8;
+  --shush-danger: #B42318;
+  --shush-danger-soft: #FFE1D6;
+  --shush-success: #7A5A00;
+  --shush-success-soft: #FDF3C9;
+  --shush-radius: 1.75rem;
+  --shush-shadow: 0 24px 60px -24px rgba(253, 80, 4, 0.28);
+}
+
+body {
+  background: var(--shush-cream);
+  color: var(--shush-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
 /* ---- Sign Up page ---- */
 
 /* Soundwave subtle glow effects */
 .glow-bar {
-  filter: drop-shadow(0 0 6px rgba(186, 215, 255, 0.35));
+  filter: drop-shadow(0 0 6px rgba(251, 177, 68, 0.45));
 }
 
 /* Input focus styling refinement */
 .custom-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(29, 50, 104, 0.2);
-  border-color: #1d3268;
+  box-shadow: 0 0 0 2px rgba(253, 80, 4, 0.25);
+  border-color: var(--shush-orange);
 }
 
 /* ---- Log In page ---- */
@@ -45,4 +75,61 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* ---- Orange-gold-cloud utilities ---- */
+
+/* Soft orange-gold "cloud" page background. */
+.shush-cloud {
+  background:
+    radial-gradient(60rem 40rem at 12% -10%, rgba(254, 237, 168, 0.85), transparent 60%),
+    radial-gradient(48rem 36rem at 92% 0%, rgba(251, 108, 48, 0.20), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 110%, rgba(249, 231, 145, 0.55), transparent 65%),
+    linear-gradient(180deg, var(--shush-cream) 0%, var(--shush-cream-deep) 100%);
+}
+
+/* Auth page scaffold: full-height, centered, generous padding. */
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  background: var(--shush-cream);
+}
+
+/* The wide auth card that replaces the smushed narrow card. */
+.auth-card {
+  width: 100%;
+  background: var(--shush-white);
+  border: 1px solid var(--shush-line);
+  border-radius: var(--shush-radius);
+  box-shadow: var(--shush-shadow);
+  overflow: hidden;
+}
+
+/* The colored hero panel inside an auth card. */
+.auth-hero {
+  position: relative;
+  overflow: hidden;
+  color: var(--shush-white);
+  background:
+    radial-gradient(24rem 24rem at 110% 10%, rgba(254, 237, 168, 0.45), transparent 60%),
+    linear-gradient(160deg, var(--shush-orange) 0%, var(--shush-orange-600) 100%);
+}
+
+/* The form column inside an auth card. */
+.auth-form {
+  background: var(--shush-white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

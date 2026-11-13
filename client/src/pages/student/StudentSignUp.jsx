@@ -5,9 +5,9 @@ import Alert from '../../components/Alert.jsx';
 import { SECTION_RE, STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 
-const LABEL = 'text-xs font-semibold uppercase tracking-wider text-slate-600';
+const LABEL = 'text-xs font-semibold uppercase tracking-wider text-shush-inkSoft';
 const INPUT =
-  'mt-2 block w-full rounded-xl border border-[#d6cfbe] bg-transparent px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1b2d5a] focus:ring-1 focus:ring-[#1b2d5a]';
+  'mt-2 block w-full rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-3 text-sm text-shush-ink placeholder:text-shush-muted focus:border-shush-orange focus:ring-1 focus:ring-shush-orange';
 
 const EMPTY = { studentNo: '', lastName: '', firstName: '', middleInitial: '', section: '' };
 
@@ -50,23 +50,25 @@ export default function StudentSignUp() {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-md text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">You are registered</h1>
-        <p className="mt-3 text-sm text-slate-600">You can now sign in with your student number.</p>
-        <Link
-          to="/student/login"
-          className="mt-8 inline-block rounded-xl bg-[#1b2d5a] px-6 py-3 text-sm font-medium text-white shadow-md hover:bg-[#16254a]"
-        >
-          Go to sign in
-        </Link>
+      <div className="mx-auto w-full max-w-4xl rounded-[2rem] border border-shush-line bg-shush-white p-6 shadow-2xl sm:p-8 lg:p-10">
+        <div className="mx-auto max-w-md text-center">
+          <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">You are registered</h1>
+          <p className="mt-3 text-sm text-shush-inkSoft">You can now sign in with your student number.</p>
+          <Link
+            to="/student/login"
+            className="mt-8 inline-block rounded-xl bg-shush-orange px-6 py-3 text-sm font-medium text-white shadow-md hover:bg-shush-orange600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+          >
+            Go to sign in
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-xl">
-      <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">Sign up</h1>
-      <p className="mt-2 text-sm text-slate-600">Enter your details exactly as they appear on your student record.</p>
+    <div className="mx-auto w-full max-w-4xl rounded-[2rem] border border-shush-line bg-shush-white p-6 shadow-2xl sm:p-8 lg:p-10">
+      <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">Sign up</h1>
+      <p className="mt-2 text-sm text-shush-inkSoft">Enter your details exactly as they appear on your student record.</p>
 
       <form onSubmit={handleSubmit} className="mt-8 grid gap-5 sm:grid-cols-2" noValidate>
         <div className="sm:col-span-2">
@@ -93,7 +95,7 @@ export default function StudentSignUp() {
         </div>
 
         <div>
-          <label htmlFor="su-mi" className={LABEL}>Middle initial <span className="font-normal normal-case text-slate-500">(optional)</span></label>
+          <label htmlFor="su-mi" className={LABEL}>Middle initial <span className="font-normal normal-case text-shush-muted">(optional)</span></label>
           <input id="su-mi" maxLength={2} value={form.middleInitial} onChange={set('middleInitial')} className={INPUT} />
         </div>
 
@@ -109,7 +111,7 @@ export default function StudentSignUp() {
           />
         </div>
 
-        <p className="text-xs text-slate-500 sm:col-span-2">
+        <p className="text-xs text-shush-muted sm:col-span-2">
           Section format: course, dash, year and letter, for example BSIT-3D, BSCS-1D or BSEE-2D.
         </p>
 
@@ -117,16 +119,16 @@ export default function StudentSignUp() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-[#1b2d5a] px-4 py-3.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60"
+            className="w-full rounded-xl bg-shush-orange px-4 py-3.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:opacity-60"
           >
             {busy ? 'Creating account…' : 'Create account'}
           </button>
         </div>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-shush-inkSoft">
         Already registered?{' '}
-        <Link to="/student/login" className="font-medium text-[#1b2d5a] underline underline-offset-4">
+        <Link to="/student/login" className="font-medium text-shush-orange700 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange">
           Sign in
         </Link>
       </p>

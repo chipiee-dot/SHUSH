@@ -1,0 +1,1 @@
+Apply the orange-gold-cloud theme, remove the two legacy labels, and widen the welcome and auth layouts.

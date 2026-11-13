@@ -1,4 +1,4 @@
-export default function Logo({ className = 'h-8 w-8 text-[#1b2d5a]' }) {
+export default function Logo({ className = 'h-8 w-8 text-shush-orange' }) {
   return (
     <svg aria-hidden="true" className={className} fill="currentColor" viewBox="0 0 32 32">
       <rect height="12" rx="1.75" width="3.5" x="4" y="10" />

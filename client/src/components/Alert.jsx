@@ -1,6 +1,7 @@
 const STYLES = {
-  error: 'bg-red-50 border-red-200 text-red-700',
-  success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+  error: 'bg-shush-dangerSoft border-shush-danger/30 text-shush-danger',
+  success: 'bg-shush-successSoft border-shush-success/30 text-shush-success',
+  info: 'bg-shush-creamDeep border-shush-line text-shush-inkSoft',
 };
 
 export default function Alert({ type = 'error', children }) {
@@ -8,7 +9,7 @@ export default function Alert({ type = 'error', children }) {
   return (
     <div
       role={type === 'error' ? 'alert' : 'status'}
-      className={`rounded-xl border px-4 py-3 text-sm ${STYLES[type]}`}
+      className={`rounded-xl border px-4 py-3 text-sm ${STYLES[type] ?? STYLES.info}`}
     >
       {children}
     </div>

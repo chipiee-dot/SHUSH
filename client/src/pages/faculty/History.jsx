@@ -15,7 +15,7 @@ const KINDS = [
 ];
 
 const selectClass =
-  'mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]';
+  'mt-1 block w-full rounded-xl border-shush-lineStrong bg-shush-white text-sm focus:border-shush-orange focus:ring-shush-orange';
 
 function downloadCsv(rows, filename) {
   const header = ['Time', 'Type', 'Table', 'Summary', 'Details', 'Sample data'];
@@ -83,7 +83,7 @@ export default function History() {
         <button
           type="button"
           onClick={exportReport}
-          className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a]"
+          className="rounded-xl bg-shush-orange px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600"
         >
           Export CSV
         </button>
@@ -91,7 +91,7 @@ export default function History() {
 
       <Card>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-shush-inkSoft">
             Type
             <select className={selectClass} value={filters.kind} onChange={(e) => update('kind', e.target.value)}>
               {KINDS.map((k) => (
@@ -101,7 +101,7 @@ export default function History() {
               ))}
             </select>
           </label>
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-shush-inkSoft">
             Table
             <select className={selectClass} value={filters.tableNo} onChange={(e) => update('tableNo', e.target.value)}>
               <option value="all">All tables</option>
@@ -112,7 +112,7 @@ export default function History() {
               ))}
             </select>
           </label>
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-shush-inkSoft">
             From
             <input
               type="date"
@@ -122,7 +122,7 @@ export default function History() {
               onChange={(e) => update('from', e.target.value)}
             />
           </label>
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-shush-inkSoft">
             To
             <input
               type="date"
@@ -133,7 +133,7 @@ export default function History() {
             />
           </label>
         </div>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-shush-muted">
           Leave the dates empty to see the last 7 days. Dates use the library's time zone.
         </p>
       </Card>
@@ -142,13 +142,13 @@ export default function History() {
 
       <Card className="overflow-hidden p-0">
         {!data ? (
-          <p className="p-5 text-sm text-slate-500">{loading ? 'Loading history…' : 'No history to show.'}</p>
+          <p className="p-5 text-sm text-shush-muted">{loading ? 'Loading history…' : 'No history to show.'}</p>
         ) : data.rows.length === 0 ? (
-          <p className="p-5 text-sm text-slate-500">Nothing matches these filters.</p>
+          <p className="p-5 text-sm text-shush-muted">Nothing matches these filters.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-[#f1ede3] text-sm">
-              <thead className="bg-[#f7f5ed] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <table className="min-w-full divide-y divide-shush-line text-sm">
+              <thead className="bg-shush-creamDeep text-left text-xs font-semibold uppercase tracking-wider text-shush-muted">
                 <tr>
                   <th className="px-4 py-3">Time</th>
                   <th className="px-4 py-3">Type</th>
@@ -157,27 +157,27 @@ export default function History() {
                   <th className="px-4 py-3">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f1ede3]">
+              <tbody className="divide-y divide-shush-line">
                 {data.rows.map((r, i) => {
                   const meta = HISTORY_KIND_META[r.kind];
                   return (
-                    <tr key={`${r.kind}-${r.occurredAt}-${i}`} className="align-top">
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDateTime(r.occurredAt)}</td>
+                    <tr key={`${r.kind}-${r.occurredAt}-${i}`} className="align-top hover:bg-shush-cream">
+                      <td className="whitespace-nowrap px-4 py-3 text-shush-inkSoft">{formatDateTime(r.occurredAt)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${meta?.pill ?? ''}`}>
                           {meta?.label ?? r.kind}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-[#152549]">
+                      <td className="whitespace-nowrap px-4 py-3 text-shush-ink">
                         {r.tableNo ?? 'All tables'}
                       </td>
-                      <td className="px-4 py-3 text-[#152549]">
+                      <td className="px-4 py-3 text-shush-ink">
                         <div className="flex flex-wrap items-center gap-2">
                           {r.summary}
                           {r.isSample && <SampleBadge />}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{r.detail}</td>
+                      <td className="px-4 py-3 text-shush-inkSoft">{r.detail}</td>
                     </tr>
                   );
                 })}
@@ -188,7 +188,7 @@ export default function History() {
       </Card>
 
       {data?.truncated && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-shush-muted">
           Only the first 500 records are shown. Narrow the dates or type to see the rest.
         </p>
       )}

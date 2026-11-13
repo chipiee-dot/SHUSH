@@ -33,7 +33,7 @@ export default function ProfileMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Profile menu"
         aria-expanded={open}
-        className="flex h-10 items-center gap-2.5 rounded-xl bg-[#1b2d5a] px-2.5 text-white shadow-sm transition hover:bg-[#16254a]"
+        className="flex h-10 items-center gap-2.5 rounded-xl bg-shush-orange px-2.5 text-white shadow-sm transition hover:bg-shush-orange600 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-xs font-bold tracking-wide text-white">
           {initials || '?'}
@@ -58,22 +58,22 @@ export default function ProfileMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-[#d6cfbe] bg-white text-slate-800 shadow-xl">
-          <div className="border-b border-[#ece7da] px-4 py-3">
-            <div className="text-sm font-semibold text-[#152549]">
+        <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-shush-line bg-shush-white text-shush-ink shadow-xl">
+          <div className="border-b border-shush-line px-4 py-3">
+            <div className="text-sm font-semibold text-shush-ink">
               {user?.firstName} {user?.lastName}
             </div>
-            <div className="mt-0.5 break-all text-xs text-slate-500">{user?.email}</div>
+            <div className="mt-0.5 break-all text-xs text-shush-muted">{user?.email}</div>
             <div className="mt-2 flex items-center gap-2 text-xs">
-              <span className="rounded-full bg-[#e9ecf5] px-2 py-0.5 font-medium text-[#1b2d5a]">{roleLabel}</span>
-              <span className="text-slate-500">{user?.facultyId}</span>
+              <span className="rounded-full bg-shush-goldSoft px-2 py-0.5 font-medium text-shush-orange700">{roleLabel}</span>
+              <span className="text-shush-muted">{user?.facultyId}</span>
             </div>
           </div>
           <button
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="w-full px-4 py-3 text-left text-sm font-medium text-[#1b2d5a] transition hover:bg-[#f7f5ed] disabled:opacity-60"
+            className="w-full px-4 py-3 text-left text-sm font-medium text-shush-orange700 transition hover:bg-shush-cream disabled:opacity-60"
           >
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>

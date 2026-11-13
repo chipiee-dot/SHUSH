@@ -55,7 +55,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
   }
 
   const inputClass =
-    'mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]';
+    'mt-1 block w-full rounded-xl border-shush-lineStrong bg-shush-white text-sm focus:border-shush-orange focus:ring-shush-orange';
 
   return (
     <Card
@@ -63,21 +63,21 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
       subtitle="Suspend alerts for one table or all tables for a set time. Every window is recorded in History."
     >
       {active.length > 0 && (
-        <ul className="mb-5 divide-y divide-[#f1ede3] rounded-xl border border-[#ece7da]">
+        <ul className="mb-5 divide-y divide-shush-line rounded-xl border border-shush-line">
           {active.map((w) => (
             <li key={w.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
               <div>
-                <div className="font-medium text-[#152549]">
+                <div className="font-medium text-shush-ink">
                   {w.allTables ? 'All tables' : `Table ${w.tableNo}`} · until {formatTime(w.endsAt)}
                 </div>
-                <div className="text-xs text-slate-600">
+                <div className="text-xs text-shush-inkSoft">
                   {w.reason} · started by {w.createdBy}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => handleEnd(w.id)}
-                className="rounded-lg border border-[#d6cfbe] px-3 py-1.5 text-xs font-medium text-[#1b2d5a] transition hover:bg-[#1b2d5a] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1"
+                className="rounded-lg border border-shush-lineStrong px-3 py-1.5 text-xs font-medium text-shush-orange700 transition hover:bg-shush-orange hover:text-white focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-1"
               >
                 End now
               </button>
@@ -87,7 +87,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
       )}
 
       <form onSubmit={handleStart} className="grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-shush-inkSoft">
           Applies to
           <select className={inputClass} value={scope} onChange={(e) => setScope(e.target.value)}>
             <option value="all">All tables</option>
@@ -99,7 +99,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
           </select>
         </label>
 
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-shush-inkSoft">
           Duration
           <select className={inputClass} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
             {DURATIONS.map((d) => (
@@ -110,7 +110,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
           </select>
         </label>
 
-        <label className="text-sm font-medium text-slate-700 sm:col-span-2">
+        <label className="text-sm font-medium text-shush-inkSoft sm:col-span-2">
           Reason
           <input
             className={inputClass}
@@ -128,7 +128,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-xl bg-[#1b2d5a] px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+            className="rounded-xl bg-shush-orange px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
           >
             {busy ? 'Starting…' : 'Start maintenance'}
           </button>

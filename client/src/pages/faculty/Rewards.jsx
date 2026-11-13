@@ -16,27 +16,27 @@ function Board({ title, subtitle, entries, valueText, empty, showCount = true })
   return (
     <Card title={title} subtitle={subtitle}>
       {entries.length === 0 ? (
-        <p className="text-sm text-slate-500">{empty}</p>
+        <p className="text-sm text-shush-muted">{empty}</p>
       ) : (
-        <ol className="divide-y divide-[#f1ede3]">
+        <ol className="divide-y divide-shush-line">
           {entries.map((entry, index) => (
             <li key={entry.studentId} className="flex items-center gap-3 py-3">
               <span
                 className={`flex h-7 w-7 flex-none items-center justify-center rounded-full text-xs font-bold ${
-                  index === 0 ? 'bg-[#1b2d5a] text-white' : 'bg-[#f1ede3] text-[#1b2d5a]'
+                  index === 0 ? 'bg-shush-orange text-white' : 'bg-shush-goldSoft text-shush-orange700'
                 }`}
               >
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-[#152549]">{entry.name}</div>
+                <div className="truncate text-sm font-medium text-shush-ink">{entry.name}</div>
                 {(entry.section || showCount) && (
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-shush-muted">
                     {[entry.section, showCount ? `${entry.sessionCount} session(s)` : null].filter(Boolean).join(' · ')}
                   </div>
                 )}
               </div>
-              <div className="text-right text-sm font-semibold text-[#152549]">{valueText(entry)}</div>
+              <div className="text-right text-sm font-semibold text-shush-ink">{valueText(entry)}</div>
             </li>
           ))}
         </ol>
@@ -60,15 +60,15 @@ export default function Rewards() {
             : 'Each member of a session receives that session\u2019s table score.'
         }
       >
-        <div role="group" aria-label="Period" className="inline-flex rounded-xl border border-[#d6cfbe] bg-white p-1">
+        <div role="group" aria-label="Period" className="inline-flex rounded-xl border border-shush-lineStrong bg-shush-white p-1">
           {PERIODS.map((p) => (
             <button
               key={p.value}
               type="button"
               aria-pressed={period === p.value}
               onClick={() => setPeriod(p.value)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1 ${
-                period === p.value ? 'bg-[#1b2d5a] text-white' : 'text-[#1b2d5a] hover:bg-[#f1ede3]'
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-1 ${
+                period === p.value ? 'bg-shush-orange text-white' : 'bg-shush-creamDeep text-shush-inkSoft hover:bg-shush-gold'
               }`}
             >
               {p.label}
@@ -80,7 +80,7 @@ export default function Rewards() {
       {error && <Alert>{error}</Alert>}
 
       {!data ? (
-        loading && <p className="text-sm text-slate-500">Loading rewards…</p>
+        loading && <p className="text-sm text-shush-muted">Loading rewards…</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           <Board
@@ -109,7 +109,7 @@ export default function Rewards() {
       )}
 
       {data?.hasSampleData && (
-        <p className="text-xs text-amber-800">
+        <p className="text-xs text-shush-orange700">
           Sample data: these standings use sample sessions and quiet scores until the devices are connected.
         </p>
       )}

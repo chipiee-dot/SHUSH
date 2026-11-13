@@ -1,4 +1,4 @@
-/* Faculty console shell: purple icon rail, text header, full-height scrolling page. */
+/* Faculty console shell: orange icon rail, text header, full-height scrolling page. */
 
 .shell {
   display: flex;
@@ -6,8 +6,8 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #f7f5ed;
-  color: #1f2937;
+  background: var(--shush-cream);
+  color: var(--shush-ink);
 }
 
 .shell .app {
@@ -16,7 +16,7 @@
   min-height: 0;
 }
 
-/* Edge-docked organic purple rail on the left */
+/* Edge-docked organic orange rail on the left */
 .shell .side {
   position: relative;
   z-index: 20;
@@ -41,7 +41,7 @@
   height: 100%;
   z-index: -1;
   pointer-events: none;
-  filter: drop-shadow(4px 10px 20px rgba(91, 75, 219, 0.25));
+  filter: drop-shadow(4px 10px 20px rgba(253, 80, 4, 0.35));
 }
 
 .shell .rail-inner {
@@ -78,7 +78,7 @@
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
   transition: background-color 0.2s ease, color 0.2s ease, transform 90ms ease-out;
 }
@@ -93,11 +93,11 @@
   color: #ffffff;
 }
 
-/* Active state: crisp white rounded square with purple icon */
+/* Active state: crisp white rounded square with orange icon */
 .shell .it.on {
   background: #ffffff;
-  color: #5b4bdb;
-  box-shadow: 0 6px 16px rgba(28, 20, 88, 0.22);
+  color: var(--shush-orange);
+  box-shadow: 0 6px 16px rgba(184, 55, 0, 0.28);
 }
 
 .shell .it:focus-visible {
@@ -117,12 +117,12 @@
   z-index: 50;
   padding: 8px 12px;
   border-radius: 12px;
-  background: #ffffff;
-  color: #152549;
+  background: var(--shush-ink);
+  color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.18);
+  box-shadow: 0 8px 24px rgba(42, 26, 18, 0.28);
   pointer-events: none;
   opacity: 0;
   transform: translate(-6px, -50%);
@@ -136,7 +136,7 @@
   top: 50%;
   margin-top: -6px;
   border: 6px solid transparent;
-  border-right-color: #ffffff;
+  border-right-color: var(--shush-ink);
 }
 
 .shell .it:hover .tip,
@@ -147,6 +147,7 @@
 
 /* Main column */
 .shell .main {
+  background: var(--shush-cream);
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -167,17 +168,17 @@
 /* Header is plain text: breadcrumb only. */
 .shell .crumb {
   font-size: 15px;
-  color: #66666b;
+  color: var(--shush-ink-soft);
 }
 
 .shell .crumb span {
   margin: 0 8px;
-  color: #b8b2a2;
+  color: var(--shush-line-strong);
 }
 
 .shell .crumb b {
   font-weight: 600;
-  color: #152549;
+  color: var(--shush-ink);
 }
 
 .shell .top-actions {
@@ -218,7 +219,7 @@
   }
 }
 
-/* Glow button effect (used on the Table layout page). */
+/* Gold glow button effect (used on the Table layout page). */
 .glow-btn {
   position: relative;
   overflow: hidden;
@@ -229,7 +230,7 @@
 .glow-btn .glow-light {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle 62px at var(--glow-x) var(--glow-y), rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.12) 45%, rgba(255, 255, 255, 0) 100%);
+  background: radial-gradient(circle 62px at var(--glow-x) var(--glow-y), rgba(249, 231, 145, 0.55) 0%, rgba(251, 177, 68, 0.22) 45%, rgba(251, 177, 68, 0) 100%);
   opacity: 0;
   transition: opacity 400ms ease;
   pointer-events: none;

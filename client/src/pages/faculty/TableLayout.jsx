@@ -14,14 +14,18 @@ const REFRESH_MS = 5000;
 const ROW_HEIGHT = '6.5rem';
 const LEGEND = ['QUIET', 'LOUD', 'ALERT', 'MAINTENANCE', 'OFFLINE', 'NO_DEVICE'];
 
-function SeatDots({ seats, occupied }) {
+function SeatDots({ seats, occupied, selected }) {
   return (
     <div className="flex flex-wrap gap-1" aria-hidden="true">
       {Array.from({ length: seats }, (_, i) => (
         <span
           key={i}
           className={`h-2.5 w-2.5 rounded-full border ${
-            i < occupied ? 'border-[#1b2d5a] bg-[#1b2d5a]' : 'border-slate-300 bg-white'
+            i < occupied
+              ? selected
+                ? 'border-shush-orange bg-shush-orange'
+                : 'border-shush-amber bg-shush-amber'
+              : 'border-shush-success bg-shush-success'
           }`}
         />
       ))}
@@ -38,17 +42,17 @@ function TableTile({ table, selected, onSelect }) {
       onClick={() => onSelect(table.tableNo)}
       aria-pressed={selected}
       style={{ gridColumn: `${col + 1} / span ${width}`, gridRow: `${row + 1} / span ${height}` }}
-      className={`flex min-w-0 flex-col justify-between rounded-2xl border border-l-4 bg-white p-3 text-left shadow-sm transition hover:shadow-md ${meta.edge} ${
-        selected ? 'border-[#1b2d5a] ring-2 ring-[#1b2d5a]/30' : 'border-[#d6cfbe]'
+      className={`flex min-w-0 flex-col justify-between rounded-2xl border border-l-4 p-3 text-left shadow-sm transition hover:border-shush-orangeSoft hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange ${meta.edge} ${
+        selected ? 'border-shush-orange bg-shush-goldSoft ring-2 ring-shush-orange/30' : 'border-shush-line bg-shush-white'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-base font-semibold text-[#152549]">Table {table.tableNo}</span>
+        <span className="text-base font-semibold text-shush-ink">Table {table.tableNo}</span>
         <StatusPill status={table.status} />
       </div>
       <div className="space-y-1.5">
-        <SeatDots seats={table.seats} occupied={table.occupancy.groupSize} />
-        <div className="truncate text-xs text-slate-600">
+        <SeatDots seats={table.seats} occupied={table.occupancy.groupSize} selected={selected} />
+        <div className="truncate text-xs text-shush-inkSoft">
           {table.occupancy.groupSize}/{table.seats} seated
           {table.device ? ` · ${table.device.code}` : ' · no device'}
         </div>
@@ -75,7 +79,7 @@ function TableDetails({ table, isAdmin }) {
         isAdmin && (
           <Link
             to={`/console/settings?table=${table.tableNo}`}
-            className="rounded-xl bg-[#1b2d5a] px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+            className="rounded-xl bg-shush-orange px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
           >
             Edit table
           </Link>
@@ -85,13 +89,13 @@ function TableDetails({ table, isAdmin }) {
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {rows.map(([label, value]) => (
           <div key={label}>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-slate-600">{label}</dt>
-            <dd className="mt-0.5 text-sm font-medium text-[#152549]">{value}</dd>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-shush-muted">{label}</dt>
+            <dd className="mt-0.5 text-sm font-medium text-shush-ink">{value}</dd>
           </div>
         ))}
       </dl>
       {table.device?.isSample && (
-        <p className="mt-4 text-xs text-amber-800">
+        <p className="mt-4 text-xs text-shush-orange700">
           Sample data: this device is not connected yet, so these readings are placeholders.
         </p>
       )}
@@ -109,10 +113,6 @@ export default function TableLayout() {
   const [addBusy, setAddBusy] = useState(false);
 
   const isAdmin = user?.role === 'Admin';
-
-  // Debug: log user object to console
-  console.log('TableLayout - User:', user);
-  console.log('TableLayout - isAdmin:', isAdmin);
 
   async function handleAddTable(e) {
     e.preventDefault();
@@ -133,7 +133,7 @@ export default function TableLayout() {
 
   if (!data) {
     return loading ? (
-      <p className="text-sm text-slate-500">Loading floor plan…</p>
+      <p className="text-sm text-shush-inkSoft">Loading floor plan…</p>
     ) : (
       <Alert>{error || 'Could not load the table layout.'}</Alert>
     );
@@ -154,7 +154,7 @@ export default function TableLayout() {
         {isAdmin && (
           <GlowButton
             onClick={() => setShowAddForm(true)}
-            className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+            className="rounded-xl bg-shush-orange px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
           >
             Add table
           </GlowButton>
@@ -168,8 +168,8 @@ export default function TableLayout() {
           <form onSubmit={handleAddTable} className="space-y-4">
             <Alert>{addError}</Alert>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium text-slate-700">
-                Table number <span className="text-red-600">*</span>
+              <label className="text-sm font-medium text-shush-inkSoft">
+                Table number <span className="text-shush-danger">*</span>
                 <input
                   type="number"
                   min={1}
@@ -177,12 +177,12 @@ export default function TableLayout() {
                   required
                   value={addFormData.tableNo}
                   onChange={(e) => setAddFormData((d) => ({ ...d, tableNo: e.target.value }))}
-                  className="mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                  className="mt-1 block w-full rounded-xl border-shush-lineStrong bg-shush-white text-sm text-shush-ink focus:border-shush-orange focus:ring-shush-orange"
                   placeholder="e.g. 12"
                 />
               </label>
-              <label className="text-sm font-medium text-slate-700">
-                Seats <span className="text-red-600">*</span>
+              <label className="text-sm font-medium text-shush-inkSoft">
+                Seats <span className="text-shush-danger">*</span>
                 <input
                   type="number"
                   min={1}
@@ -190,7 +190,7 @@ export default function TableLayout() {
                   required
                   value={addFormData.seats}
                   onChange={(e) => setAddFormData((d) => ({ ...d, seats: e.target.value }))}
-                  className="mt-1 block w-full rounded-xl border-[#d6cfbe] bg-white text-sm focus:border-[#1b2d5a] focus:ring-[#1b2d5a]"
+                  className="mt-1 block w-full rounded-xl border-shush-lineStrong bg-shush-white text-sm text-shush-ink focus:border-shush-orange focus:ring-shush-orange"
                   placeholder="e.g. 6"
                 />
               </label>
@@ -199,7 +199,7 @@ export default function TableLayout() {
               <GlowButton
                 type="submit"
                 disabled={addBusy}
-                className="rounded-xl bg-[#1b2d5a] px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+                className="rounded-xl bg-shush-orange px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
               >
                 {addBusy ? 'Adding…' : 'Add table'}
               </GlowButton>
@@ -211,7 +211,7 @@ export default function TableLayout() {
                   setAddFormData({ tableNo: '', seats: '4' });
                 }}
                 disabled={addBusy}
-                className="rounded-xl border border-[#d6cfbe] px-4 py-2.5 text-sm font-medium text-[#1b2d5a] transition hover:bg-[#f1ede3] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2"
+                className="rounded-xl border border-shush-lineStrong px-4 py-2.5 text-sm font-medium text-shush-orange700 transition hover:bg-shush-creamDeep disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
               >
                 Cancel
               </button>
@@ -230,7 +230,7 @@ export default function TableLayout() {
         </ul>
 
         {tables.length === 0 ? (
-          <p className="text-sm text-slate-600">No tables are set up yet. {isAdmin && 'Add the first one above.'}</p>
+          <p className="text-sm text-shush-inkSoft">No tables are set up yet. {isAdmin && 'Add the first one above.'}</p>
         ) : (
           <div className="overflow-x-auto">
             <div
@@ -250,14 +250,14 @@ export default function TableLayout() {
             </div>
           </div>
         )}
-        <p className="mt-4 text-xs text-slate-600">
+        <p className="mt-4 text-xs text-shush-inkSoft">
           Click a table to see its details. Filled seats are students currently seated.
           {isAdmin && (
             <>
               {' '}
               <Link
                 to="/console/settings"
-                className="font-medium text-[#1b2d5a] underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-1 rounded"
+                className="font-medium text-shush-orange700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-1 rounded"
               >
                 Edit seat counts in Settings
               </Link>

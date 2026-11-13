@@ -66,53 +66,64 @@ export default function StudentLogin() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">Sign in</h1>
-      <p className="mt-2 text-sm text-slate-600">Enter your student number. You will confirm your name next.</p>
-
-      <form onSubmit={handleContinue} className="mt-8 space-y-4" noValidate>
-        {notice && <Alert type={notice.type}>{notice.text}</Alert>}
-        <Alert>{error}</Alert>
-        <div>
-          <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-slate-600">
-            Student number
-          </label>
-          <div className="mt-3">
-            <StudentNumberInput
-              id="student-no"
-              value={raw}
-              onChange={(d) => setRaw(formatStudentNumberInput(d))}
-              autoFocus
-            />
+    <div className="mx-auto w-full max-w-4xl">
+      <div className="grid gap-0 overflow-hidden rounded-[2rem] border border-shush-line bg-shush-white shadow-2xl lg:grid-cols-[0.9fr_1.1fr]">
+        <aside className="auth-hero hidden flex-col justify-center p-8 lg:flex lg:p-10">
+          <div className="relative z-10">
+            <h2 className="text-3xl font-bold leading-tight tracking-tight text-white">Check in to your quiet seat.</h2>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/85">For a better study environment.</p>
           </div>
+        </aside>
+
+        <div className="p-6 sm:p-8 lg:p-10">
+          <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">Sign in</h1>
+          <p className="mt-2 text-sm text-shush-inkSoft">Enter your student number. You will confirm your name next.</p>
+
+          <form onSubmit={handleContinue} className="mt-8 space-y-4" noValidate>
+            {notice && <Alert type={notice.type}>{notice.text}</Alert>}
+            <Alert>{error}</Alert>
+            <div>
+              <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-shush-inkSoft">
+                Student number
+              </label>
+              <div className="mt-3 sm:[&_input]:h-16 sm:[&_input]:w-12">
+                <StudentNumberInput
+                  id="student-no"
+                  value={raw}
+                  onChange={(d) => setRaw(formatStudentNumberInput(d))}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full rounded-xl bg-shush-orange px-4 py-3.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:opacity-60"
+            >
+              {busy ? 'Checking…' : 'Continue'}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-shush-inkSoft">
+            New here?{' '}
+            <Link
+              to="/student/signup"
+              className="font-medium text-shush-orange700 underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2 rounded px-1"
+            >
+              Sign up with your student number
+            </Link>
+          </p>
+
+          <p className="mt-2 text-center text-sm text-shush-inkSoft">
+            <Link
+              to="/login"
+              className="font-medium text-shush-orange700 underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2 rounded px-1"
+            >
+              Faculty sign-in
+            </Link>
+          </p>
         </div>
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-xl bg-[#1b2d5a] px-4 py-3.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60"
-        >
-          {busy ? 'Checking…' : 'Continue'}
-        </button>
-      </form>
-
-      <p className="mt-6 text-center text-sm text-slate-600">
-        New here?{' '}
-        <Link
-          to="/student/signup"
-          className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
-        >
-          Sign up with your student number
-        </Link>
-      </p>
-
-      <p className="mt-2 text-center text-sm text-slate-600">
-        <Link
-          to="/login"
-          className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
-        >
-          Faculty sign-in
-        </Link>
-      </p>
+      </div>
 
       <ConfirmDialog
         open={Boolean(found)}
@@ -124,14 +135,14 @@ export default function StudentLogin() {
         busy={busy}
       >
         {found && (
-          <div className="rounded-xl border border-[#d6cfbe] bg-white px-4 py-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Name</div>
-            <div className="text-lg font-semibold text-[#152549]">{found.student.name}</div>
-            <div className="mt-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Section</div>
-            <div className="font-medium text-[#152549]">{found.student.section}</div>
-            <div className="mt-2 text-xs text-slate-500">Student number {found.student.studentNo}</div>
+          <div className="rounded-xl border border-shush-line bg-shush-creamDeep px-4 py-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-shush-muted">Name</div>
+            <div className="text-lg font-semibold text-shush-ink">{found.student.name}</div>
+            <div className="mt-2 text-xs font-semibold uppercase tracking-wider text-shush-muted">Section</div>
+            <div className="font-medium text-shush-ink">{found.student.section}</div>
+            <div className="mt-2 text-xs text-shush-muted">Student number {found.student.studentNo}</div>
             {seated && (
-              <p className="mt-3 text-sm text-slate-700">
+              <p className="mt-3 text-sm text-shush-inkSoft">
                 You are seated at Table {found.session.tableNo}, since {formatTime(found.session.startedAt)}.
               </p>
             )}

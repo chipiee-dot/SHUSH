@@ -5,7 +5,7 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(170deg, #d6e8ff, #f4f9ff 70%);
+  background: linear-gradient(180deg, var(--shush-cream) 0%, var(--shush-gold-soft) 100%);
 }
 
 .bokeh-dot {
@@ -13,7 +13,7 @@
   width: var(--s);
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.95), rgba(125, 184, 255, 0.38) 60%, rgba(10, 108, 255, 0.12));
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.95), rgba(251, 177, 68, 0.35) 60%, rgba(253, 80, 4, 0.10));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
   opacity: 0;
   animation: bokeh 7s ease-in-out var(--dl) infinite;

@@ -2,30 +2,20 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import Alert from '../components/Alert.jsx';
+import AuthLayout, { AuthHero } from '../components/AuthLayout.jsx';
+import FacultyIdInput from '../components/FacultyIdInput.jsx';
+import Logo from '../components/Logo.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
+import { isCompleteFacultyId, toFacultyId } from '../lib/facultyId.js';
 
-// Frequency bars on the left panel: [size + colour classes]
-const WAVE_BARS = [
-  'h-6 bg-white/50',
-  'h-10 bg-white/50',
-  'h-14 bg-shush-goldSoft',
-  'h-20 bg-white/80',
-  'h-16 bg-shush-gold',
-  'h-28 bg-white/80',
-  'h-36 bg-shush-goldSoft',
-  'h-24 bg-white/50',
-  'h-32 bg-shush-gold',
-  'h-20 bg-white shadow-[0_0_12px_rgba(255,255,255,0.45)]',
-  'h-28 bg-shush-goldSoft',
-  'h-[4.5rem] bg-white/80',
-  'h-12 bg-shush-gold',
-  'h-16 bg-white/50',
-  'h-9 bg-shush-goldSoft',
-  'h-7 bg-white/50',
-  'h-4 bg-shush-gold',
+const SLIDES = [
+  { title: 'Live table status', text: 'See quiet, loud and alert tables as they happen.' },
+  { title: 'Manage the floor', text: 'Add tables, set seat counts and schedule maintenance.' },
+  { title: 'Recognize quiet study', text: 'Rewards highlight frequent and quiet visitors.' },
 ];
 
-const INPUT =
-  'block w-full rounded-xl border border-shush-lineStrong bg-shush-white py-3 pl-11 text-shush-ink placeholder:text-shush-muted focus:border-shush-orange focus:ring-1 focus:ring-shush-orange text-sm leading-6 transition';
+const FOCUS_LINK =
+  'rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
 
 export default function Login() {
   const { login } = useAuth();
@@ -33,19 +23,29 @@ export default function Login() {
   const location = useLocation();
   const justRegistered = location.state?.registered === true;
 
-  const [facultyId, setFacultyId] = useState(location.state?.facultyId ?? '');
+  // The sign-up page passes the full ID ('FAC-2026-2005'); this keeps it in the same shape.
+  const [facultyId, setFacultyId] = useState(() => toFacultyId(location.state?.facultyId ?? ''));
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+
+    if (!isCompleteFacultyId(facultyId)) {
+      setError('Enter your full Faculty ID: FAC-0000-0000.');
+      return;
+    }
+    if (!password) {
+      setError('Enter your password.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await login({ facultyId: facultyId.trim(), password, remember });
+      await login({ facultyId, password, remember });
       navigate('/console', { replace: true });
     } catch (err) {
       setError(err.message);
@@ -54,199 +54,109 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen shush-cloud font-sans antialiased flex items-center justify-center p-4 sm:p-8 md:p-12 selection:bg-shush-gold selection:text-shush-ink">
-      {/* Outer rounded canvas on a white surface */}
-      <main className="w-full max-w-[1180px] bg-shush-white border border-shush-line rounded-[2.5rem] shadow-2xl p-4 sm:p-5 md:p-6 min-h-[600px] flex items-center justify-center">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[540px]">
-          {/* Orange hero card */}
-          <section className="auth-hero lg:col-span-5 min-h-[220px] rounded-[2rem] p-6 sm:p-8 md:p-10 text-white flex flex-col justify-between shadow-xl">
-            {/* Decorative Concentric Acoustic Waves */}
-            <div className="sonar-ring sonar-ring-1 !border-white/[0.14]" />
-            <div className="sonar-ring sonar-ring-2 !border-white/[0.14]" />
-            <div className="sonar-ring sonar-ring-3 !border-white/[0.14]" />
-
-            <div className="relative z-10 space-y-4 max-w-sm">
-              <h1 className="text-3xl sm:text-4xl md:text-[2.4rem] font-medium leading-[1.18] tracking-tight text-white">
-                Welcome back to peace &amp; quiet.
-              </h1>
-              <p className="text-white/85 text-sm sm:text-base leading-relaxed font-light">
-                Real-time acoustic telemetry and zone management across all library tables.
-              </p>
-            </div>
-
-            {/* Sound Wave Frequency Visualizer */}
-            <div className="relative z-10 pt-12 pb-4" aria-hidden="true">
-              <div className="flex items-center gap-1.5 sm:gap-2 h-32 overflow-hidden">
-                {WAVE_BARS.map((classes, i) => (
-                  <div key={i} className={`waveform-bar w-1.5 sm:w-2 ${classes}`} />
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Login form on warm cream surface */}
-          <section className="lg:col-span-7 flex flex-col justify-center px-4 sm:px-8 lg:px-12 py-8">
-            <div className="max-w-lg w-full mx-auto space-y-6">
-              <header className="space-y-3.5">
-                <div className="flex items-center gap-3">
-                  {/* Acoustic Bar Logo Icon */}
-                  <svg aria-hidden="true" className="h-8 w-8 text-shush-orange" fill="currentColor" viewBox="0 0 32 32">
-                    <rect height="12" rx="1.75" width="3.5" x="4" y="10" />
-                    <rect height="20" rx="1.75" width="3.5" x="10.5" y="6" />
-                    <rect height="26" rx="1.75" width="3.5" x="17" y="3" />
-                    <rect height="12" rx="1.75" width="3.5" x="23.5" y="10" />
-                  </svg>
-                  <span className="text-xl font-bold tracking-wider text-shush-ink">SHUSH</span>
-                </div>
-                <div>
-                  <h2 className="text-3xl font-semibold text-shush-ink tracking-tight">Sign in to SHUSH</h2>
-                  <p className="text-shush-inkSoft text-sm mt-1.5 font-normal">
-                    Access your library acoustic monitoring console.
-                  </p>
-                </div>
-              </header>
-
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                {justRegistered && !error && (
-                  <Alert type="success">Account created. Sign in with your Faculty ID and password.</Alert>
-                )}
-                <Alert>{error}</Alert>
-
-                {/* Faculty ID */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-shush-inkSoft tracking-wide opacity-0" htmlFor="faculty-id">
-                    Faculty ID
-                  </label>
-                  <div className="relative rounded-xl shadow-sm">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-shush-muted">
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.374a4.5 4.5 0 00-6.338 0 .75.75 0 00.522.251h5.294a.75.75 0 00.522-.251z" />
-                      </svg>
-                    </div>
-                    <input
-                      className={`${INPUT} pr-4`}
-                      id="faculty-id"
-                      name="faculty-id"
-                      placeholder="e.g. FAC-2024-8841"
-                      required
-                      maxLength={30}
-                      autoComplete="username"
-                      type="text"
-                      value={facultyId}
-                      onChange={(e) => setFacultyId(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-semibold text-shush-inkSoft tracking-wide" htmlFor="password">
-                      Password
-                    </label>
-                    {/* Password reset isn't built yet, so this link doesn't go anywhere. */}
-                    <a
-                      className="text-xs font-medium text-shush-orange700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange rounded"
-                      href="#forgot-password"
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      Forgot password?
-                    </a>
-                  </div>
-                  <div className="relative rounded-xl shadow-sm">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-shush-muted">
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                    <input
-                      className={`${INPUT} pr-11`}
-                      id="password"
-                      name="password"
-                      placeholder="Enter your password"
-                      required
-                      maxLength={128}
-                      autoComplete="current-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <button
-                      aria-label="Toggle password visibility"
-                      aria-pressed={showPassword}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-shush-muted hover:text-shush-inkSoft focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange rounded-r-xl"
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                    >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remember Me */}
-                <div className="flex items-center">
-                  <input
-                    className="h-4 w-4 rounded border-shush-lineStrong text-shush-orange focus:ring-shush-orange bg-transparent"
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                  />
-                  <label className="ml-2.5 block text-xs font-normal text-shush-inkSoft" htmlFor="remember-me">
-                    Keep console active on this workstation
-                  </label>
-                </div>
-
-                {/* Primary Action Button */}
-                <button
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-shush-orange hover:bg-shush-orange600 active:bg-shush-orange700 px-4 py-3.5 text-sm font-medium text-white shadow-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                  disabled={submitting}
-                  type="submit"
-                >
-                  <span>{submitting ? 'Signing in…' : 'Sign in to Console'}</span>
-                  {!submitting && (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-              </form>
-
-              {/* Divider */}
-              <div aria-hidden="true" className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-shush-line" />
-                </div>
-                <div className="relative flex justify-center text-xs tracking-wider">
-                  <span className="bg-shush-white px-3 text-shush-muted font-medium">OR</span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-center text-xs text-shush-inkSoft">
-                  <Link 
-                    className="font-medium text-shush-orange700 hover:underline underline-offset-2 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2 rounded px-1" 
-                    to="/student/login"
-                  >
-                    Student check-in →
-                  </Link>
-                </p>
-
-                <p className="text-center text-xs text-shush-inkSoft">
-                  Need an account?
-                  <Link className="font-medium text-shush-orange700 hover:underline underline-offset-2 ml-1 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2 rounded px-1" to="/signup">
-                    Create your workspace
-                  </Link>
-                </p>
-              </div>
-            </div>
-          </section>
+    <AuthLayout
+      labelledBy="login-heading"
+      hero={
+        <AuthHero
+          title="Welcome back to peace & quiet."
+          subtitle="Real-time acoustic telemetry and zone management across all library tables."
+          slides={SLIDES}
+        />
+      }
+    >
+      <header className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Logo className="h-8 w-8 text-shush-orange" />
+          <span className="text-xl font-extrabold tracking-[0.18em] text-shush-ink">SHUSH</span>
         </div>
-      </main>
-    </div>
+        <div>
+          <h2 id="login-heading" className="text-3xl font-bold tracking-tight text-shush-ink">Sign in to SHUSH</h2>
+          <p className="mt-1.5 text-sm text-shush-inkSoft">Access your library acoustic monitoring console.</p>
+        </div>
+      </header>
+
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
+        {justRegistered && !error && (
+          <Alert type="success">Account created. Sign in with your Faculty ID and password.</Alert>
+        )}
+        <Alert>{error}</Alert>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold tracking-wide text-shush-ink" htmlFor="faculty-id">
+            Faculty ID
+          </label>
+          <FacultyIdInput id="faculty-id" value={facultyId} onChange={setFacultyId} required />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-semibold tracking-wide text-shush-ink" htmlFor="password">
+              Password
+            </label>
+            {/* Password reset isn't built yet, so this link doesn't go anywhere. */}
+            <a
+              className={`text-xs font-medium text-shush-orange700 hover:underline ${FOCUS_LINK}`}
+              href="#forgot-password"
+              onClick={(e) => e.preventDefault()}
+            >
+              Forgot password?
+            </a>
+          </div>
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="flex items-center">
+          <input
+            className="h-4 w-4 rounded border-shush-lineStrong bg-shush-white text-shush-orange600 focus:ring-shush-orange"
+            id="remember-me"
+            name="remember-me"
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+          />
+          <label className="ml-2.5 block text-xs text-shush-inkSoft" htmlFor="remember-me">
+            Keep console active on this workstation
+          </label>
+        </div>
+
+        <button
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={submitting}
+          type="submit"
+        >
+          <span>{submitting ? 'Signing in…' : 'Sign in to Console'}</span>
+          {!submitting && (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+      </form>
+
+      <div aria-hidden="true" className="my-6 flex items-center gap-3 text-xs font-medium tracking-wider text-shush-muted">
+        <span className="h-px flex-1 bg-shush-line" />
+        OR
+        <span className="h-px flex-1 bg-shush-line" />
+      </div>
+
+      <div className="space-y-3 text-center text-xs text-shush-inkSoft">
+        <p>
+          <Link className={`font-medium text-shush-orange700 hover:underline underline-offset-2 ${FOCUS_LINK}`} to="/student/login">
+            Student check-in →
+          </Link>
+        </p>
+        <p>
+          Need an account?
+          <Link className={`ml-1 font-medium text-shush-orange700 hover:underline underline-offset-2 ${FOCUS_LINK}`} to="/signup">
+            Create your workspace
+          </Link>
+        </p>
+      </div>
+    </AuthLayout>
   );
 }

@@ -1,0 +1,150 @@
+/* Table layout page: floor-plan canvas, illustrated tables, status motion, drawer. */
+
+/* Adapted from BrewedOps Motion Library: Dot grid spotlight */
+.tl-canvas {
+  position: relative;
+  border: 1px solid var(--shush-line);
+  border-radius: 1rem;
+  background-color: var(--shush-cream);
+  background-image: radial-gradient(circle, rgba(242, 95, 19, 0.22) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+}
+.tl-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(248, 222, 140, 0.6), transparent 70%);
+}
+.tl-canvas:hover::before { opacity: 1; }
+
+/* ---- Tile (a table seen from above) ---- */
+.tl-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  border: 1px solid var(--shush-line);
+  border-radius: 1rem;
+  background: var(--shush-white);
+  box-shadow: 0 8px 22px -16px rgba(242, 95, 19, 0.5);
+  transition: transform 0.18s ease-out, opacity 0.25s ease, box-shadow 0.2s ease;
+}
+/* Adapted from BrewedOps Motion Library: 3D tilt (max 4deg, set from JS on mouse hover only) */
+.tl-tile:hover {
+  transform: perspective(700px) translateY(-2px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  box-shadow: 0 14px 28px -16px rgba(242, 95, 19, 0.6);
+}
+.tl-tile:focus-visible { outline: 2px solid var(--shush-orange); outline-offset: 2px; }
+.tl-tile[aria-pressed='true'] {
+  border-color: var(--shush-orange);
+  box-shadow: 0 0 0 3px rgba(242, 95, 19, 0.35), 0 8px 22px -16px rgba(242, 95, 19, 0.5);
+}
+.tl-tile[aria-pressed='true'] .tl-top { background: var(--shush-gold-soft); }
+.tl-dim { opacity: 0.35; }
+
+.tl-chairs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 14px;
+  padding: 0 14px;
+}
+.tl-chair {
+  flex: 1 1 0;
+  min-width: 6px;
+  max-width: 24px;
+  height: 7px;
+  border: 1.5px solid var(--shush-orange);
+  border-radius: 999px;
+  background: transparent;
+}
+.tl-chair--on { background: var(--shush-orange); }
+
+.tl-top {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  margin: 0 4px;
+  padding: 4px 6px;
+  overflow: hidden;
+  border: 1px solid var(--shush-line);
+  border-radius: 0.75rem;
+  background: var(--shush-cream);
+}
+.tl-top > * { position: relative; }
+.tl-pill { min-width: 0; max-width: 100%; overflow: hidden; }
+.tl-pill > span { font-size: 10px; padding: 1px 6px; }
+
+/* ---- Status motion (transform and opacity only) ---- */
+.tl-s-QUIET { box-shadow: 0 0 0 2px rgba(248, 222, 140, 0.9), 0 8px 22px -16px rgba(242, 95, 19, 0.5); }
+
+.tl-s-LOUD::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 1.2rem;
+  pointer-events: none;
+  box-shadow: 0 0 18px 4px rgba(247, 181, 71, 0.85);
+  opacity: 0.25;
+  animation: tl-breathe 3s ease-in-out infinite;
+}
+@keyframes tl-breathe { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
+
+.tl-s-ALERT { border-color: var(--shush-danger); }
+.tl-s-ALERT::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--shush-danger);
+  border-radius: 1.2rem;
+  pointer-events: none;
+  animation: tl-alert 1.2s ease-out infinite;
+}
+@keyframes tl-alert { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.07); opacity: 0; } }
+
+/* Adapted from BrewedOps Motion Library: Moving stripes (28.28px = one 45deg stripe period) */
+.tl-s-MAINTENANCE .tl-top::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 -32px;
+  pointer-events: none;
+  background: repeating-linear-gradient(45deg, rgba(247, 181, 71, 0.35) 0 10px, transparent 10px 20px);
+  animation: tl-stripes 2.4s linear infinite;
+}
+@keyframes tl-stripes { to { transform: translateX(28.28px); } }
+
+.tl-s-OFFLINE { filter: saturate(0.25); }
+.tl-s-NO_DEVICE { border-style: dashed; border-color: var(--shush-line-strong); }
+
+/* ---- Drawer: right side panel at 1024px+, bottom sheet below ---- */
+.tl-drawer { animation: tl-sheet-in 0.25s ease-out both; }
+@keyframes tl-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@media (min-width: 1024px) {
+  .tl-drawer { animation-name: tl-drawer-in; }
+  @keyframes tl-drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+}
+
+/* ---- Add-table modal ---- */
+.tl-modal { animation: tl-modal-in 0.2s ease-out both; }
+@keyframes tl-modal-in { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---- Reduced motion: static end states ---- */
+@media (prefers-reduced-motion: reduce) {
+  .tl-tile, .tl-tile:hover { transform: none; transition: none; }
+  .tl-s-LOUD::after { animation: none; opacity: 0.6; }
+  .tl-s-ALERT::after { animation: none; opacity: 1; transform: none; }
+  .tl-s-MAINTENANCE .tl-top::before { animation: none; }
+  .tl-canvas::before { display: none; }
+  .tl-drawer, .tl-modal { animation: none; }
+}

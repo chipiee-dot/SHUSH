@@ -362,7 +362,7 @@ export default function TableLayout() {
                     {[...tables].sort((a, b) => a.tableNo - b.tableNo).map((t) => renderTile(t, 'list'))}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="-mx-4 -my-5 overflow-x-auto px-4 py-5">
                     <div
                       ref={canvasRef}
                       onPointerMove={onCanvasMove}

@@ -15,9 +15,9 @@ const SLIDES = [
   { title: 'Students stay simple', text: 'Students check in with just their student number.' },
 ];
 
-const LABEL = 'block text-xs font-semibold tracking-wide text-shush-ink';
+const LABEL = 'block text-xs font-semibold tracking-wide text-shush-ink lg:text-sm 2xl:text-base';
 const INPUT =
-  'block w-full rounded-xl border border-shush-lineStrong bg-shush-white px-3 py-3 text-sm leading-6 text-shush-ink placeholder:text-shush-muted shadow-sm transition focus:border-shush-orange focus:ring-2 focus:ring-shush-orange';
+  'block w-full rounded-xl border border-shush-lineStrong bg-shush-white px-3 py-3 text-sm leading-6 text-shush-ink lg:py-3.5 lg:text-base 2xl:py-4 2xl:text-lg placeholder:text-shush-muted shadow-sm transition focus:border-shush-orange focus:ring-2 focus:ring-shush-orange';
 const FOCUS_LINK =
   'rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
 
@@ -81,16 +81,16 @@ export default function SignUp() {
     >
       <header className="space-y-4">
         <div className="flex items-center gap-3">
-          <Logo className="h-8 w-8 text-shush-orange" />
-          <span className="text-xl font-extrabold tracking-[0.18em] text-shush-ink">SHUSH</span>
+          <Logo className="h-8 w-8 text-shush-orange lg:h-10 lg:w-10" />
+          <span className="text-xl font-extrabold tracking-[0.18em] text-shush-ink lg:text-2xl">SHUSH</span>
         </div>
         <div>
-          <h2 id="signup-heading" className="text-3xl font-bold tracking-tight text-shush-ink">Create your account</h2>
-          <p className="mt-1.5 text-sm text-shush-inkSoft">Set up your SHUSH workspace to get started.</p>
+          <h2 id="signup-heading" className="text-3xl font-bold tracking-tight text-shush-ink lg:text-4xl 2xl:text-5xl">Create your account</h2>
+          <p className="mt-1.5 text-sm text-shush-inkSoft lg:mt-2 lg:text-base 2xl:text-lg">Set up your SHUSH workspace to get started.</p>
         </div>
       </header>
 
-      <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
+      <form className="mt-6 space-y-4 lg:mt-8 lg:space-y-5" onSubmit={handleSubmit} noValidate>
         <Alert>{error}</Alert>
 
         <div className="space-y-1.5">
@@ -154,12 +154,12 @@ export default function SignUp() {
           <label className={LABEL} htmlFor="email">Email address</label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-shush-muted">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="h-5 w-5 lg:h-6 lg:w-6" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <input
-              className={`${INPUT} pl-11`}
+              className={`${INPUT} pl-11 lg:pl-12`}
               id="email"
               name="email"
               placeholder="janedoe@gmail.com"
@@ -203,26 +203,26 @@ export default function SignUp() {
         <PasswordRules password={form.password} confirmPassword={form.confirmPassword} />
 
         <button
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md lg:py-4 lg:text-base 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={submitting}
           type="submit"
         >
           <span>{submitting ? 'Creating account…' : 'Create account'}</span>
           {!submitting && (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="h-4 w-4 lg:h-5 lg:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
         </button>
       </form>
 
-      <div aria-hidden="true" className="my-6 flex items-center gap-3 text-xs font-medium tracking-wider text-shush-muted">
+      <div aria-hidden="true" className="my-6 flex items-center gap-3 text-xs font-medium tracking-wider text-shush-muted lg:my-8 lg:text-sm 2xl:text-base">
         <span className="h-px flex-1 bg-shush-line" />
         OR
         <span className="h-px flex-1 bg-shush-line" />
       </div>
 
-      <p className="text-center text-xs text-shush-inkSoft">
+      <p className="text-center text-xs text-shush-inkSoft lg:text-sm 2xl:text-base">
         Already have an account?
         <Link className={`ml-1 font-medium text-shush-orange700 hover:underline underline-offset-2 ${FOCUS_LINK}`} to="/login">
           Sign in

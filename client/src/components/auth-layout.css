@@ -299,38 +299,48 @@
   }
 }
 
-/* Landing page: larger hero text and elements (only when a photo is used). */
+/* Larger hero text and elements, shared by the landing, login and sign-up pages (faculty and student). */
 @media (min-width: 1024px) {
-  .auth-page--photo .auth-hero-brand { gap: 0.8rem; font-size: 1.5rem; }
-  .auth-page--photo .auth-hero-brand svg { width: 2.75rem; height: 2.75rem; }
+  .auth-page .auth-hero-brand { gap: 0.8rem; font-size: 1.5rem; }
+  .auth-page .auth-hero-brand svg { width: 2.75rem; height: 2.75rem; }
 
-  .auth-page--photo .auth-hero-title {
+  .auth-page .auth-hero-title {
     max-width: 38rem;
     font-size: clamp(2.5rem, 4.4vw, 4.5rem);
   }
-  .auth-page--photo .auth-hero-sub {
+  .auth-page .auth-hero-sub {
     max-width: 34rem;
     margin-top: 1rem;
     font-size: 1.25rem;
   }
 
-  .auth-page--photo .auth-carousel { max-width: 38rem; margin-top: 2.5rem; }
-  .auth-page--photo .auth-slide { padding-left: 1.25rem; border-left-width: 4px; }
-  .auth-page--photo .auth-slide-title { font-size: 1.5rem; }
-  .auth-page--photo .auth-slide-text { font-size: 1.25rem; }
+  .auth-page .auth-carousel { max-width: 38rem; margin-top: 2.5rem; }
+  .auth-page .auth-slide { padding-left: 1.25rem; border-left-width: 4px; }
+  .auth-page .auth-slide-title { font-size: 1.5rem; }
+  .auth-page .auth-slide-text { font-size: 1.25rem; }
 
-  .auth-page--photo .auth-dots { gap: 0.6rem; margin-top: 1.5rem; }
-  .auth-page--photo .auth-dot { width: 0.8rem; height: 0.8rem; }
-  .auth-page--photo .auth-dot[aria-current='true'] { width: 2.25rem; }
+  .auth-page .auth-dots { gap: 0.6rem; margin-top: 1.5rem; }
+  .auth-page .auth-dot { width: 0.8rem; height: 0.8rem; }
+  .auth-page .auth-dot[aria-current='true'] { width: 2.25rem; }
 
-  .auth-page--photo .auth-eq { gap: 0.55rem; height: 8rem; }
-  .auth-page--photo .auth-eq-bar { flex-basis: 0.6rem; }
+  .auth-page .auth-eq { gap: 0.55rem; height: 8rem; }
+  .auth-page .auth-eq-bar { flex-basis: 0.6rem; }
 }
 
 /* Landing page, tall desktop screens: a larger Welcome card (wider, roomier). Short screens keep the compact card. */
 @media (min-width: 1024px) and (min-height: 801px) {
   .auth-page--photo { --card-w: min(38rem, 40vw); }
   .auth-page--photo .auth-card-frost { padding: clamp(2rem, 3.2vw, 3.75rem); }
+}
+
+/* Sign-in and sign-up: a larger form card on desktop, like the landing Welcome card.
+   The text and field sizes inside it come from lg: and 2xl: classes in the pages. */
+@media (min-width: 1024px) {
+  .auth-page:not(.auth-page--photo) .auth-card-frost {
+    max-width: 38rem;
+    padding: clamp(2rem, 3.2vw, 3.5rem);
+  }
+  .auth-page:not(.auth-page--photo) .auth-card-frost[data-width='lg'] { max-width: 50rem; }
 }
 
 /* Short laptop screens: drop the bars and subtitle so nothing is cut off. */

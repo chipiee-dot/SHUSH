@@ -40,9 +40,9 @@ export const STATUS_META = {
 };
 
 export const HISTORY_KIND_META = {
-  alert: { label: 'Alert', pill: 'bg-shush-dangerSoft text-shush-danger border-shush-danger/30' },
-  maintenance: { label: 'Maintenance', pill: 'bg-shush-creamDeep text-shush-orange700 border-shush-lineStrong' },
-  session: { label: 'Session', pill: 'bg-shush-goldSoft text-shush-ink border-shush-amber/50' },
+  alert: { label: 'Alert', icon: 'alert', dot: 'bg-shush-danger', pill: 'bg-shush-dangerSoft text-shush-danger border-shush-danger/30' },
+  maintenance: { label: 'Maintenance', icon: 'wrench', dot: 'bg-shush-orange', pill: 'bg-shush-creamDeep text-shush-orange700 border-shush-lineStrong' },
+  session: { label: 'Session', icon: 'users', dot: 'bg-shush-amber', pill: 'bg-shush-goldSoft text-shush-ink border-shush-amber/50' },
 };
 
 export function formatDateTime(value) {

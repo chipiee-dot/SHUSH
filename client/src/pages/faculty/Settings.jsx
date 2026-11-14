@@ -182,7 +182,7 @@ function TableSettings({ focusNo }) {
             {adding ? 'Adding…' : 'Add table'}
           </button>
         </div>
-        <div className="sm:col-span-5">
+        <div className="sm:col-span-3">
           <Alert type={addMessage?.type ?? 'error'}>{addMessage?.text}</Alert>
         </div>
       </form>

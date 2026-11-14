@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { api } from '../api.js';
 import useClickOutside from '../hooks/useClickOutside.js';
 import usePolling from '../hooks/usePolling.js';
-import { formatTime } from '../lib/format.js';
+import { formatNumber, formatTime } from '../lib/format.js';
 import SampleBadge from './SampleBadge.jsx';
 
 const READ_KEY = 'shush.readAlertIds';
@@ -10,7 +10,8 @@ const MAX_REMEMBERED = 500;
 
 function loadReadIds() {
   try {
-    return JSON.parse(window.localStorage.getItem(READ_KEY) || '[]');
+    const stored = JSON.parse(window.localStorage.getItem(READ_KEY) || '[]');
+    return Array.isArray(stored) ? stored : [];
   } catch {
     return [];
   }
@@ -31,7 +32,11 @@ export default function NotificationsMenu() {
 
   function markAllRead() {
     const merged = [...new Set([...readIds, ...alerts.map((a) => String(a.id))])].slice(-MAX_REMEMBERED);
-    window.localStorage.setItem(READ_KEY, JSON.stringify(merged));
+    try {
+      window.localStorage.setItem(READ_KEY, JSON.stringify(merged));
+    } catch {
+      // Storage can be full or blocked; the alerts are still marked read until the page reloads.
+    }
     setReadIds(new Set(merged));
   }
 
@@ -56,7 +61,7 @@ export default function NotificationsMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-2xl border border-shush-line bg-shush-white text-shush-ink shadow-xl sm:w-96">
+        <div className="fixed inset-x-4 top-[4.5rem] z-50 overflow-hidden rounded-2xl border border-shush-line bg-shush-white text-shush-ink shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96">
           <div className="flex items-center justify-between border-b border-shush-line px-4 py-3">
             <span className="text-sm font-semibold text-shush-ink">Notifications</span>
             <button
@@ -69,7 +74,7 @@ export default function NotificationsMenu() {
             </button>
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[min(24rem,calc(100dvh-10rem))] overflow-y-auto">
             {ending.length === 0 && alerts.length === 0 && (
               <p className="px-4 py-6 text-center text-sm text-shush-muted">Nothing new in the last 24 hours.</p>
             )}
@@ -106,7 +111,7 @@ export default function NotificationsMenu() {
                           {a.isSample && <SampleBadge />}
                         </div>
                         <div className="text-xs text-shush-muted">
-                          Level {a.level.toLocaleString('en-PH')} over threshold {a.threshold.toLocaleString('en-PH')} · {formatTime(a.triggeredAt)}
+                          Level {formatNumber(a.level)} over threshold {formatNumber(a.threshold)} · {formatTime(a.triggeredAt)}
                         </div>
                       </div>
                     </div>

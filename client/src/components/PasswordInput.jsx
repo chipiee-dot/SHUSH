@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 const DEFAULT_INPUT =
-  'rounded-xl border border-shush-lineStrong bg-shush-white py-3 pl-11 text-sm leading-6 text-shush-ink placeholder:text-shush-muted shadow-sm transition focus:border-shush-orange focus:ring-2 focus:ring-shush-orange';
+  'rounded-xl border border-shush-lineStrong bg-shush-white py-3 pl-11 text-sm leading-6 text-shush-ink lg:py-3.5 lg:pl-12 lg:text-base 2xl:py-4 2xl:text-lg placeholder:text-shush-muted shadow-sm transition focus:border-shush-orange focus:ring-2 focus:ring-shush-orange';
 
 const ICON = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, viewBox: '0 0 24 24', 'aria-hidden': 'true' };
 
@@ -20,7 +20,7 @@ export default function PasswordInput({
   required = false,
   maxLength = 128,
   inputClassName = DEFAULT_INPUT,
-  iconClassName = 'h-5 w-5',
+  iconClassName = 'h-5 w-5 lg:h-6 lg:w-6',
 }) {
   const [visible, setVisible] = useState(false);
 

@@ -58,7 +58,7 @@ export default function ProfileMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-shush-line bg-shush-white text-shush-ink shadow-xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-shush-line bg-shush-white text-shush-ink shadow-xl">
           <div className="border-b border-shush-line px-4 py-3">
             <div className="text-sm font-semibold text-shush-ink">
               {user?.firstName} {user?.lastName}
@@ -73,7 +73,7 @@ export default function ProfileMenu() {
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
-            className="w-full px-4 py-3 text-left text-sm font-medium text-shush-orange700 transition hover:bg-shush-cream disabled:opacity-60"
+            className="w-full px-4 py-3 text-left text-sm font-medium text-shush-orange700 transition hover:bg-shush-cream focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-shush-orange disabled:opacity-60"
           >
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>

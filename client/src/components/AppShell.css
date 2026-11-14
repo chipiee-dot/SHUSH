@@ -163,6 +163,9 @@
   gap: 16px;
   height: 72px;
   padding: 0 28px;
+  /* Own stacking layer so the bell and profile dropdowns open ABOVE the scrolling page. */
+  position: relative;
+  z-index: 40;
 }
 
 /* Header is plain text: breadcrumb only. */
@@ -216,6 +219,27 @@
 
   .shell .crumb {
     font-size: 14px;
+  }
+}
+
+/* Short windows (laptops with toolbars, landscape phones): tighten the rail so no icon is cut off. */
+@media (max-height: 640px) {
+  .shell .side {
+    min-height: 0;
+    padding: 44px 0;
+  }
+
+  .shell .rail-inner {
+    gap: 12px;
+  }
+
+  .shell .nav {
+    gap: 8px;
+  }
+
+  .shell .it {
+    width: 40px;
+    height: 40px;
   }
 }
 

@@ -1,9 +1,9 @@
 // Live checklist for the two rules the server really enforces. No strength meter on purpose.
 function Rule({ met, children }) {
   return (
-    <li className={`flex items-center gap-2 text-xs transition-colors ${met ? 'text-shush-orange700' : 'text-shush-muted'}`}>
+    <li className={`flex items-center gap-2 text-xs transition-colors lg:text-sm ${met ? 'text-shush-orange700' : 'text-shush-muted'}`}>
       <svg
-        className={`h-4 w-4 flex-none transition-colors ${met ? 'text-shush-orange' : 'text-shush-lineStrong'}`}
+        className={`h-4 w-4 flex-none transition-colors lg:h-5 lg:w-5 ${met ? 'text-shush-orange' : 'text-shush-lineStrong'}`}
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

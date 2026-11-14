@@ -11,7 +11,7 @@ import { STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber
 
 // Keeps the six boxes on one line inside the card. Same 44px boxes as the component default from 640px up.
 const BOXES_FIT =
-  '[&_input]:h-12 [&_input]:w-9 [&>div]:gap-1.5 sm:[&_input]:h-14 sm:[&_input]:w-11 sm:[&>div]:gap-2';
+  '[&_input]:h-12 [&_input]:w-9 [&>div]:gap-1.5 sm:[&_input]:h-14 sm:[&_input]:w-11 sm:[&>div]:gap-2 lg:[&_input]:h-16 lg:[&_input]:w-12 lg:[&_input]:text-2xl lg:[&>div]:gap-3 2xl:[&_input]:h-[4.5rem] 2xl:[&_input]:w-14';
 const FOCUS_LINK =
   'rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
 
@@ -88,20 +88,20 @@ export default function StudentLogin() {
     <div>
       <header className="space-y-4">
         <div className="flex items-center gap-3">
-          <Logo className="h-8 w-8 text-shush-orange" />
-          <span className="text-xl font-extrabold tracking-[0.18em] text-shush-ink">SHUSH</span>
+          <Logo className="h-8 w-8 text-shush-orange lg:h-10 lg:w-10" />
+          <span className="text-xl font-extrabold tracking-[0.18em] text-shush-ink lg:text-2xl">SHUSH</span>
         </div>
         <div>
-          <h2 id="student-auth-heading" className="text-3xl font-bold tracking-tight text-shush-ink">Sign in</h2>
-          <p className="mt-1.5 text-sm text-shush-inkSoft">Enter your student number. You will confirm your name next.</p>
+          <h2 id="student-auth-heading" className="text-3xl font-bold tracking-tight text-shush-ink lg:text-4xl 2xl:text-5xl">Sign in</h2>
+          <p className="mt-1.5 text-sm text-shush-inkSoft lg:mt-2 lg:text-base 2xl:text-lg">Enter your student number. You will confirm your name next.</p>
         </div>
       </header>
 
-      <form onSubmit={handleContinue} className="mt-6 space-y-4" noValidate>
+      <form onSubmit={handleContinue} className="mt-6 space-y-4 lg:mt-8 lg:space-y-5" noValidate>
         {notice && <Alert type={notice.type}>{notice.text}</Alert>}
         <Alert>{error}</Alert>
         <div>
-          <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-shush-inkSoft">
+          <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-shush-inkSoft lg:text-sm 2xl:text-base">
             Student number
           </label>
           <div className={`mt-3 ${BOXES_FIT}`}>
@@ -116,19 +116,19 @@ export default function StudentLogin() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md lg:py-4 lg:text-base 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>
       </form>
 
-      <div aria-hidden="true" className="my-6 flex items-center gap-3 text-xs font-medium tracking-wider text-shush-muted">
+      <div aria-hidden="true" className="my-6 flex items-center gap-3 text-xs font-medium tracking-wider text-shush-muted lg:my-8 lg:text-sm 2xl:text-base">
         <span className="h-px flex-1 bg-shush-line" />
         OR
         <span className="h-px flex-1 bg-shush-line" />
       </div>
 
-      <div className="space-y-3 text-center text-xs text-shush-inkSoft">
+      <div className="space-y-3 text-center text-xs text-shush-inkSoft lg:text-sm 2xl:text-base">
         <p>
           New here?
           <Link to="/student/signup" className={`ml-1 font-medium text-shush-orange700 hover:underline underline-offset-2 ${FOCUS_LINK}`}>

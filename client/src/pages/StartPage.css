@@ -1,268 +1,85 @@
-/* ==========================================================================
-   SHUSH Landing Page — Cohesive Tokens (Matches AppShell.css)
-   ========================================================================== */
-
-.landing-shell {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: 24px;
-  overflow: hidden;
-  background:
-    radial-gradient(60rem 40rem at 12% -10%, rgba(254, 237, 168, 0.85), transparent 60%),
-    radial-gradient(48rem 36rem at 92% 0%, rgba(251, 108, 48, 0.2), transparent 62%),
-    radial-gradient(52rem 40rem at 50% 110%, rgba(249, 231, 145, 0.55), transparent 65%),
-    linear-gradient(180deg, var(--shush-cream) 0%, var(--shush-cream-deep) 100%);
-  color: var(--shush-ink);
-}
-
-/* Subtle concentric acoustic wave rings */
-.acoustic-rings {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.acoustic-rings span {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(253, 80, 4, 0.12);
-}
-
-.acoustic-rings span:nth-child(1) { width: 680px; height: 680px; }
-.acoustic-rings span:nth-child(2) { width: 980px; height: 980px; }
-.acoustic-rings span:nth-child(3) { width: 1320px; height: 1320px; }
-
-/* Main White Container (Cloud Theme) */
-.landing-card {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 1080px;
-  padding: 44px 48px 36px;
-  border-radius: var(--shush-radius);
-  background: var(--shush-white);
-  border: 1px solid var(--shush-line);
-  box-shadow: var(--shush-shadow);
-}
-
-/* Brand Header Row */
-.landing-brand-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 32px;
-}
-
-.landing-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--shush-orange);
-}
-
-.landing-logo-icon {
-  width: 24px;
-  height: 24px;
-  color: var(--shush-orange);
-}
-
-.landing-wordmark {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--shush-ink);
-}
-
-/* Welcome Typography */
-.landing-header {
-  margin-bottom: 28px;
-}
+/* Landing page only. The page frame, hero and form card live in
+   components/auth-layout.css; colors are the --shush-* tokens from index.css. */
 
 .landing-title {
-  margin: 0 0 6px;
-  font-size: 32px;
-  font-weight: 700;
+  margin: 0 0 0.35rem;
+  font-size: 2rem;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--shush-ink);
 }
 
 .landing-subtitle {
   margin: 0;
-  font-size: 15px;
-  color: var(--shush-ink-soft);
-}
-
-/* Role Selection Grid */
-.role-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.role-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 22px;
-  border-radius: 20px;
-  background: var(--shush-cream);
-  border: 1px solid var(--shush-line);
-  text-decoration: none;
-  color: var(--shush-ink);
-  transition:
-    transform 0.18s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.role-card:hover {
-  transform: translateY(-2px);
-  background: var(--shush-gold-soft);
-  border-color: var(--shush-orange-soft);
-  box-shadow: 0 12px 26px rgba(253, 80, 4, 0.12);
-}
-
-.role-card:focus-visible {
-  outline: 2px solid var(--shush-orange);
-  outline-offset: 2px;
-}
-
-.role-card:active {
-  transform: scale(0.98);
-}
-
-.role-card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.role-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--shush-cream-deep);
-  color: var(--shush-orange);
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.role-icon--warm {
-  background: var(--shush-cream-deep);
-  color: var(--shush-orange);
-}
-
-.role-card:hover .role-icon {
-  background: var(--shush-orange);
-  color: var(--shush-white);
-}
-
-.role-card--faculty:hover .role-icon--warm {
-  background: linear-gradient(180deg, var(--shush-orange) 0%, var(--shush-orange-600) 100%);
-  color: var(--shush-white);
-}
-
-.role-icon svg,
-.role-arrow svg {
-  width: 18px;
-  height: 18px;
-}
-
-.role-arrow {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  color: var(--shush-muted);
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.role-card:hover .role-arrow {
-  color: var(--shush-orange);
-  transform: translateX(3px);
-}
-
-.role-title {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--shush-ink);
-}
-
-.role-desc {
-  margin: 0;
-  font-size: 13.5px;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--shush-ink-soft);
 }
 
-/* Cursor-Tracking Glow Effect (Subtle Orange Light on Cream Surface) */
-.landing-shell .glow-btn {
-  position: relative;
-  overflow: hidden;
-  --glow-x: 50%;
-  --glow-y: 50%;
+/* Numbered "How it works" list */
+.landing-steps {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.75rem 0 2rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: landing-step;
 }
 
-.landing-shell .glow-btn .glow-light {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    circle 90px at var(--glow-x) var(--glow-y),
-    rgba(253, 80, 4, 0.3) 0%,
-    rgba(253, 80, 4, 0.1) 50%,
-    rgba(253, 80, 4, 0) 100%
-  );
-  opacity: 0;
-  transition: opacity 350ms ease;
-  pointer-events: none;
+.landing-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  counter-increment: landing-step;
 }
 
-.landing-shell .glow-btn:hover .glow-light,
-.landing-shell .glow-btn:focus-visible .glow-light {
-  opacity: 1;
+.landing-step-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 9999px;
+  background: var(--shush-orange-600);
+  color: var(--shush-white);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.landing-step-num::before { content: counter(landing-step); }
+
+.landing-step-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--shush-ink);
 }
 
-.landing-shell .glow-btn .glow-text {
-  position: relative;
-  z-index: 1;
+.landing-step-text {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.875rem;
+  color: var(--shush-ink-soft);
 }
 
-/* Footer */
+/* Arrow nudge on hover */
+.landing-cta-arrow { transition: transform 0.2s ease; }
+.landing-cta:hover .landing-cta-arrow,
+.landing-cta:focus-visible .landing-cta-arrow { transform: translateX(3px); }
+.landing-cta:active { transform: scale(0.99); }
+
 .landing-footer {
-  margin-top: 28px;
-  padding-top: 18px;
+  margin: 1.75rem 0 0;
+  padding-top: 1.1rem;
   border-top: 1px solid var(--shush-line);
   text-align: center;
-  font-size: 12.5px;
+  font-size: 0.8125rem;
   color: var(--shush-muted);
 }
 
-/* Mobile Breakpoint */
-@media (max-width: 640px) {
-  .landing-card {
-    padding: 32px 24px 28px;
-    border-radius: 26px;
-  }
-
-  .role-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .landing-title {
-    font-size: 28px;
-  }
+@media (min-width: 1024px) {
+  .landing-title { font-size: 2.5rem; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .landing-cta-arrow { transition: none; transform: none !important; }
+}

@@ -1,143 +1,83 @@
-import { useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import Logo from '../components/Logo.jsx';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import AuthLayout, { AuthHero } from '../components/AuthLayout.jsx';
 import './StartPage.css';
 
+const SLIDES = [
+  { title: 'Check in', text: 'Enter your student number and pick an open table.' },
+  { title: 'Stay in the quiet zone', text: 'Each table listens for noise and signals when it gets loud.' },
+  { title: 'Quiet study earns rewards', text: 'The most frequent, quietest and longest quiet-streak visitors are recognized.' },
+];
+
+const STEPS = [
+  { title: 'Enter your student number', text: 'No password needed.' },
+  { title: 'Choose a table', text: 'See which tables have free seats.' },
+  { title: 'Keep it quiet', text: 'Your table lights up if it gets loud.' },
+];
+
 export default function StartPage() {
-  // Tracks cursor position to power the .glow-btn radial light effect
-  const handlePointerMove = useCallback((e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty('--glow-x', `${e.clientX - rect.left}px`);
-    e.currentTarget.style.setProperty('--glow-y', `${e.clientY - rect.top}px`);
-  }, []);
+  const navigate = useNavigate();
+
+  // Ctrl+Shift+F opens the faculty sign-in. Deliberately not shown anywhere on the page.
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.repeat || !e.ctrlKey || !e.shiftKey || e.altKey || e.metaKey) return;
+      if (e.key.toLowerCase() !== 'f') return;
+      e.preventDefault();
+      navigate('/login');
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [navigate]);
 
   return (
-    <div className="landing-shell">
-      {/* Decorative Concentric Acoustic Wave Rings */}
-      <div className="acoustic-rings" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
+    <AuthLayout
+      labelledBy="welcome-heading"
+      hero={
+        <AuthHero
+          title="A quieter library starts here."
+          subtitle="Monitor. Manage. Maintain. For a better study environment."
+          slides={SLIDES}
+        />
+      }
+    >
+      <h2 id="welcome-heading" className="landing-title">Welcome</h2>
+      <p className="landing-subtitle">Check in with your student number and find a quiet table.</p>
 
-      <main className="landing-card" aria-labelledby="welcome-heading">
-        {/* Top Brand Row */}
-        <header className="landing-brand-row">
-          <div className="landing-brand">
-            <Logo className="landing-logo-icon" />
-            <span className="landing-wordmark">SHUSH</span>
-          </div>
-        </header>
+      <ol className="landing-steps" aria-label="How it works">
+        {STEPS.map((step) => (
+          <li key={step.title} className="landing-step">
+            <span className="landing-step-num" aria-hidden="true" />
+            <span>
+              <span className="landing-step-title">{step.title}</span>
+              <span className="landing-step-text">{step.text}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
 
-        {/* Welcome Header */}
-        <div className="landing-header">
-          <h1 id="welcome-heading" className="landing-title">
-            Welcome
-          </h1>
-          <p className="landing-subtitle">
-            Choose how you want to sign in to the SHUSH network.
-          </p>
-        </div>
+      <Link
+        to="/student"
+        className="landing-cta group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-shush-orange600 px-5 py-4 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+      >
+        Student check-in
+        <svg aria-hidden="true" className="landing-cta-arrow h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </Link>
 
-        {/* Two-Column Role Selection Grid */}
-        <div className="role-grid">
-          {/* Student Check-in Card */}
-          <Link
-            to="/student"
-            className="role-card glow-btn"
-            onMouseMove={handlePointerMove}
-          >
-            <span className="glow-light" aria-hidden="true" />
-            <div className="role-card-top">
-              <span className="role-icon" aria-hidden="true">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <polyline points="16 11 18 13 22 9" />
-                </svg>
-              </span>
-              <span className="role-arrow" aria-hidden="true">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
-                </svg>
-              </span>
-            </div>
+      <p className="mt-4 text-center text-sm text-shush-inkSoft">
+        New here?{' '}
+        <Link
+          to="/student/signup"
+          className="rounded px-1 font-semibold text-shush-orange700 underline underline-offset-4 hover:text-shush-orange600 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange"
+        >
+          Create a student account
+        </Link>
+      </p>
 
-            <div className="role-body glow-text">
-              <h2 className="role-title">Student check-in</h2>
-              <p className="role-desc">
-                Sign in with your student number and choose an available study table.
-              </p>
-            </div>
-          </Link>
-
-          {/* Faculty Console Card */}
-          <Link
-            to="/console/dashboard"
-            className="role-card role-card--faculty glow-btn"
-            onMouseMove={handlePointerMove}
-          >
-            <span className="glow-light" aria-hidden="true" />
-            <div className="role-card-top">
-              <span className="role-icon role-icon--warm" aria-hidden="true">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="7" height="9" x="3" y="3" rx="1" />
-                  <rect width="7" height="5" x="14" y="3" rx="1" />
-                  <rect width="7" height="9" x="14" y="12" rx="1" />
-                  <rect width="7" height="5" x="3" y="16" rx="1" />
-                </svg>
-              </span>
-              <span className="role-arrow" aria-hidden="true">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
-                </svg>
-              </span>
-            </div>
-
-            <div className="role-body glow-text">
-              <h2 className="role-title">Faculty console</h2>
-              <p className="role-desc">
-                Manage dashboard metrics, table layout, student rewards, and history.
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        {/* Footer Support Note */}
-        <footer className="landing-footer">
-          <span>Need assistance? Contact your library desk administrator.</span>
-        </footer>
-      </main>
-    </div>
+      <p className="landing-footer">Need assistance? Contact your library desk administrator.</p>
+    </AuthLayout>
   );
 }

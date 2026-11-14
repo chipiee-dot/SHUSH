@@ -1,0 +1,141 @@
+/* Adapted from BrewedOps Motion Library: Clouds parallax, Radial glow, Wave lines.
+   Colors come only from the --shush-* tokens in index.css.
+   Only transform and opacity are animated. */
+
+.cloud-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  /* Per-variant knobs (overridden below). */
+  --cb-cloud-1: rgba(255, 255, 255, 0.7);
+  --cb-cloud-2: rgba(254, 237, 168, 0.6);
+  --cb-glow: rgba(251, 177, 68, 0.35);
+  --cb-wave: rgba(253, 80, 4, 0.14);
+}
+
+/* Hero: soft white and gold clouds over the deep orange panel.
+   Peak alpha stays at or below 0.06 so white text keeps AA contrast. */
+.cloud-bg--hero {
+  --cb-cloud-1: rgba(255, 255, 255, 0.06);
+  --cb-cloud-2: rgba(254, 237, 168, 0.06);
+  --cb-glow: rgba(254, 237, 168, 0.28);
+  --cb-wave: rgba(255, 255, 255, 0.16);
+}
+
+/* Card: barely there. */
+.cloud-bg--card {
+  --cb-cloud-1: rgba(255, 255, 255, 0.45);
+  --cb-cloud-2: rgba(254, 237, 168, 0.3);
+  --cb-glow: rgba(251, 177, 68, 0.14);
+  --cb-wave: rgba(253, 80, 4, 0.06);
+}
+
+/* ---- Radial glow ---- */
+.cloud-bg__glow {
+  position: absolute;
+  width: 46rem;
+  height: 46rem;
+  left: calc(var(--cb-glow-x, 100%) - 23rem);
+  top: -14rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--cb-glow) 0%, transparent 62%);
+  opacity: 0.7;
+  animation: cloud-glow 8s ease-in-out infinite;
+  will-change: opacity;
+}
+.cloud-bg--hero .cloud-bg__glow { --cb-glow-x: 100%; width: 30rem; height: 30rem; left: calc(100% - 15rem); top: -8rem; }
+.cloud-bg--page .cloud-bg__glow { --cb-glow-x: 85%; }
+.cloud-bg--card .cloud-bg__glow { --cb-glow-x: 90%; width: 26rem; height: 26rem; left: calc(90% - 13rem); top: -9rem; }
+
+@keyframes cloud-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.8; }
+}
+
+/* ---- Clouds: puffy shapes from overlapping soft ellipses ---- */
+.cloud-bg__cloud {
+  position: absolute;
+  width: 46rem;
+  height: 15rem;
+  background:
+    radial-gradient(ellipse 9rem 5.5rem at 18% 68%, var(--cb-cloud-1) 0%, transparent 72%),
+    radial-gradient(ellipse 11rem 8rem at 38% 46%, var(--cb-cloud-1) 0%, transparent 72%),
+    radial-gradient(ellipse 12rem 9rem at 60% 42%, var(--cb-cloud-2) 0%, transparent 72%),
+    radial-gradient(ellipse 10rem 6rem at 80% 66%, var(--cb-cloud-1) 0%, transparent 72%),
+    radial-gradient(ellipse 20rem 4.5rem at 50% 80%, var(--cb-cloud-2) 0%, transparent 74%);
+  will-change: transform;
+}
+
+.cloud-bg__cloud--a {
+  top: 6%;
+  left: -8rem;
+  animation: cloud-drift-a 60s ease-in-out infinite alternate;
+}
+.cloud-bg__cloud--b {
+  top: 40%;
+  left: 38%;
+  transform: scale(1.15);
+  animation: cloud-drift-b 90s ease-in-out infinite alternate;
+}
+.cloud-bg__cloud--c {
+  bottom: 2%;
+  left: -14rem;
+  transform: scale(1.3);
+  animation: cloud-drift-c 120s ease-in-out infinite alternate;
+}
+
+@keyframes cloud-drift-a {
+  from { transform: translate3d(-4vw, 0, 0); }
+  to   { transform: translate3d(14vw, 0, 0); }
+}
+@keyframes cloud-drift-b {
+  from { transform: translate3d(8vw, 0, 0) scale(1.15); }
+  to   { transform: translate3d(-12vw, 0, 0) scale(1.15); }
+}
+@keyframes cloud-drift-c {
+  from { transform: translate3d(-6vw, 0, 0) scale(1.3); }
+  to   { transform: translate3d(18vw, 0, 0) scale(1.3); }
+}
+
+/* ---- Wave lines ---- */
+.cloud-bg__waves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34%;
+  overflow: hidden;
+  color: var(--cb-wave);
+}
+.cloud-bg__waves svg {
+  display: block;
+  width: 200%;
+  height: 100%;
+  animation: cloud-wave 48s linear infinite;
+  will-change: transform;
+}
+.cloud-bg__wave {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.cloud-bg__wave--2 { opacity: 0.6; }
+
+@keyframes cloud-wave {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Reduced motion: keep the composition, stop every loop. */
+@media (prefers-reduced-motion: reduce) {
+  .cloud-bg__glow,
+  .cloud-bg__cloud,
+  .cloud-bg__waves svg {
+    animation: none !important;
+  }
+  .cloud-bg__glow { opacity: 0.7; }
+}

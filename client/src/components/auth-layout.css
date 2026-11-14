@@ -1,0 +1,245 @@
+/* Shared split-screen layout for the landing, login and sign-up pages.
+   Equalizer bars adapted from BrewedOps Motion Library: Equalizer bars.
+   Colors come only from the --shush-* tokens in index.css. */
+
+.auth-page {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  color: var(--shush-ink);
+}
+
+/* ---------- Hero panel ---------- */
+
+.auth-hero-panel {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  color: var(--shush-white);
+  border-radius: 0 0 2rem 2rem;
+  /* Deep orange where text sits; the vivid brand orange is decoration only (bottom right). */
+  background:
+    radial-gradient(30rem 24rem at 100% 100%, rgba(253, 80, 4, 0.55), transparent 65%),
+    linear-gradient(160deg, var(--shush-orange-600) 0%, var(--shush-orange-700) 18%, var(--shush-orange-700) 100%);
+  box-shadow: var(--shush-shadow);
+}
+
+.auth-hero-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
+.auth-hero-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.auth-hero-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--shush-white);
+}
+
+.auth-hero-sub {
+  margin: 0.75rem 0 0;
+  max-width: 28rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--shush-white);
+}
+
+/* Compact band: no subtitle, carousel or bars. */
+.auth-hero-sub,
+.auth-carousel,
+.auth-eq {
+  display: none;
+}
+
+/* ---------- Carousel ---------- */
+
+.auth-carousel {
+  margin-top: 2rem;
+  max-width: 30rem;
+}
+
+.auth-slides {
+  display: grid;
+}
+
+.auth-slide {
+  grid-area: 1 / 1;
+  padding-left: 1rem;
+  border-left: 3px solid var(--shush-gold-soft);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0.5s;
+}
+.auth-slide[data-active='true'] {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.auth-slide-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--shush-white);
+}
+
+.auth-slide-text {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--shush-white);
+}
+
+.auth-dots {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.auth-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: width 0.25s ease, background-color 0.25s ease;
+}
+.auth-dot[aria-current='true'] {
+  width: 1.75rem;
+  background: var(--shush-white);
+}
+.auth-dot:hover { background: var(--shush-white); }
+.auth-dot:focus-visible {
+  outline: 2px solid var(--shush-white);
+  outline-offset: 3px;
+}
+
+/* ---------- Equalizer bars ---------- */
+
+.auth-eq {
+  align-items: flex-end;
+  gap: 0.4rem;
+  height: 6rem;
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+
+.auth-eq-bar {
+  flex: 0 0 0.4rem;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--shush-white);
+  opacity: 0.85;
+  transform-origin: bottom;
+  transform: scaleY(var(--h));
+  animation: shush-eq var(--d) ease-in-out calc(var(--i) * -0.35s) infinite;
+  will-change: transform;
+}
+.auth-eq-bar--g { background: var(--shush-gold-soft); opacity: 0.95; }
+.auth-eq-bar--a { background: var(--shush-amber); opacity: 1; }
+
+@keyframes shush-eq {
+  0%, 100% { transform: scaleY(calc(var(--h) * 0.45)); }
+  50% { transform: scaleY(var(--h)); }
+}
+
+/* ---------- Form column ---------- */
+
+.auth-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 3vw, 3rem);
+}
+
+.auth-card-frost {
+  width: 100%;
+  max-width: 28rem;
+  padding: clamp(1.5rem, 3vw, 3rem);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--shush-line);
+  border-radius: 2rem;
+  box-shadow: var(--shush-shadow);
+}
+.auth-card-frost[data-width='lg'] { max-width: 38rem; }
+
+@supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+  .auth-card-frost {
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* ---------- Desktop: full-height split ---------- */
+
+@media (min-width: 1024px) {
+  .auth-page {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    grid-template-rows: none;
+  }
+
+  .auth-hero-panel {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0 3rem 3rem 0;
+  }
+
+  .auth-hero-inner {
+    gap: 0;
+    padding: clamp(2rem, 4vw, 4rem);
+  }
+
+  .auth-hero-copy { margin-top: clamp(2rem, 8vh, 5rem); }
+
+  .auth-hero-title {
+    max-width: 30rem;
+    font-size: clamp(2rem, 3.4vw, 3.5rem);
+  }
+
+  .auth-hero-sub,
+  .auth-carousel { display: block; }
+  .auth-eq { display: flex; }
+}
+
+/* Short laptop screens: drop the bars and subtitle so nothing is cut off. */
+@media (min-width: 1024px) and (max-height: 680px) {
+  .auth-eq,
+  .auth-hero-sub { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-eq-bar { animation: none !important; }
+  .auth-slide,
+  .auth-dot { transition: none; }
+}

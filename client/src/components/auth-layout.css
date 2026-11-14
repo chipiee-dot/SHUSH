@@ -22,10 +22,12 @@
   overflow: hidden;
   color: var(--shush-white);
   border-radius: 0 0 2rem 2rem;
-  /* Deep orange where text sits; the vivid brand orange is decoration only (bottom right). */
+  /* Inspiration orange. The deeper orange sits behind the text; the brighter orange and the
+     amber/cream glows are decoration only (bottom right, top right). */
   background:
-    radial-gradient(30rem 24rem at 100% 100%, rgba(253, 80, 4, 0.55), transparent 65%),
-    linear-gradient(160deg, var(--shush-orange-600) 0%, var(--shush-orange-700) 18%, var(--shush-orange-700) 100%);
+    radial-gradient(30rem 24rem at 100% 100%, rgba(247, 181, 71, 0.6), transparent 65%),
+    radial-gradient(26rem 20rem at 90% 6%, rgba(252, 235, 181, 0.35), transparent 70%),
+    linear-gradient(165deg, var(--shush-orange) 0%, var(--shush-orange) 50%, var(--shush-orange-bright) 100%);
   box-shadow: var(--shush-shadow);
 }
 
@@ -60,10 +62,18 @@
 .auth-hero-sub {
   margin: 0.75rem 0 0;
   max-width: 28rem;
-  font-size: 1rem;
-  line-height: 1.55;
+  font-size: 1.1875rem;
+  font-weight: 700;
+  line-height: 1.5;
   color: var(--shush-white);
 }
+
+/* White text on the inspiration orange: bold at 19px+ (counts as large text) with a soft shadow. */
+.auth-hero-brand,
+.auth-hero-title,
+.auth-hero-sub,
+.auth-slide-title,
+.auth-slide-text { text-shadow: 0 1px 2px rgba(166, 58, 6, 0.4); }
 
 /* Compact band: no subtitle, carousel or bars. */
 .auth-hero-sub,
@@ -101,15 +111,16 @@
 
 .auth-slide-title {
   margin: 0 0 0.25rem;
-  font-size: 1.125rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--shush-white);
 }
 
 .auth-slide-text {
   margin: 0;
-  font-size: 1rem;
-  line-height: 1.55;
+  font-size: 1.1875rem;
+  font-weight: 700;
+  line-height: 1.5;
   color: var(--shush-white);
 }
 
@@ -230,6 +241,90 @@
   .auth-hero-sub,
   .auth-carousel { display: block; }
   .auth-eq { display: flex; }
+}
+
+/* ---------- Optional photo behind the form column (landing page) ---------- */
+
+.auth-photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--shush-gold);
+}
+.auth-photo-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Warm yellow wash so the photo stays on theme. */
+.auth-photo-tint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--shush-gold) 70%, transparent) 0%,
+    color-mix(in srgb, var(--shush-amber) 45%, transparent) 100%);
+}
+
+/* Keep the form card readable over the photo. */
+.auth-page--photo .auth-card-frost { background: rgba(255, 255, 255, 0.9); }
+
+@media (min-width: 1024px) {
+  .auth-page--photo {
+    --card-w: min(28rem, 36vw);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  }
+
+  /* Photo fills the right side; it starts behind the hero so the curve never shows a gap. */
+  .auth-photo { left: 40%; }
+
+  /* The hero's right edge is cut in a big curve that bulges over the photo. */
+  .auth-page--photo .auth-hero-panel {
+    border-radius: 0 clamp(6rem, 14vw, 13rem) clamp(6rem, 14vw, 13rem) 0 / 0 50% 50% 0;
+  }
+
+  /* The Welcome card sits where the curve meets the picture: about 40% on the orange, 60% on the photo. */
+  .auth-page--photo .auth-main { justify-content: flex-start; padding-left: 0; }
+  .auth-page--photo .auth-card-frost {
+    width: var(--card-w);
+    max-width: none;
+    margin-left: calc(var(--card-w) * -0.42);
+  }
+
+  /* Keep the hero text clear of the card. */
+  .auth-page--photo .auth-hero-copy {
+    max-width: calc(60vw - clamp(2rem, 4vw, 4rem) - var(--card-w) * 0.42 - 1.5rem);
+  }
+}
+
+/* Landing page: larger hero text and elements (only when a photo is used). */
+@media (min-width: 1024px) {
+  .auth-page--photo .auth-hero-brand { gap: 0.8rem; font-size: 1.5rem; }
+  .auth-page--photo .auth-hero-brand svg { width: 2.75rem; height: 2.75rem; }
+
+  .auth-page--photo .auth-hero-title {
+    max-width: 38rem;
+    font-size: clamp(2.5rem, 4.4vw, 4.5rem);
+  }
+  .auth-page--photo .auth-hero-sub {
+    max-width: 34rem;
+    margin-top: 1rem;
+    font-size: 1.25rem;
+  }
+
+  .auth-page--photo .auth-carousel { max-width: 38rem; margin-top: 2.5rem; }
+  .auth-page--photo .auth-slide { padding-left: 1.25rem; border-left-width: 4px; }
+  .auth-page--photo .auth-slide-title { font-size: 1.5rem; }
+  .auth-page--photo .auth-slide-text { font-size: 1.25rem; }
+
+  .auth-page--photo .auth-dots { gap: 0.6rem; margin-top: 1.5rem; }
+  .auth-page--photo .auth-dot { width: 0.8rem; height: 0.8rem; }
+  .auth-page--photo .auth-dot[aria-current='true'] { width: 2.25rem; }
+
+  .auth-page--photo .auth-eq { gap: 0.55rem; height: 8rem; }
+  .auth-page--photo .auth-eq-bar { flex-basis: 0.6rem; }
 }
 
 /* Short laptop screens: drop the bars and subtitle so nothing is cut off. */

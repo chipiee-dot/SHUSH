@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout, { AuthHero } from '../components/AuthLayout.jsx';
+import libraryPhoto from '../assets/library-snapshot.jpg';
 import './StartPage.css';
 
 const SLIDES = [
@@ -33,6 +34,7 @@ export default function StartPage() {
   return (
     <AuthLayout
       labelledBy="welcome-heading"
+      photo={libraryPhoto}
       hero={
         <AuthHero
           title="A quieter library starts here."

@@ -113,8 +113,8 @@ export default function FacultyShell() {
           >
             <defs>
               <linearGradient id="navRailGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FD5004" />
-                <stop offset="100%" stopColor="#D93F00" />
+                <stop offset="0%" stopColor="#F25F13" />
+                <stop offset="100%" stopColor="#E4570F" />
               </linearGradient>
             </defs>
             <path

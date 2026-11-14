@@ -11,26 +11,26 @@
 
   /* Per-variant knobs (overridden below). */
   --cb-cloud-1: rgba(255, 255, 255, 0.7);
-  --cb-cloud-2: rgba(254, 237, 168, 0.6);
-  --cb-glow: rgba(251, 177, 68, 0.35);
-  --cb-wave: rgba(253, 80, 4, 0.14);
+  --cb-cloud-2: rgba(252, 235, 181, 0.6);
+  --cb-glow: rgba(247, 181, 71, 0.35);
+  --cb-wave: rgba(242, 95, 19, 0.14);
 }
 
 /* Hero: soft white and gold clouds over the deep orange panel.
    Peak alpha stays at or below 0.06 so white text keeps AA contrast. */
 .cloud-bg--hero {
   --cb-cloud-1: rgba(255, 255, 255, 0.06);
-  --cb-cloud-2: rgba(254, 237, 168, 0.06);
-  --cb-glow: rgba(254, 237, 168, 0.28);
+  --cb-cloud-2: rgba(252, 235, 181, 0.06);
+  --cb-glow: rgba(252, 235, 181, 0.28);
   --cb-wave: rgba(255, 255, 255, 0.16);
 }
 
 /* Card: barely there. */
 .cloud-bg--card {
   --cb-cloud-1: rgba(255, 255, 255, 0.45);
-  --cb-cloud-2: rgba(254, 237, 168, 0.3);
-  --cb-glow: rgba(251, 177, 68, 0.14);
-  --cb-wave: rgba(253, 80, 4, 0.06);
+  --cb-cloud-2: rgba(252, 235, 181, 0.3);
+  --cb-glow: rgba(247, 181, 71, 0.14);
+  --cb-wave: rgba(242, 95, 19, 0.06);
 }
 
 /* ---- Radial glow ---- */

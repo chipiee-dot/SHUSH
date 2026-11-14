@@ -31,12 +31,20 @@ function usePrefersReducedMotion() {
 /**
  * Full-bleed split screen: orange hero on the left, frosted form card on the right.
  * Below 1024px the hero collapses to a compact band above the form.
- * Props: hero (node, usually <AuthHero />), children (form column), formWidth ('md' | 'lg'), labelledBy (id of the form heading).
+ * Props: hero (node, usually <AuthHero />), children (form column), formWidth ('md' | 'lg'), labelledBy (id of the form heading),
+ * photo (optional image URL: shown behind the form column, with the hero's edge curved over it).
  */
-export default function AuthLayout({ hero, children, formWidth = 'md', labelledBy }) {
+export default function AuthLayout({ hero, children, formWidth = 'md', labelledBy, photo }) {
   return (
-    <div className="auth-page shush-cloud">
+    <div className={`auth-page shush-cloud${photo ? ' auth-page--photo' : ''}`}>
       <CloudBackground variant="page" />
+
+      {photo && (
+        <div className="auth-photo" aria-hidden="true">
+          <img className="auth-photo-img" src={photo} alt="" />
+          <div className="auth-photo-tint" />
+        </div>
+      )}
 
       <aside className="auth-hero-panel" aria-label="About SHUSH">
         <CloudBackground variant="hero" />

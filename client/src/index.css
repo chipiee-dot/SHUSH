@@ -3,27 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --shush-orange: #FD5004;
-  --shush-orange-soft: #FB6C30;
-  --shush-orange-600: #D93F00;
-  --shush-orange-700: #B83700;
-  --shush-amber: #FBB144;
-  --shush-gold: #F9E791;
-  --shush-gold-soft: #FEEDA8;
-  --shush-cream: #FFF8F0;
-  --shush-cream-deep: #FCEEDF;
+  --shush-orange: #F25F13;
+  --shush-orange-bright: #F48631;
+  --shush-orange-soft: #F29751;
+  --shush-orange-600: #CF470C;
+  --shush-orange-700: #A63A06;
+  --shush-amber: #F7B547;
+  --shush-gold: #F8DE8C;
+  --shush-gold-soft: #FCEBB5;
+  --shush-cream: #FFF7E8;
+  --shush-cream-deep: #FDEBCB;
+  --shush-cloud: #EEF3F8;
+  --shush-cloud-shade: #C9D7E4;
   --shush-white: #FFFFFF;
   --shush-ink: #2A1A12;
   --shush-ink-soft: #6B4A3A;
   --shush-muted: #8A6A57;
-  --shush-line: #F0D9C6;
-  --shush-line-strong: #E4C3A8;
+  --shush-line: #F3DFC6;
+  --shush-line-strong: #E8C9A2;
   --shush-danger: #B42318;
   --shush-danger-soft: #FFE1D6;
   --shush-success: #7A5A00;
   --shush-success-soft: #FDF3C9;
   --shush-radius: 1.75rem;
-  --shush-shadow: 0 24px 60px -24px rgba(253, 80, 4, 0.28);
+  --shush-shadow: 0 24px 60px -24px rgba(242, 95, 19, 0.28);
 }
 
 body {
@@ -36,13 +39,13 @@ body {
 
 /* Soundwave subtle glow effects */
 .glow-bar {
-  filter: drop-shadow(0 0 6px rgba(251, 177, 68, 0.45));
+  filter: drop-shadow(0 0 6px rgba(247, 181, 71, 0.45));
 }
 
 /* Input focus styling refinement */
 .custom-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(253, 80, 4, 0.25);
+  box-shadow: 0 0 0 2px rgba(242, 95, 19, 0.25);
   border-color: var(--shush-orange);
 }
 
@@ -82,9 +85,9 @@ input[type="number"] {
 /* Soft orange-gold "cloud" page background. */
 .shush-cloud {
   background:
-    radial-gradient(60rem 40rem at 12% -10%, rgba(254, 237, 168, 0.85), transparent 60%),
-    radial-gradient(48rem 36rem at 92% 0%, rgba(251, 108, 48, 0.20), transparent 62%),
-    radial-gradient(52rem 40rem at 50% 110%, rgba(249, 231, 145, 0.55), transparent 65%),
+    radial-gradient(60rem 40rem at 12% -10%, rgba(252, 235, 181, 0.85), transparent 60%),
+    radial-gradient(48rem 36rem at 92% 0%, rgba(242, 151, 81, 0.20), transparent 62%),
+    radial-gradient(52rem 40rem at 50% 110%, rgba(248, 222, 140, 0.55), transparent 65%),
     linear-gradient(180deg, var(--shush-cream) 0%, var(--shush-cream-deep) 100%);
 }
 
@@ -114,7 +117,7 @@ input[type="number"] {
   overflow: hidden;
   color: var(--shush-white);
   background:
-    radial-gradient(24rem 24rem at 110% 10%, rgba(254, 237, 168, 0.45), transparent 60%),
+    radial-gradient(24rem 24rem at 110% 10%, rgba(252, 235, 181, 0.45), transparent 60%),
     linear-gradient(160deg, var(--shush-orange) 0%, var(--shush-orange-600) 100%);
 }
 

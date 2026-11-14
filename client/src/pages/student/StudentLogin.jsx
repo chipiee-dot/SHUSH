@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
@@ -12,7 +12,9 @@ export default function StudentLogin() {
   const { setStudent, logout } = useStudentAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [raw, setRaw] = useState('');
+  // The landing page can hand over a student number: look it up straight away.
+  const prefill = location.state?.studentNo ?? '';
+  const [raw, setRaw] = useState(STUDENT_NO_RE.test(prefill) ? prefill : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [found, setFound] = useState(null); // { student, session }
@@ -20,23 +22,33 @@ export default function StudentLogin() {
 
   const seated = Boolean(found?.session);
 
-  async function handleContinue(e) {
-    e.preventDefault();
+  async function lookup(studentNo) {
     setError('');
     setNotice(null);
-    if (!STUDENT_NO_RE.test(raw)) {
+    if (!STUDENT_NO_RE.test(studentNo)) {
       setError('Enter your student number, like 21-0001.');
       return;
     }
     setBusy(true);
     try {
-      setFound(await api.studentLookup(raw));
+      setFound(await api.studentLookup(studentNo));
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
     }
   }
+
+  function handleContinue(e) {
+    e.preventDefault();
+    lookup(raw);
+  }
+
+  useEffect(() => {
+    if (STUDENT_NO_RE.test(prefill)) lookup(prefill);
+    // Only on first load; the number came from the landing page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleConfirm() {
     setBusy(true);

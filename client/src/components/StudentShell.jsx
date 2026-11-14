@@ -1,11 +1,22 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStudentAuth } from '../context/StudentAuthContext.jsx';
+import AuthLayout, { AuthHero } from './AuthLayout.jsx';
 import BokehBackground from './BokehBackground.jsx';
 import Logo from './Logo.jsx';
+
+const SLIDES = [
+  { title: 'Enter your student number', text: 'No password needed.' },
+  { title: 'Pick an open table', text: 'See which tables have free seats.' },
+  { title: 'Leave when you are done', text: 'Sign in again with your number to end your session.' },
+];
+
+// Sign-in and sign-up get the split auth layout; the table page keeps the card shell below.
+const AUTH_PATH = /^\/student\/(login|signup)\/?$/;
 
 export default function StudentShell() {
   const { student, checking, logout } = useStudentAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   async function handleSignOut() {
     try {
@@ -13,6 +24,24 @@ export default function StudentShell() {
     } finally {
       navigate('/student/login', { replace: true });
     }
+  }
+
+  if (AUTH_PATH.test(pathname)) {
+    return (
+      <AuthLayout
+        formWidth={pathname.includes('signup') ? 'lg' : 'md'}
+        labelledBy="student-auth-heading"
+        hero={
+          <AuthHero
+            title="Check in to your quiet seat."
+            subtitle="Monitor. Manage. Maintain. For a better study environment."
+            slides={SLIDES}
+          />
+        }
+      >
+        <Outlet />
+      </AuthLayout>
+    );
   }
 
   return (

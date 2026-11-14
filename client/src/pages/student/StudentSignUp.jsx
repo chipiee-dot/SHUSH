@@ -3,9 +3,15 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import { SECTION_RE, STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
+import Logo from '../../components/Logo.jsx';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 
 const LABEL = 'text-xs font-semibold uppercase tracking-wider text-shush-inkSoft';
+// Keeps the six boxes on one line inside the card. Same 44px boxes as the component default from 640px up.
+const BOXES_FIT =
+  '[&_input]:h-12 [&_input]:w-9 [&>div]:gap-1.5 sm:[&_input]:h-14 sm:[&_input]:w-11 sm:[&>div]:gap-2';
+const FOCUS_LINK =
+  'rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
 const INPUT =
   'mt-2 block w-full rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-3 text-sm text-shush-ink placeholder:text-shush-muted focus:border-shush-orange focus:ring-1 focus:ring-shush-orange';
 
@@ -48,40 +54,55 @@ export default function StudentSignUp() {
     }
   }
 
+  const brand = (
+    <div className="flex items-center gap-3">
+      <Logo className="h-8 w-8 text-shush-orange" />
+      <span className="text-xl font-extrabold tracking-[0.18em] text-shush-ink">SHUSH</span>
+    </div>
+  );
+
   if (done) {
     return (
-      <div className="mx-auto w-full max-w-4xl rounded-[2rem] border border-shush-line bg-shush-white p-6 shadow-2xl sm:p-8 lg:p-10">
-        <div className="mx-auto max-w-md text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">You are registered</h1>
-          <p className="mt-3 text-sm text-shush-inkSoft">You can now sign in with your student number.</p>
-          <Link
-            to="/student/login"
-            className="mt-8 inline-block rounded-xl bg-shush-orange px-6 py-3 text-sm font-medium text-white shadow-md hover:bg-shush-orange600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
-          >
-            Go to sign in
-          </Link>
+      <div className="space-y-6">
+        {brand}
+        <div>
+          <h2 id="student-auth-heading" className="text-3xl font-bold tracking-tight text-shush-ink">You are registered</h2>
+          <p className="mt-1.5 text-sm text-shush-inkSoft">You can now sign in with your student number.</p>
         </div>
+        <Link
+          to="/student/login"
+          className="inline-flex w-full items-center justify-center rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+        >
+          Go to sign in
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl rounded-[2rem] border border-shush-line bg-shush-white p-6 shadow-2xl sm:p-8 lg:p-10">
-      <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">Sign up</h1>
-      <p className="mt-2 text-sm text-shush-inkSoft">Enter your details exactly as they appear on your student record.</p>
+    <div>
+      <header className="space-y-4">
+        {brand}
+        <div>
+          <h2 id="student-auth-heading" className="text-3xl font-bold tracking-tight text-shush-ink">Sign up</h2>
+          <p className="mt-1.5 text-sm text-shush-inkSoft">Enter your details exactly as they appear on your student record.</p>
+        </div>
+      </header>
 
-      <form onSubmit={handleSubmit} className="mt-8 grid gap-5 sm:grid-cols-2" noValidate>
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-5 sm:grid-cols-2" noValidate>
         <div className="sm:col-span-2">
           <Alert>{error}</Alert>
         </div>
 
         <div className="sm:col-span-2">
-          <label htmlFor="su-student-no" className={LABEL}>Student number</label>
-          <StudentNumberInput
-            id="su-student-no"
-            value={form.studentNo}
-            onChange={(d) => setForm((f) => ({ ...f, studentNo: formatStudentNumberInput(d) }))}
-          />
+          <label htmlFor="su-student-no" className={`block text-center ${LABEL}`}>Student number</label>
+          <div className={`mt-2 ${BOXES_FIT}`}>
+            <StudentNumberInput
+              id="su-student-no"
+              value={form.studentNo}
+              onChange={(d) => setForm((f) => ({ ...f, studentNo: formatStudentNumberInput(d) }))}
+            />
+          </div>
         </div>
 
         <div>
@@ -119,16 +140,16 @@ export default function StudentSignUp() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-shush-orange px-4 py-3.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:opacity-60"
+            className="w-full rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? 'Creating account…' : 'Create account'}
           </button>
         </div>
       </form>
 
-      <p className="mt-6 text-center text-sm text-shush-inkSoft">
-        Already registered?{' '}
-        <Link to="/student/login" className="font-medium text-shush-orange700 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange">
+      <p className="mt-6 text-center text-xs text-shush-inkSoft">
+        Already registered?
+        <Link to="/student/login" className={`ml-1 font-medium text-shush-orange700 hover:underline underline-offset-2 ${FOCUS_LINK}`}>
           Sign in
         </Link>
       </p>

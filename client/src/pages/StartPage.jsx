@@ -60,7 +60,7 @@ export default function StartPage() {
 
       <Link
         to="/student"
-        className="landing-cta group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-shush-orange600 px-5 py-4 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+        className="landing-cta group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-shush-orange600 px-5 py-4 text-base font-semibold text-white shadow-md lg:min-[801px]:py-5 lg:min-[801px]:text-xl transition hover:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
       >
         Student check-in
         <svg aria-hidden="true" className="landing-cta-arrow h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -69,7 +69,7 @@ export default function StartPage() {
         </svg>
       </Link>
 
-      <p className="mt-4 text-center text-sm text-shush-inkSoft">
+      <p className="mt-4 text-center text-sm text-shush-inkSoft lg:min-[801px]:mt-5 lg:min-[801px]:text-base">
         New here?{' '}
         <Link
           to="/student/signup"

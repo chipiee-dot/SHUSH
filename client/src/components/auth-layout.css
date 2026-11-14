@@ -327,6 +327,12 @@
   .auth-page--photo .auth-eq-bar { flex-basis: 0.6rem; }
 }
 
+/* Landing page, tall desktop screens: a larger Welcome card (wider, roomier). Short screens keep the compact card. */
+@media (min-width: 1024px) and (min-height: 801px) {
+  .auth-page--photo { --card-w: min(38rem, 40vw); }
+  .auth-page--photo .auth-card-frost { padding: clamp(2rem, 3.2vw, 3.75rem); }
+}
+
 /* Short laptop screens: drop the bars and subtitle so nothing is cut off. */
 @media (min-width: 1024px) and (max-height: 680px) {
   .auth-eq,

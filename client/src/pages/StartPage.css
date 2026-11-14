@@ -222,6 +222,18 @@
   }
 }
 
+/* Landing page, tall desktop screens: bigger text and spacing inside the Welcome card. */
+@media (min-width: 1024px) and (min-height: 801px) {
+  .landing-title { font-size: 3.25rem; }
+  .landing-subtitle { font-size: 1.25rem; }
+  .landing-steps { gap: 1.25rem; margin: 2.25rem 0 2.5rem; }
+  .landing-step { gap: 1.1rem; }
+  .landing-step-num { width: 2.5rem; height: 2.5rem; font-size: 1.0625rem; }
+  .landing-step-title { font-size: 1.1875rem; }
+  .landing-step-text { margin-top: 0.15rem; font-size: 1.0625rem; }
+  .landing-footer { padding-top: 1.4rem; font-size: 0.9375rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-form { animation: none; }
   .landing-form-btn, .landing-form-arrow { transition: none; }

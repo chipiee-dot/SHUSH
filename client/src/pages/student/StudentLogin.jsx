@@ -135,11 +135,6 @@ export default function StudentLogin() {
             Sign up with your student number
           </Link>
         </p>
-        <p>
-          <Link to="/login" className={`font-medium text-shush-orange700 hover:underline underline-offset-2 ${FOCUS_LINK}`}>
-            Faculty sign-in
-          </Link>
-        </p>
       </div>
 
       <ConfirmDialog

@@ -1,0 +1,40 @@
+/* Full-window pop-up. Rendered through a portal on document.body so that no ancestor
+   (for example the backdrop-filter on .auth-card-frost) can shrink the fixed layer. */
+
+.confirm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--shush-ink) 55%, transparent);
+  animation: confirm-scrim-in 160ms ease-out both;
+}
+
+@supports ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+  .confirm-scrim {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+}
+
+.confirm-panel {
+  animation: confirm-panel-in 180ms ease-out both;
+}
+
+@keyframes confirm-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirm-panel-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-scrim,
+  .confirm-panel { animation: none; }
+}

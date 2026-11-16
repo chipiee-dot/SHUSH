@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
-import { SECTION_RE, STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
+import { SECTION_RE, STUDENT_NO_RE, formatSectionInput, formatStudentNumberInput } from '../../lib/studentNumber.js';
 import Logo from '../../components/Logo.jsx';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 
@@ -125,15 +125,17 @@ export default function StudentSignUp() {
           <input
             id="su-section"
             placeholder="BSIT-3D"
-            maxLength={12}
+            autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
             value={form.section}
-            onChange={(e) => setForm((f) => ({ ...f, section: e.target.value.toUpperCase() }))}
+            onChange={(e) => setForm((f) => ({ ...f, section: formatSectionInput(e.target.value) }))}
             className={INPUT}
           />
         </div>
 
         <p className="text-xs text-shush-muted sm:col-span-2 lg:text-sm">
-          Section format: course, dash, year and letter, for example BSIT-3D, BSCS-1D or BSEE-2D.
+          Type your section and the dash is added for you, for example BSIT3D becomes BSIT-3D.
         </p>
 
         <div className="sm:col-span-2">

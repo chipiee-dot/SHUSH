@@ -145,11 +145,11 @@ export function createSettingsRouter(db, config) {
     })
   );
 
-  // Save moved / resized tables in one step. Body: { tables: [{ tableNo, col, row, width, height, seats? }] }.
+  // Any signed-in faculty member can move / resize tables. Save moved / resized tables in one step. Body: { tables: [{ tableNo, col, row, width, height, seats? }] }.
   // Send changed tables only (the JSON body limit is 10kb; at most 100 entries are accepted).
   router.put(
     '/layout',
-    adminOnly,
+    requireAuth(config),
     wrap(async (req, res) => {
       const changes = req.body?.tables;
       const rows = await db.getLayout();

@@ -149,10 +149,10 @@ test('rewards accepts only the known periods', async () => {
   assert.deepEqual(body.mostFrequent, []);
 });
 
-test('saving the layout is admin only and validated', async () => {
+test('saving the layout needs sign-in and is validated', async () => {
   const body = { tables: [{ tableNo: 2, col: 0, row: 6, width: 2, height: 2 }] };
   assert.equal((await call('PUT', '/api/settings/layout', { body })).status, 401);
-  assert.equal((await call('PUT', '/api/settings/layout', { cookie: FACULTY, body })).status, 403);
+  assert.equal((await call('PUT', '/api/settings/layout', { cookie: FACULTY, body })).status, 200);
 
   const ok = await call('PUT', '/api/settings/layout', { cookie: ADMIN, body });
   assert.equal(ok.status, 200);

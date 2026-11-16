@@ -215,6 +215,7 @@ export default function TableLayout() {
   const [saveError, setSaveError] = useState('');
   const [notice, setNotice] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
 
   const tileRefs = useRef(new Map());
   const canvasRef = useRef(null);
@@ -370,7 +371,7 @@ export default function TableLayout() {
   return (
     <div className="space-y-6">
       <PageHeader title="Table layout" sample={sample} subtitle={`Live · updated ${formatTime(updatedAt)}`}>
-        {isAdmin && !editing && (
+        {!editing && (
           <div className="flex flex-wrap items-center gap-3">
             {tables.length > 0 &&
               (isSmall ? (
@@ -380,9 +381,11 @@ export default function TableLayout() {
                   Edit layout
                 </button>
               ))}
-            <GlowButton onClick={openAdd} className={PRIMARY_BTN}>
-              Add table
-            </GlowButton>
+            {isAdmin && (
+              <GlowButton onClick={openAdd} className={PRIMARY_BTN}>
+                Add table
+              </GlowButton>
+            )}
           </div>
         )}
       </PageHeader>
@@ -435,7 +438,7 @@ export default function TableLayout() {
                         <button type="button" onClick={handleCancelEdit} disabled={saving} className={SECONDARY_BTN}>
                           Cancel
                         </button>
-                        <button type="button" onClick={handleSaveLayout} disabled={!editor.dirty || saving} className={PRIMARY_BTN}>
+                        <button type="button" onClick={() => setConfirmSave(true)} disabled={!editor.dirty || saving} className={PRIMARY_BTN}>
                           {saving ? 'Saving…' : 'Save layout'}
                         </button>
                       </div>
@@ -525,6 +528,20 @@ export default function TableLayout() {
 
       {/* Keeps the last tiles reachable above the bottom sheet on small screens. */}
       {selected && <div className="h-[55vh] lg:hidden" aria-hidden="true" />}
+
+      <ConfirmDialog
+        open={confirmSave}
+        title="Save layout changes?"
+        confirmLabel="Save layout"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setConfirmSave(false);
+          handleSaveLayout();
+        }}
+        onCancel={() => setConfirmSave(false)}
+      >
+        {`You changed ${editor.changes.length} ${editor.changes.length === 1 ? 'table' : 'tables'} on the floor plan. Saving updates the layout for everyone right away.`}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={confirmCancel}

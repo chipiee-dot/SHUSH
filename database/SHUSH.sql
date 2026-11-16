@@ -530,6 +530,53 @@ BEGIN
 END
 GO
 
+-- 18a) DEVICE SETTINGS: connect a device to a table (or change the table's device code)
+-- A table has at most one device and a device belongs to one table. If the table already has a device,
+-- its code is changed and the old readings are cleared (alerts already recorded are kept).
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Device_Assign
+    @TableNo    INT,
+    @DeviceCode NVARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @DeviceCode = LTRIM(RTRIM(@DeviceCode));
+    IF @DeviceCode IS NULL OR LEN(@DeviceCode) < 1 OR LEN(@DeviceCode) > 20
+       OR @DeviceCode LIKE N'%[^A-Za-z0-9-]%'
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Device code must be 1 to 20 letters, numbers or dashes.' AS Message; RETURN;
+    END
+
+    DECLARE @TableId INT;
+    SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId <> @TableId)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to another table.') AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId)
+    BEGIN
+        IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId AND DeviceCode = @DeviceCode)
+        BEGIN
+            SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to Table ', @TableNo, N'.') AS Message; RETURN;
+        END
+        UPDATE dbo.Device
+           SET DeviceCode = @DeviceCode, LastLevel = NULL, LastStatus = NULL, LastSeenAt = NULL, IsSample = 0
+         WHERE TableId = @TableId;
+    END
+    ELSE
+        INSERT INTO dbo.Device (DeviceCode, TableId, IsSample) VALUES (@DeviceCode, @TableId, 0);
+
+    SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is now connected to Table ', @TableNo, N'.') AS Message;
+END
+GO
+
 -- 18b) HARDWARE HOOK: one noise reading from a device -------------------------
 -- Called by POST /api/device/readings (server/src/routes/device.js).
 -- *** NOT IMPLEMENTED YET. The hardware/backend team writes the body below. ***

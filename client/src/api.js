@@ -71,6 +71,9 @@ export const api = {
   addTable: (fields) => request('/settings/tables', { method: 'POST', body: fields }),
   setTableSeats: (tableNo, seats) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { seats } }),
+  // Connect a device to a table (or change its code).
+  assignDevice: (tableNo, deviceCode) =>
+    request(`/settings/tables/${encodeURIComponent(tableNo)}/device`, { method: 'PUT', body: { deviceCode } }),
   // Change a table's number (and optionally its seats) in one step.
   updateTable: (tableNo, { newTableNo, seats }) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { newTableNo, seats } }),

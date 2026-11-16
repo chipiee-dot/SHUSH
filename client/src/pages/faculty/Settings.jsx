@@ -72,19 +72,22 @@ export default function Settings() {
         icon={NAV_ICONS.settings}
         subtitle="Tables, seats and device thresholds. Administrators only."
       />
-      <TableSettings focusNo={focusNo} onRenumbered={() => setTablesVersion((v) => v + 1)} />
+      <TableSettings focusNo={focusNo} onChanged={() => setTablesVersion((v) => v + 1)} />
       <DeviceSettings key={tablesVersion} focusNo={focusNo} />
       <SampleDataSettings />
     </div>
   );
 }
 
-function TableSettings({ focusNo, onRenumbered }) {
+function TableSettings({ focusNo, onChanged }) {
   const { data, error, loading, reload } = usePolling(api.adminTables, 0);
   const [drafts, setDrafts] = useState({});
   const [numberDrafts, setNumberDrafts] = useState({}); // new table numbers, keyed by the current number
   const [rowMessages, setRowMessages] = useState({});
   const [savingNo, setSavingNo] = useState(null);
+  const [deviceDrafts, setDeviceDrafts] = useState({}); // device codes being typed, keyed by table number
+  const [deviceMessages, setDeviceMessages] = useState({});
+  const [connectingNo, setConnectingNo] = useState(null);
   const [newTable, setNewTable] = useState({ tableNo: '', seats: '4' });
   const [addMessage, setAddMessage] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -117,12 +120,33 @@ function TableSettings({ focusNo, onRenumbered }) {
       setMessage(table.tableNo, { type: 'success', text: result.message });
       setDrafts((d) => without(d, table.tableNo));
       setNumberDrafts((d) => without(d, table.tableNo));
-      if (renumbering) onRenumbered?.();
+      if (renumbering) onChanged?.();
       reload();
     } catch (err) {
       setMessage(table.tableNo, { type: 'error', text: err.message });
     } finally {
       setSavingNo(null);
+    }
+  }
+
+  // Connects a device to the table (or changes the table's device code).
+  async function connectDevice(table) {
+    const code = (deviceDrafts[table.tableNo] ?? table.deviceCode ?? '').trim();
+    if (!/^[A-Za-z0-9-]{1,20}$/.test(code)) {
+      setDeviceMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: 'Use 1 to 20 letters, numbers or dashes, e.g. SHUSH-T03.' } }));
+      return;
+    }
+    setConnectingNo(table.tableNo);
+    try {
+      const result = await api.assignDevice(table.tableNo, code);
+      setDeviceMessages((m) => ({ ...m, [table.tableNo]: { type: 'success', text: result.message } }));
+      setDeviceDrafts((d) => without(d, table.tableNo));
+      onChanged?.(); // the device list below reloads
+      reload();
+    } catch (err) {
+      setDeviceMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: err.message } }));
+    } finally {
+      setConnectingNo(null);
     }
   }
 
@@ -146,7 +170,7 @@ function TableSettings({ focusNo, onRenumbered }) {
     <Card
       icon={NAV_ICONS.layout}
       title="Tables and seats"
-      subtitle="Change a table's number or how many seats it has, or add a table by its number. The new table is placed automatically on the floor plan."
+      subtitle="Change a table's number or seats, connect its device, or add a table by its number. The new table is placed automatically on the floor plan."
     >
       {error && <Alert>{error}</Alert>}
       {!data ? (
@@ -159,6 +183,8 @@ function TableSettings({ focusNo, onRenumbered }) {
             const seatsDraft = drafts[t.tableNo] ?? String(t.seats);
             const numberDraft = numberDrafts[t.tableNo] ?? String(t.tableNo);
             const dirty = seatsDraft !== String(t.seats) || numberDraft !== String(t.tableNo);
+            const deviceDraft = deviceDrafts[t.tableNo] ?? t.deviceCode ?? '';
+            const deviceDirty = deviceDraft.trim() !== '' && deviceDraft.trim() !== (t.deviceCode ?? '');
             return (
               <li
                 key={t.tableNo}
@@ -225,6 +251,30 @@ function TableSettings({ focusNo, onRenumbered }) {
                 >
                   {savingNo === t.tableNo ? 'Saving…' : 'Save changes'}
                 </GlowButton>
+
+                <div className="mt-4 border-t border-shush-line pt-4">
+                  <label className="block">
+                    <span className={LABEL}>Device code</span>
+                    <input
+                      type="text"
+                      maxLength={20}
+                      autoComplete="off"
+                      placeholder="e.g. SHUSH-T03"
+                      aria-label={`Device code for table ${t.tableNo}`}
+                      value={deviceDraft}
+                      onChange={(e) => setDeviceDrafts((prev) => ({ ...prev, [t.tableNo]: e.target.value }))}
+                      className={`${INPUT} font-mono`}
+                    />
+                  </label>
+                  {rowNote(deviceMessages[t.tableNo])}
+                  <GlowButton
+                    disabled={!deviceDirty || connectingNo === t.tableNo}
+                    onClick={() => connectDevice(t)}
+                    className={`mt-3 w-full ${PRIMARY_BTN}`}
+                  >
+                    {connectingNo === t.tableNo ? 'Connecting…' : t.hasDevice ? 'Change device' : 'Connect device'}
+                  </GlowButton>
+                </div>
               </li>
             );
           })}

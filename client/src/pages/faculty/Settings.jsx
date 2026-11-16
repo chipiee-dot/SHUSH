@@ -8,7 +8,6 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import GlowButton from '../../components/GlowButton.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
-import SampleBadge from '../../components/SampleBadge.jsx';
 import { NAV_ICONS } from '../../components/navIcons.jsx';
 import usePolling from '../../hooks/usePolling.js';
 import { formatNumber, timeAgo } from '../../lib/format.js';
@@ -16,14 +15,16 @@ import { formatNumber, timeAgo } from '../../lib/format.js';
 const MAX_THRESHOLD = 4095;
 
 // Same look as the buttons and fields on the Table layout and History pages.
-const PRIMARY_BTN =
-  'rounded-xl bg-shush-orange600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2';
 const INPUT =
   'mt-1 block w-full rounded-xl border-shush-lineStrong bg-shush-white text-sm text-shush-ink focus:border-shush-orange focus:ring-shush-orange';
-const TILE = 'shush-rise rounded-xl border border-shush-line bg-shush-cream p-4 transition';
-const TILE_FOCUS = 'border-shush-orange bg-shush-goldSoft ring-2 ring-shush-orange/40';
+const SMALL_BTN =
+  'rounded-xl bg-shush-orange600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2';
+const GHOST_BTN =
+  'rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
+const LIST = 'divide-y divide-shush-line overflow-hidden rounded-xl border border-shush-line bg-shush-white';
+const ROW = 'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3';
+const FOCUS_ROW = 'bg-shush-goldSoft';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider text-shush-muted';
-const GRID = 'grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4';
 
 const DEVICE_ICON = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -40,11 +41,6 @@ const TRASH_ICON = (
     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
   </svg>
 );
-
-const rowNote = (message) =>
-  message && (
-    <p className={`mt-2 text-xs ${message.type === 'error' ? 'text-shush-danger' : 'text-shush-success'}`}>{message.text}</p>
-  );
 
 // Only administrators see the settings. The server checks the same rule on every request.
 export default function Settings() {
@@ -81,72 +77,79 @@ export default function Settings() {
 
 function TableSettings({ focusNo, onChanged }) {
   const { data, error, loading, reload } = usePolling(api.adminTables, 0);
-  const [drafts, setDrafts] = useState({});
-  const [numberDrafts, setNumberDrafts] = useState({}); // new table numbers, keyed by the current number
+  const [editingNo, setEditingNo] = useState(focusNo); // one table is edited at a time; "Edit table" on the floor plan opens it
+  const [drafts, setDrafts] = useState({}); // { [tableNo]: { number, seats, device } } while editing
   const [rowMessages, setRowMessages] = useState({});
   const [savingNo, setSavingNo] = useState(null);
-  const [deviceDrafts, setDeviceDrafts] = useState({}); // device codes being typed, keyed by table number
-  const [deviceMessages, setDeviceMessages] = useState({});
-  const [connectingNo, setConnectingNo] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
   const [newTable, setNewTable] = useState({ tableNo: '', seats: '4' });
   const [addMessage, setAddMessage] = useState(null);
   const [adding, setAdding] = useState(false);
 
   const setMessage = (no, message) => setRowMessages((m) => ({ ...m, [no]: message }));
-  const without = (obj, key) => {
-    const next = { ...obj };
-    delete next[key];
-    return next;
-  };
+  const draftOf = (t) => ({
+    number: String(t.tableNo),
+    seats: String(t.seats),
+    device: t.deviceCode ?? '',
+    ...drafts[t.tableNo],
+  });
+  const setField = (t, field, value) =>
+    setDrafts((d) => ({ ...d, [t.tableNo]: { ...draftOf(t), [field]: value } }));
 
-  // Saves the seat count and/or the table number for one table.
-  async function saveTable(table) {
-    const seats = Number(drafts[table.tableNo] ?? String(table.seats));
-    const newNo = Number(numberDrafts[table.tableNo] ?? String(table.tableNo));
-    const renumbering = newNo !== table.tableNo;
-    if (!Number.isInteger(seats) || seats < 1 || seats > 20) {
-      setMessage(table.tableNo, { type: 'error', text: 'Seats: enter a whole number from 1 to 20.' });
-      return;
-    }
-    if (!Number.isInteger(newNo) || newNo < 1 || newNo > 999) {
-      setMessage(table.tableNo, { type: 'error', text: 'Table number: enter a whole number from 1 to 999.' });
-      return;
-    }
-    setSavingNo(table.tableNo);
-    try {
-      const result = renumbering
-        ? await api.updateTable(table.tableNo, { newTableNo: newNo, seats })
-        : await api.setTableSeats(table.tableNo, seats);
-      setMessage(table.tableNo, { type: 'success', text: result.message });
-      setDrafts((d) => without(d, table.tableNo));
-      setNumberDrafts((d) => without(d, table.tableNo));
-      if (renumbering) onChanged?.();
-      reload();
-    } catch (err) {
-      setMessage(table.tableNo, { type: 'error', text: err.message });
-    } finally {
-      setSavingNo(null);
-    }
+  function openEdit(t) {
+    setMessage(t.tableNo, null);
+    setEditingNo(t.tableNo);
+  }
+  function closeEdit(t) {
+    setEditingNo(null);
+    setDrafts((d) => {
+      const next = { ...d };
+      delete next[t.tableNo];
+      return next;
+    });
   }
 
-  // Connects a device to the table (or changes the table's device code).
-  async function connectDevice(table) {
-    const code = (deviceDrafts[table.tableNo] ?? table.deviceCode ?? '').trim();
-    if (!/^[A-Za-z0-9-]{1,20}$/.test(code)) {
-      setDeviceMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: 'Use 1 to 20 letters, numbers or dashes, e.g. SHUSH-T03.' } }));
+  // One Save for the table number, the seats and the device code.
+  async function saveTable(t) {
+    const d = draftOf(t);
+    const seats = Number(d.seats);
+    const newNo = Number(d.number);
+    const device = d.device.trim();
+    const renumbering = newNo !== t.tableNo;
+    const seatsChanged = seats !== t.seats;
+    const deviceChanged = device !== '' && device !== (t.deviceCode ?? '');
+
+    if (!Number.isInteger(newNo) || newNo < 1 || newNo > 999) {
+      setMessage(t.tableNo, { type: 'error', text: 'Table number: enter a whole number from 1 to 999.' });
       return;
     }
-    setConnectingNo(table.tableNo);
+    if (!Number.isInteger(seats) || seats < 1 || seats > 20) {
+      setMessage(t.tableNo, { type: 'error', text: 'Seats: enter a whole number from 1 to 20.' });
+      return;
+    }
+    if (device !== '' && !/^[A-Za-z0-9-]{1,20}$/.test(device)) {
+      setMessage(t.tableNo, { type: 'error', text: 'Device code: use 1 to 20 letters, numbers or dashes, e.g. SHUSH-T03.' });
+      return;
+    }
+    if (!renumbering && !seatsChanged && !deviceChanged) {
+      closeEdit(t);
+      return;
+    }
+
+    setSavingNo(t.tableNo);
     try {
-      const result = await api.assignDevice(table.tableNo, code);
-      setDeviceMessages((m) => ({ ...m, [table.tableNo]: { type: 'success', text: result.message } }));
-      setDeviceDrafts((d) => without(d, table.tableNo));
-      onChanged?.(); // the device list below reloads
+      const done = [];
+      if (deviceChanged) done.push((await api.assignDevice(t.tableNo, device)).message); // by the current number, before any rename
+      if (renumbering) done.push((await api.updateTable(t.tableNo, { newTableNo: newNo, seats })).message);
+      else if (seatsChanged) done.push((await api.setTableSeats(t.tableNo, seats)).message);
+      setMessage(newNo, { type: 'success', text: done.join(' ') });
+      closeEdit(t);
+      if (renumbering || deviceChanged) onChanged?.(); // the device list below reloads
       reload();
     } catch (err) {
-      setDeviceMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: err.message } }));
+      setMessage(t.tableNo, { type: 'error', text: err.message });
     } finally {
-      setConnectingNo(null);
+      setSavingNo(null);
     }
   }
 
@@ -158,6 +161,7 @@ function TableSettings({ focusNo, onChanged }) {
       const result = await api.addTable({ tableNo: newTable.tableNo, seats: newTable.seats });
       setAddMessage({ type: 'success', text: result.message });
       setNewTable({ tableNo: '', seats: '4' });
+      setShowAdd(false);
       reload();
     } catch (err) {
       setAddMessage({ type: 'error', text: err.message });
@@ -170,156 +174,175 @@ function TableSettings({ focusNo, onChanged }) {
     <Card
       icon={NAV_ICONS.layout}
       title="Tables and seats"
-      subtitle="Change a table's number or seats, connect its device, or add a table by its number. The new table is placed automatically on the floor plan."
+      subtitle="Press Edit to change a table's number, seats or device."
+      action={
+        !showAdd && (
+          <button type="button" onClick={() => setShowAdd(true)} className={SMALL_BTN}>
+            Add table
+          </button>
+        )
+      }
     >
       {error && <Alert>{error}</Alert>}
+
+      {showAdd && (
+        <form onSubmit={addTable} className="mb-4 rounded-xl border border-dashed border-shush-lineStrong bg-shush-cream p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block w-32">
+              <span className={LABEL}>Table number</span>
+              <input
+                className={INPUT}
+                type="number"
+                min={1}
+                max={999}
+                required
+                autoFocus
+                placeholder="e.g. 12"
+                value={newTable.tableNo}
+                onChange={(e) => setNewTable((t) => ({ ...t, tableNo: e.target.value }))}
+              />
+            </label>
+            <label className="block w-28">
+              <span className={LABEL}>Seats</span>
+              <input
+                className={INPUT}
+                type="number"
+                min={1}
+                max={20}
+                required
+                value={newTable.seats}
+                onChange={(e) => setNewTable((t) => ({ ...t, seats: e.target.value }))}
+              />
+            </label>
+            <GlowButton type="submit" disabled={adding} className={SMALL_BTN}>
+              {adding ? 'Adding…' : 'Add table'}
+            </GlowButton>
+            <button type="button" onClick={() => { setShowAdd(false); setAddMessage(null); }} className={GHOST_BTN}>
+              Cancel
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-shush-inkSoft">The new table is placed automatically on the floor plan.</p>
+          <div className="mt-2 empty:hidden">
+            <Alert type={addMessage?.type ?? 'error'}>{showAdd ? addMessage?.text : ''}</Alert>
+          </div>
+        </form>
+      )}
+      {!showAdd && addMessage && (
+        <div className="mb-4">
+          <Alert type={addMessage.type}>{addMessage.text}</Alert>
+        </div>
+      )}
+
       {!data ? (
         <p className="text-sm text-shush-muted">{loading ? 'Loading tables…' : 'No tables to show.'}</p>
       ) : data.tables.length === 0 ? (
-        <EmptyState title="No tables yet" text="Add the first table below to start the floor plan." />
+        <EmptyState title="No tables yet" text="Use Add table to start the floor plan." />
       ) : (
-        <ul className={GRID}>
-          {data.tables.map((t, i) => {
-            const seatsDraft = drafts[t.tableNo] ?? String(t.seats);
-            const numberDraft = numberDrafts[t.tableNo] ?? String(t.tableNo);
-            const dirty = seatsDraft !== String(t.seats) || numberDraft !== String(t.tableNo);
-            const deviceDraft = deviceDrafts[t.tableNo] ?? t.deviceCode ?? '';
-            const deviceDirty = deviceDraft.trim() !== '' && deviceDraft.trim() !== (t.deviceCode ?? '');
+        <ul className={LIST}>
+          {data.tables.map((t) => {
+            const open = editingNo === t.tableNo;
+            const d = draftOf(t);
+            const note = rowMessages[t.tableNo];
             return (
-              <li
-                key={t.tableNo}
-                className={`${TILE} ${t.tableNo === focusNo ? TILE_FOCUS : ''}`}
-                style={{ animationDelay: `${Math.min(i * 60, 480)}ms` }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-shush-ink">Table {t.tableNo}</div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-shush-muted">
-                      <span className="tabular-nums">{t.occupied} of {t.seats} seated now</span>
-                      {t.isSample && <SampleBadge />}
-                    </div>
+              <li key={t.tableNo} className={t.tableNo === focusNo && !open ? FOCUS_ROW : ''}>
+                <div className={ROW}>
+                  <div className="w-28 flex-none text-sm font-semibold text-shush-ink">
+                    Table {t.tableNo}
+                    {t.isSample && (
+                      <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-shush-orange700" title="Sample data">
+                        Sample
+                      </span>
+                    )}
                   </div>
-                  <span
-                    className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                      t.hasDevice
-                        ? 'border-shush-lineStrong bg-shush-goldSoft text-shush-ink'
-                        : 'border-shush-line bg-shush-white text-shush-muted'
-                    }`}
+                  <div className="min-w-0 flex-1 text-sm tabular-nums text-shush-inkSoft">
+                    {t.seats} seats
+                    <span className="text-shush-muted"> · {t.occupied} seated now</span>
+                  </div>
+                  <div className="w-40 flex-none">
+                    {t.hasDevice ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-shush-lineStrong bg-shush-goldSoft px-2.5 py-0.5 font-mono text-xs text-shush-ink">
+                        <span className="h-1.5 w-1.5 rounded-full bg-shush-success" aria-hidden="true" />
+                        {t.deviceCode}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-shush-muted">No device</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => (open ? closeEdit(t) : openEdit(t))}
+                    className={GHOST_BTN}
                   >
-                    <span className={`h-1.5 w-1.5 rounded-full ${t.hasDevice ? 'bg-shush-success' : 'bg-shush-lineStrong'}`} aria-hidden="true" />
-                    {t.hasDevice ? 'Device connected' : 'No device'}
-                  </span>
+                    {open ? 'Close' : 'Edit'}
+                  </button>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className={LABEL}>Table number</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={999}
-                      step={1}
-                      aria-label={`Table number for table ${t.tableNo}`}
-                      value={numberDraft}
-                      onChange={(e) => setNumberDrafts((prev) => ({ ...prev, [t.tableNo]: e.target.value }))}
-                      className={INPUT}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className={LABEL}>Seats</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={20}
-                      step={1}
-                      aria-label={`Seats for table ${t.tableNo}`}
-                      value={seatsDraft}
-                      onChange={(e) => setDrafts((prev) => ({ ...prev, [t.tableNo]: e.target.value }))}
-                      className={INPUT}
-                    />
-                  </label>
-                </div>
+                {!open && note && (
+                  <p className={`px-4 pb-3 text-xs ${note.type === 'error' ? 'text-shush-danger' : 'text-shush-success'}`}>{note.text}</p>
+                )}
 
-                {rowNote(rowMessages[t.tableNo])}
-
-                <GlowButton
-                  disabled={!dirty || savingNo === t.tableNo}
-                  onClick={() => saveTable(t)}
-                  className={`mt-4 w-full ${PRIMARY_BTN}`}
-                >
-                  {savingNo === t.tableNo ? 'Saving…' : 'Save changes'}
-                </GlowButton>
-
-                <div className="mt-4 border-t border-shush-line pt-4">
-                  <label className="block">
-                    <span className={LABEL}>Device code</span>
-                    <input
-                      type="text"
-                      maxLength={20}
-                      autoComplete="off"
-                      placeholder="e.g. SHUSH-T03"
-                      aria-label={`Device code for table ${t.tableNo}`}
-                      value={deviceDraft}
-                      onChange={(e) => setDeviceDrafts((prev) => ({ ...prev, [t.tableNo]: e.target.value }))}
-                      className={`${INPUT} font-mono`}
-                    />
-                  </label>
-                  {rowNote(deviceMessages[t.tableNo])}
-                  <GlowButton
-                    disabled={!deviceDirty || connectingNo === t.tableNo}
-                    onClick={() => connectDevice(t)}
-                    className={`mt-3 w-full ${PRIMARY_BTN}`}
-                  >
-                    {connectingNo === t.tableNo ? 'Connecting…' : t.hasDevice ? 'Change device' : 'Connect device'}
-                  </GlowButton>
-                </div>
+                {open && (
+                  <div className="border-t border-shush-line bg-shush-cream px-4 py-4">
+                    <div className="flex flex-wrap items-end gap-3">
+                      <label className="block w-28">
+                        <span className={LABEL}>Table number</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={999}
+                          aria-label={`Table number for table ${t.tableNo}`}
+                          value={d.number}
+                          onChange={(e) => setField(t, 'number', e.target.value)}
+                          className={INPUT}
+                        />
+                      </label>
+                      <label className="block w-24">
+                        <span className={LABEL}>Seats</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={20}
+                          aria-label={`Seats for table ${t.tableNo}`}
+                          value={d.seats}
+                          onChange={(e) => setField(t, 'seats', e.target.value)}
+                          className={INPUT}
+                        />
+                      </label>
+                      <label className="block w-48">
+                        <span className={LABEL}>Device code</span>
+                        <input
+                          type="text"
+                          maxLength={20}
+                          autoComplete="off"
+                          placeholder="e.g. SHUSH-T03"
+                          aria-label={`Device code for table ${t.tableNo}`}
+                          value={d.device}
+                          onChange={(e) => setField(t, 'device', e.target.value)}
+                          className={`${INPUT} font-mono`}
+                        />
+                      </label>
+                      <div className="flex gap-2">
+                        <GlowButton disabled={savingNo === t.tableNo} onClick={() => saveTable(t)} className={SMALL_BTN}>
+                          {savingNo === t.tableNo ? 'Saving…' : 'Save'}
+                        </GlowButton>
+                        <button type="button" disabled={savingNo === t.tableNo} onClick={() => closeEdit(t)} className={GHOST_BTN}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                    {note && (
+                      <p className={`mt-3 text-xs ${note.type === 'error' ? 'text-shush-danger' : 'text-shush-success'}`}>{note.text}</p>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}
         </ul>
       )}
-
-      <form onSubmit={addTable} className="mt-6 rounded-xl border border-dashed border-shush-lineStrong bg-shush-cream p-4">
-        <h3 className="text-sm font-semibold text-shush-ink">Add a new table</h3>
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
-          <label className="block">
-            <span className={LABEL}>Table number</span>
-            <input
-              className={INPUT}
-              type="number"
-              min={1}
-              max={999}
-              required
-              placeholder="e.g. 12"
-              value={newTable.tableNo}
-              onChange={(e) => setNewTable((t) => ({ ...t, tableNo: e.target.value }))}
-            />
-          </label>
-          <label className="block">
-            <span className={LABEL}>Seats</span>
-            <input
-              className={INPUT}
-              type="number"
-              min={1}
-              max={20}
-              required
-              placeholder="e.g. 6"
-              value={newTable.seats}
-              onChange={(e) => setNewTable((t) => ({ ...t, seats: e.target.value }))}
-            />
-          </label>
-          <div className="flex items-end">
-            <GlowButton type="submit" disabled={adding} className={`w-full ${PRIMARY_BTN}`}>
-              {adding ? 'Adding…' : 'Add table'}
-            </GlowButton>
-          </div>
-        </div>
-        <div className="mt-3 empty:hidden">
-          <Alert type={addMessage?.type ?? 'error'}>{addMessage?.text}</Alert>
-        </div>
-      </form>
     </Card>
   );
 }
@@ -361,68 +384,54 @@ function DeviceSettings({ focusNo }) {
     <Card
       icon={DEVICE_ICON}
       title="Device thresholds"
-      subtitle={`Raw sensor level from 0 to ${formatNumber(MAX_THRESHOLD)}. A device raises an alert when noise stays above its threshold for 5 seconds. Devices pick up a new value the next time they sync.`}
+      subtitle={`Noise level from 0 to ${formatNumber(MAX_THRESHOLD)} that raises an alert when it stays above for 5 seconds. Devices pick up a new value the next time they sync.`}
     >
       {error && <Alert>{error}</Alert>}
       {!data ? (
         <p className="text-sm text-shush-muted">{loading ? 'Loading devices…' : 'No devices to show.'}</p>
       ) : data.devices.length === 0 ? (
-        <EmptyState title="No devices yet" text="Devices appear here once they are registered to a table." />
+        <EmptyState title="No devices yet" text="Connect a device to a table above and it will appear here." />
       ) : (
-        <ul className={GRID}>
-          {data.devices.map((d, i) => {
+        <ul className={LIST}>
+          {data.devices.map((d) => {
             const draft = drafts[d.deviceCode] ?? String(d.threshold);
             const dirty = draft !== String(d.threshold);
+            const note = rowMessages[d.deviceCode];
             return (
-              <li
-                key={d.deviceCode}
-                className={`${TILE} ${d.tableNo === focusNo ? TILE_FOCUS : ''}`}
-                style={{ animationDelay: `${Math.min(i * 60, 480)}ms` }}
-              >
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-shush-ink">Table {d.tableNo}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs text-shush-muted">{d.deviceCode}</span>
-                    {d.isSample && <SampleBadge />}
+              <li key={d.deviceCode} className={d.tableNo === focusNo ? FOCUS_ROW : ''}>
+                <div className={ROW}>
+                  <div className="w-28 flex-none text-sm font-semibold text-shush-ink">Table {d.tableNo}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-xs text-shush-ink">
+                      {d.deviceCode}
+                      {d.isSample && (
+                        <span className="ml-2 font-sans text-[10px] font-semibold uppercase tracking-wide text-shush-orange700">Sample</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-shush-muted">
+                      Last level {formatNumber(d.lastLevel)} · seen {timeAgo(d.lastSeenAt)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={MAX_THRESHOLD}
+                      step={1}
+                      aria-label={`Threshold for ${d.deviceCode}`}
+                      value={draft}
+                      onChange={(e) => setDrafts((prev) => ({ ...prev, [d.deviceCode]: e.target.value }))}
+                      className="w-24 rounded-xl border-shush-lineStrong bg-shush-white text-sm text-shush-ink focus:border-shush-orange focus:ring-shush-orange"
+                    />
+                    <GlowButton disabled={!dirty || savingCode === d.deviceCode} onClick={() => save(d)} className={SMALL_BTN}>
+                      {savingCode === d.deviceCode ? 'Saving…' : 'Save'}
+                    </GlowButton>
                   </div>
                 </div>
-
-                <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <dt className={LABEL}>Last level</dt>
-                    <dd className="mt-0.5 text-sm font-medium tabular-nums text-shush-ink">{formatNumber(d.lastLevel)}</dd>
-                  </div>
-                  <div>
-                    <dt className={LABEL}>Threshold</dt>
-                    <dd className="mt-0.5 text-sm font-medium tabular-nums text-shush-ink">{formatNumber(d.threshold)}</dd>
-                  </div>
-                </dl>
-                <p className="mt-2 text-xs text-shush-muted">Seen {timeAgo(d.lastSeenAt)}</p>
-
-                <label className="mt-4 block">
-                  <span className={LABEL}>New threshold</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={MAX_THRESHOLD}
-                    step={1}
-                    aria-label={`New threshold for ${d.deviceCode}`}
-                    value={draft}
-                    onChange={(e) => setDrafts((prev) => ({ ...prev, [d.deviceCode]: e.target.value }))}
-                    className={INPUT}
-                  />
-                </label>
-
-                {rowNote(rowMessages[d.deviceCode])}
-
-                <GlowButton
-                  disabled={!dirty || savingCode === d.deviceCode}
-                  onClick={() => save(d)}
-                  className={`mt-4 w-full ${PRIMARY_BTN}`}
-                >
-                  {savingCode === d.deviceCode ? 'Saving…' : 'Save threshold'}
-                </GlowButton>
+                {note && (
+                  <p className={`px-4 pb-3 text-xs ${note.type === 'error' ? 'text-shush-danger' : 'text-shush-success'}`}>{note.text}</p>
+                )}
               </li>
             );
           })}

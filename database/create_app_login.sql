@@ -52,5 +52,6 @@ GRANT EXECUTE ON dbo.usp_Session_End           TO shush_app;
 GRANT EXECUTE ON dbo.usp_Session_CloseStale    TO shush_app;
 GRANT EXECUTE ON dbo.usp_Table_Add             TO shush_app;
 GRANT EXECUTE ON dbo.usp_Table_SetSeats        TO shush_app;
+GRANT EXECUTE ON dbo.usp_Layout_Save           TO shush_app;
 GRANT EXECUTE ON dbo.usp_SampleData_Clear      TO shush_app;
 GO

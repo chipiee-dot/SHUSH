@@ -17,6 +17,7 @@ const config = {
 const now = new Date();
 const fakeDb = {
   lastHistoryArgs: null,
+  lastLayout: null,
   ping: async () => {},
   closeStaleSessions: async () => {},
   getLayout: async () => [
@@ -32,6 +33,10 @@ const fakeDb = {
     deviceCode === 'SHUSH-T01'
       ? { success: true, message: 'Threshold saved.' }
       : { success: false, message: 'That device does not exist.' },
+  saveLayout: async (changes) => {
+    fakeDb.lastLayout = changes;
+    return { success: true, message: `Layout saved. ${changes.length} table(s) updated.` };
+  },
   getRewardSessions: async () => [],
   getHistory: async (args) => {
     fakeDb.lastHistoryArgs = args;
@@ -142,4 +147,26 @@ test('rewards accepts only the known periods', async () => {
   assert.equal(status, 200);
   assert.equal(body.period, 'week');
   assert.deepEqual(body.mostFrequent, []);
+});
+
+test('saving the layout is admin only and validated', async () => {
+  const body = { tables: [{ tableNo: 2, col: 0, row: 6, width: 2, height: 2 }] };
+  assert.equal((await call('PUT', '/api/settings/layout', { body })).status, 401);
+  assert.equal((await call('PUT', '/api/settings/layout', { cookie: FACULTY, body })).status, 403);
+
+  const ok = await call('PUT', '/api/settings/layout', { cookie: ADMIN, body });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(fakeDb.lastLayout, body.tables);
+
+  // Table 2 onto Table 1 (columns 0-1, rows 0-1)
+  const overlap = await call('PUT', '/api/settings/layout', {
+    cookie: ADMIN, body: { tables: [{ tableNo: 2, col: 0, row: 0, width: 2, height: 2 }] },
+  });
+  assert.equal(overlap.status, 409);
+
+  // Column 11 with width 2 runs off the 12-column grid
+  const outside = await call('PUT', '/api/settings/layout', {
+    cookie: ADMIN, body: { tables: [{ tableNo: 2, col: 11, row: 0, width: 2, height: 2 }] },
+  });
+  assert.equal(outside.status, 400);
 });

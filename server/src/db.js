@@ -210,6 +210,11 @@ export function createDb(dbConfig) {
     );
   }
 
+  // changes: [{ tableNo, col, row, width, height, seats? }], changed tables only.
+  async function saveLayout(changes) {
+    return oneOf(await run('usp_Layout_Save', [['Json', sql.NVarChar(sql.MAX), JSON.stringify(changes)]]));
+  }
+
   async function clearSampleData() {
     return oneOf(await run('usp_SampleData_Clear'));
   }
@@ -235,6 +240,7 @@ export function createDb(dbConfig) {
     endSession,
     addTable,
     setTableSeats,
+    saveLayout,
     clearSampleData,
   };
 }

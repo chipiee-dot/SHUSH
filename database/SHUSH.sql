@@ -839,6 +839,7 @@ BEGIN
     END
     IF @GridCol < 0 OR @GridCol > 11 OR @GridRow < 0 OR @GridRow > 99
        OR @GridWidth < 1 OR @GridWidth > 12 OR @GridHeight < 1 OR @GridHeight > 12
+       OR @GridCol + @GridWidth > 12
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'That spot on the floor plan is outside the grid.' AS Message; RETURN;
     END
@@ -930,5 +931,149 @@ BEGIN
     COMMIT;
 
     SELECT CAST(1 AS BIT) AS Success, N'Sample data removed. Real records were kept.' AS Message;
+END
+GO
+
+-- 30) LAYOUT: save moved / resized tables in one step ---------------------------
+-- @Json is an array of { tableNo, col, row, width, height, seats } (changed tables only; seats optional).
+-- All or nothing: if anything is wrong, nothing is saved. The overlap check looks at the FINAL layout
+-- (every active table with the changes applied), so two tables can swap places in one save.
+-- Needs SQL Server 2016+ and database compatibility level 130+ (OPENJSON).
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Layout_Save
+    @Json NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Json IS NULL OR ISJSON(@Json) <> 1 OR LEFT(LTRIM(@Json), 1) <> N'['
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'The layout data is not valid.' AS Message; RETURN;
+    END
+
+    CREATE TABLE #Change
+    (
+        TableNo INT NULL,
+        Col     INT NULL,
+        [Row]   INT NULL,
+        Width   INT NULL,
+        Height  INT NULL,
+        Seats   INT NULL
+    );
+
+    INSERT INTO #Change (TableNo, Col, [Row], Width, Height, Seats)
+    SELECT TableNo, Col, [Row], Width, Height, Seats
+    FROM OPENJSON(@Json)
+    WITH (
+        TableNo INT '$.tableNo',
+        Col     INT '$.col',
+        [Row]   INT '$.row',
+        Width   INT '$.width',
+        Height  INT '$.height',
+        Seats   INT '$.seats'
+    );
+
+    IF NOT EXISTS (SELECT 1 FROM #Change)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'There are no changes to save.' AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM #Change WHERE TableNo IS NULL)
+       OR EXISTS (SELECT 1 FROM #Change GROUP BY TableNo HAVING COUNT(*) > 1)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Each table can appear only once in a layout.' AS Message; RETURN;
+    END
+
+    -- 1) every table exists and is active
+    DECLARE @MissingNo INT;
+    SELECT TOP (1) @MissingNo = c.TableNo
+    FROM #Change AS c
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.LibraryTable AS t WHERE t.TableNo = c.TableNo AND t.IsActive = 1)
+    ORDER BY c.TableNo;
+    IF @MissingNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @MissingNo, N' does not exist.') AS Message; RETURN;
+    END
+
+    -- 2) inside the 12-column grid
+    DECLARE @BadNo INT;
+    SELECT TOP (1) @BadNo = TableNo
+    FROM #Change
+    WHERE Col IS NULL OR [Row] IS NULL OR Width IS NULL OR Height IS NULL
+       OR Col < 0 OR [Row] < 0
+       OR Width < 1 OR Width > 12 OR Height < 1 OR Height > 12
+       OR Col + Width > 12 OR [Row] + Height > 100
+    ORDER BY TableNo;
+    IF @BadNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @BadNo, N' would be outside the floor plan grid.') AS Message; RETURN;
+    END
+
+    -- 3) seats: 1-20, and not below the students seated right now
+    SET @BadNo = NULL;
+    SELECT TOP (1) @BadNo = TableNo FROM #Change WHERE Seats IS NOT NULL AND (Seats < 1 OR Seats > 20) ORDER BY TableNo;
+    IF @BadNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Seats must be between 1 and 20.' AS Message; RETURN;
+    END
+
+    DECLARE @SeatedNo INT, @Seated INT;
+    SELECT TOP (1) @SeatedNo = c.TableNo, @Seated = o.Occupied
+    FROM #Change AS c
+    JOIN dbo.LibraryTable AS t ON t.TableNo = c.TableNo AND t.IsActive = 1
+    CROSS APPLY
+    (
+        SELECT COUNT(*) AS Occupied FROM dbo.LibrarySession AS s WHERE s.TableId = t.Id AND s.EndedAt IS NULL
+    ) AS o
+    WHERE c.Seats IS NOT NULL AND c.Seats < o.Occupied
+    ORDER BY c.TableNo;
+    IF @SeatedNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               CONCAT(N'Table ', @SeatedNo, N' has ', @Seated, N' students seated, so it cannot have fewer than ', @Seated, N' seats.') AS Message;
+        RETURN;
+    END
+
+    -- 4) no overlaps in the final layout
+    SELECT t.TableNo,
+           COALESCE(c.Col, t.GridCol)    AS Col,
+           COALESCE(c.[Row], t.GridRow)  AS [Row],
+           COALESCE(c.Width, t.GridWidth)   AS Width,
+           COALESCE(c.Height, t.GridHeight) AS Height
+    INTO #Final
+    FROM dbo.LibraryTable AS t
+    LEFT JOIN #Change AS c ON c.TableNo = t.TableNo
+    WHERE t.IsActive = 1;
+
+    DECLARE @NoA INT, @NoB INT;
+    SELECT TOP (1) @NoA = a.TableNo, @NoB = b.TableNo
+    FROM #Final AS a
+    JOIN #Final AS b
+      ON a.TableNo < b.TableNo
+     AND a.Col < b.Col + b.Width AND a.Col + a.Width > b.Col
+     AND a.[Row] < b.[Row] + b.Height AND a.[Row] + a.Height > b.[Row]
+    ORDER BY a.TableNo, b.TableNo;
+    IF @NoA IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               CONCAT(N'Table ', @NoA, N' and Table ', @NoB, N' would overlap: that spot on the floor plan is already taken.') AS Message;
+        RETURN;
+    END
+
+    DECLARE @Updated INT;
+    BEGIN TRANSACTION;
+
+    UPDATE t
+       SET GridCol = c.Col, GridRow = c.[Row], GridWidth = c.Width, GridHeight = c.Height,
+           SeatCount = COALESCE(c.Seats, t.SeatCount)
+    FROM dbo.LibraryTable AS t
+    JOIN #Change AS c ON c.TableNo = t.TableNo
+    WHERE t.IsActive = 1;
+
+    SET @Updated = @@ROWCOUNT;
+    COMMIT;
+
+    SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Layout saved. ', @Updated, N' table(s) updated.') AS Message;
 END
 GO

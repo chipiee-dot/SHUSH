@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 import { sendDatabaseError, toInt, wrap } from './helpers.js';
 import { findFreeSpot } from '../services/tablePlacement.js';
+import { validateLayoutChanges } from '../services/layoutRules.js';
 
 const MAX_THRESHOLD = 4095; // ESP32 ADC is 12-bit
 const MAX_DEVICE_CODE = 20;
@@ -141,6 +142,26 @@ export function createSettingsRouter(db, config) {
         return res.status(notFound ? 404 : 400).json({ message: result?.message ?? 'Could not save.' });
       }
       return res.json({ message: result.message });
+    })
+  );
+
+  // Save moved / resized tables in one step. Body: { tables: [{ tableNo, col, row, width, height, seats? }] }.
+  // Send changed tables only (the JSON body limit is 10kb; at most 100 entries are accepted).
+  router.put(
+    '/layout',
+    adminOnly,
+    wrap(async (req, res) => {
+      const changes = req.body?.tables;
+      const rows = await db.getLayout();
+      const check = validateLayoutChanges(changes, rows);
+      if (!check.ok) return res.status(check.status).json({ message: check.message });
+
+      const result = await db.saveLayout(changes);
+      if (!result?.success) {
+        const conflict = /taken|seated|overlap/i.test(result?.message ?? '');
+        return res.status(conflict ? 409 : 400).json({ message: result?.message ?? 'Could not save the layout.' });
+      }
+      return res.json({ message: result.message, updated: changes.length });
     })
   );
 

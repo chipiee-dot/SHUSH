@@ -413,15 +413,17 @@ export default function StudentTable() {
       {mode === 'plan' && <StudentFloorPlan tables={sorted} onPick={handlePick} onlyOpen={onlyOpen} />}
 
       {mode === 'cards' && (!sorted || (visible && visible.length > 0)) && (
-        <div
-          key={onlyOpen ? 'open' : 'all'}
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5"
-        >
-          {visible ? (
-            visible.map((t, i) => <StudentTableTile key={t.tableNo} table={t} index={i} onPick={handlePick} />)
-          ) : (
-            <StudentTableSkeleton />
-          )}
+        <div className="st-scroll -mx-2 px-2 py-2">
+          <div
+            key={onlyOpen ? 'open' : 'all'}
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5"
+          >
+            {visible ? (
+              visible.map((t, i) => <StudentTableTile key={t.tableNo} table={t} index={i} onPick={handlePick} />)
+            ) : (
+              <StudentTableSkeleton />
+            )}
+          </div>
         </div>
       )}
 

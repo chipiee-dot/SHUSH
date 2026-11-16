@@ -210,6 +210,17 @@ export function createDb(dbConfig) {
     );
   }
 
+  // newTableNo and seatCount are both optional (null = leave as is). Runs usp_Table_Update.
+  async function updateTable({ tableNo, newTableNo, seatCount }) {
+    return oneOf(
+      await run('usp_Table_Update', [
+        ['TableNo', sql.Int, tableNo],
+        ['NewTableNo', sql.Int, newTableNo],
+        ['SeatCount', sql.Int, seatCount],
+      ])
+    );
+  }
+
   // changes: [{ tableNo, col, row, width, height, seats? }], changed tables only.
   async function saveLayout(changes) {
     return oneOf(await run('usp_Layout_Save', [['Json', sql.NVarChar(sql.MAX), JSON.stringify(changes)]]));
@@ -240,6 +251,7 @@ export function createDb(dbConfig) {
     endSession,
     addTable,
     setTableSeats,
+    updateTable,
     saveLayout,
     clearSampleData,
   };

@@ -4,8 +4,10 @@
 export const GRID_COLUMNS = 12;
 export const MAX_ROWS = 100;
 export const MAX_SEATS = 20;
-// What the editor lets you draw. The database allows up to 12 each; the server stays the last word.
-export const UI_LIMITS = { maxWidth: 10, maxHeight: 4 };
+// Every table is exactly 2 grid rows tall; only the width can change. The server and database repeat this rule.
+export const TABLE_HEIGHT = 2;
+// What the editor lets you draw. The server stays the last word.
+export const UI_LIMITS = { maxWidth: 10, maxHeight: TABLE_HEIGHT };
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
@@ -65,13 +67,13 @@ export function seatsAfterResize({ oldW, oldH, newW, newH, seats, occupied = 0 }
 /**
  * Checks a size for a table. origin is the placement (with seats) the resize started from, others are the
  * other tables' placements. valid is false when the size is outside the editor limits, leaves the grid,
- * touches another table, or breaks the seat rules. seats is the resulting seat count (null if refused).
+ * touches another table, or breaks the seat rules. Height must always be TABLE_HEIGHT (2). seats is the resulting seat count (null if refused).
  */
 export function resizeOutcome({ origin, width, height, others, occupied = 0, rows = MAX_ROWS }) {
   const seats = seatsAfterResize({
     oldW: origin.width, oldH: origin.height, newW: width, newH: height, seats: origin.seats, occupied,
   });
-  const sizeOk = width >= 1 && width <= UI_LIMITS.maxWidth && height >= 1 && height <= UI_LIMITS.maxHeight;
+  const sizeOk = width >= 1 && width <= UI_LIMITS.maxWidth && height === TABLE_HEIGHT;
   const placement = { col: origin.col, row: origin.row, width, height };
   const valid = sizeOk && seats !== null && isFree(placement, others, { columns: GRID_COLUMNS, rows });
   return { valid, seats };

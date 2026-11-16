@@ -426,7 +426,7 @@ export default function TableLayout() {
                   <div className="mb-4 space-y-3 rounded-xl border border-shush-line bg-shush-creamDeep p-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="min-w-0 flex-1 text-sm text-shush-inkSoft">
-                        Drag a table to move it and drag its edges to resize it. With a table focused, arrow keys move it and Shift + arrow keys resize it. Chairs follow the size. Nothing changes for anyone else until you save.
+                        Drag a table to move it, and drag its right edge to make it wider or narrower. Every table stays 2 rows tall. With a table focused, arrow keys move it and Shift + Left/Right change its width. Chairs follow the width. Nothing changes for anyone else until you save.
                       </p>
                       <div className="flex flex-wrap items-center gap-2">
                         <button type="button" onClick={editor.undo} disabled={!editor.canUndo || saving} className={SECONDARY_BTN}>

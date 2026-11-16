@@ -19,6 +19,7 @@ const inputClass =
 export default function Settings() {
   const { user } = useAuth();
   const [params] = useSearchParams();
+  const [tablesVersion, setTablesVersion] = useState(0); // bumps when a table number changes, so the device list reloads
   const focusNo = Number(params.get('table')) || null;
   if (user?.role !== 'Admin') {
     return (
@@ -36,37 +37,53 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="Tables, seats and device thresholds. Administrators only." />
-      <TableSettings focusNo={focusNo} />
-      <DeviceSettings focusNo={focusNo} />
+      <TableSettings focusNo={focusNo} onRenumbered={() => setTablesVersion((v) => v + 1)} />
+      <DeviceSettings key={tablesVersion} focusNo={focusNo} />
       <SampleDataSettings />
     </div>
   );
 }
 
-function TableSettings({ focusNo }) {
+function TableSettings({ focusNo, onRenumbered }) {
   const { data, error, loading, reload } = usePolling(api.adminTables, 0);
   const [drafts, setDrafts] = useState({});
+  const [numberDrafts, setNumberDrafts] = useState({}); // new table numbers, keyed by the current number
   const [rowMessages, setRowMessages] = useState({});
   const [savingNo, setSavingNo] = useState(null);
   const [newTable, setNewTable] = useState({ tableNo: '', seats: '4' });
   const [addMessage, setAddMessage] = useState(null);
   const [adding, setAdding] = useState(false);
 
+  // Saves the seat count and/or the table number for one row.
   async function saveSeats(table) {
     const seats = Number(drafts[table.tableNo] ?? String(table.seats));
+    const newNo = Number(numberDrafts[table.tableNo] ?? String(table.tableNo));
+    const renumbering = newNo !== table.tableNo;
     if (!Number.isInteger(seats) || seats < 1 || seats > 20) {
-      setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: 'Enter a whole number from 1 to 20.' } }));
+      setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: 'Seats: enter a whole number from 1 to 20.' } }));
+      return;
+    }
+    if (!Number.isInteger(newNo) || newNo < 1 || newNo > 999) {
+      setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: 'Table number: enter a whole number from 1 to 999.' } }));
       return;
     }
     setSavingNo(table.tableNo);
     try {
-      const result = await api.setTableSeats(table.tableNo, seats);
+      const result = renumbering
+        ? await api.updateTable(table.tableNo, { newTableNo: newNo, seats })
+        : await api.setTableSeats(table.tableNo, seats);
       setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'success', text: result.message } }));
       setDrafts((d) => {
         const next = { ...d };
         delete next[table.tableNo];
         return next;
       });
+      setNumberDrafts((d) => {
+        const next = { ...d };
+        delete next[table.tableNo];
+        return next;
+      });
+      if (renumbering) onRenumbered?.();
       reload();
     } catch (err) {
       setRowMessages((m) => ({ ...m, [table.tableNo]: { type: 'error', text: err.message } }));
@@ -95,7 +112,7 @@ function TableSettings({ focusNo }) {
   return (
     <Card
       title="Tables and seats"
-      subtitle="Change how many seats a table has, or add a table by its number. The new table is placed automatically on the floor plan."
+      subtitle="Change a table's number or how many seats it has, or add a table by its number. The new table is placed automatically on the floor plan."
     >
       {error && <Alert>{error}</Alert>}
       {!data ? (
@@ -117,13 +134,24 @@ function TableSettings({ focusNo }) {
             <tbody className="divide-y divide-shush-line">
               {data.tables.map((t) => {
                 const draft = drafts[t.tableNo] ?? String(t.seats);
-                const dirty = draft !== String(t.seats);
+                const numberDraft = numberDrafts[t.tableNo] ?? String(t.tableNo);
+                const dirty = draft !== String(t.seats) || numberDraft !== String(t.tableNo);
                 const message = rowMessages[t.tableNo];
                 return (
                   <tr key={t.tableNo} className={`align-top ${t.tableNo === focusNo ? 'bg-shush-goldSoft' : ''}`}>
                     <td className="py-3 pr-4 font-semibold text-shush-ink">
                       <div className="flex items-center gap-2">
-                        Table {t.tableNo}
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={999}
+                          step={1}
+                          aria-label={`Table number for table ${t.tableNo}`}
+                          value={numberDraft}
+                          onChange={(e) => setNumberDrafts((prev) => ({ ...prev, [t.tableNo]: e.target.value }))}
+                          className="w-24 rounded-xl border-shush-lineStrong text-sm focus:border-shush-orange focus:ring-shush-orange"
+                        />
                         {t.isSample && <SampleBadge />}
                       </div>
                     </td>

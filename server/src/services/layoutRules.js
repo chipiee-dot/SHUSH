@@ -5,6 +5,7 @@ import { GRID_COLUMNS, overlaps } from './tablePlacement.js';
 export const MAX_LAYOUT_CHANGES = 100;
 export const MAX_ROWS = 100;
 export const MAX_SIZE = 12;
+export const TABLE_HEIGHT = 2; // every table is exactly 2 rows tall; only the width can change
 export const MAX_SEATS = 20;
 
 const bad = (status, message) => ({ ok: false, status, message });
@@ -42,6 +43,9 @@ export function validateLayoutChanges(changes, currentRows) {
       col + width > GRID_COLUMNS || row + height > MAX_ROWS
     ) {
       return bad(400, `Table ${tableNo} would be outside the floor plan grid.`);
+    }
+    if (height !== TABLE_HEIGHT) {
+      return bad(400, `Table ${tableNo} must be ${TABLE_HEIGHT} rows tall. Only the width can change.`);
     }
     if (seats !== undefined && seats !== null && (!isInt(seats) || seats < 1 || seats > MAX_SEATS)) {
       return bad(400, `Seats must be between 1 and ${MAX_SEATS}.`);

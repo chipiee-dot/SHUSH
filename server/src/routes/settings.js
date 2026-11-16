@@ -55,7 +55,7 @@ export function createSettingsRouter(db, config) {
     })
   );
 
-  // ---- Tables: list, add, change seats ------------------------------------
+  // ---- Tables: list, add, change seats or table number ---------------------
 
   router.get(
     '/tables',
@@ -131,12 +131,26 @@ export function createSettingsRouter(db, config) {
     adminOnly,
     wrap(async (req, res) => {
       const tableNo = toInt(req.params.tableNo);
-      const seatCount = toInt(req.body?.seats);
       if (tableNo === null) return res.status(400).json({ message: 'Unknown table.' });
-      if (seatCount === null || seatCount < 1 || seatCount > 20) {
+
+      // Body: { seats } (seats only) or { newTableNo, seats? } (rename the table, optionally with new seats).
+      const given = (v) => v !== undefined && v !== null && v !== '';
+      const renaming = given(req.body?.newTableNo);
+      const seatCount = toInt(req.body?.seats);
+      if ((!renaming || given(req.body?.seats)) && (seatCount === null || seatCount < 1 || seatCount > 20)) {
         return res.status(400).json({ message: 'Seats must be between 1 and 20.' });
       }
-      const result = await db.setTableSeats({ tableNo, seatCount });
+      let newTableNo = null;
+      if (renaming) {
+        newTableNo = toInt(req.body.newTableNo);
+        if (newTableNo === null || newTableNo < 1 || newTableNo > 999) {
+          return res.status(400).json({ message: 'Table number must be between 1 and 999.' });
+        }
+      }
+
+      const result = renaming
+        ? await db.updateTable({ tableNo, newTableNo, seatCount })
+        : await db.setTableSeats({ tableNo, seatCount });
       if (!result?.success) {
         const notFound = /does not exist/i.test(result?.message ?? '');
         return res.status(notFound ? 404 : 400).json({ message: result?.message ?? 'Could not save.' });

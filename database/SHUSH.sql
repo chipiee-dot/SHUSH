@@ -900,6 +900,70 @@ BEGIN
 END
 GO
 
+-- 28b) TABLES: change the table number and/or the seat count in one step ------
+-- @NewTableNo NULL = keep the number. @SeatCount NULL = keep the seats.
+-- The number must be free, and seats cannot go below the number of people seated right now.
+-- Sessions, devices and maintenance point at the table's Id, so renumbering keeps all of them.
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Table_Update
+    @TableNo    INT,
+    @NewTableNo INT = NULL,
+    @SeatCount  INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @NewTableNo IS NOT NULL AND (@NewTableNo < 1 OR @NewTableNo > 999)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Table number must be between 1 and 999.' AS Message; RETURN;
+    END
+    IF @SeatCount IS NOT NULL AND (@SeatCount < 1 OR @SeatCount > 20)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Seats must be between 1 and 20.' AS Message; RETURN;
+    END
+
+    DECLARE @TableId INT, @Occupied INT;
+    SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
+    END
+
+    IF @NewTableNo IS NOT NULL AND @NewTableNo <> @TableNo
+       AND EXISTS (SELECT 1 FROM dbo.LibraryTable WHERE TableNo = @NewTableNo)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @NewTableNo, N' already exists.') AS Message; RETURN;
+    END
+
+    IF @SeatCount IS NOT NULL
+    BEGIN
+        SELECT @Occupied = COUNT(*) FROM dbo.LibrarySession WHERE TableId = @TableId AND EndedAt IS NULL;
+        IF @SeatCount < @Occupied
+        BEGIN
+            SELECT CAST(0 AS BIT) AS Success,
+                   CONCAT(N'Table ', @TableNo, N' has ', @Occupied, N' students seated, so it cannot have fewer than ', @Occupied, N' seats.') AS Message;
+            RETURN;
+        END
+    END
+
+    UPDATE dbo.LibraryTable
+       SET TableNo   = COALESCE(@NewTableNo, TableNo),
+           SeatCount = COALESCE(@SeatCount, SeatCount)
+     WHERE Id = @TableId;
+
+    SELECT CAST(1 AS BIT) AS Success,
+           CONCAT(N'Table ', @TableNo,
+                  CASE WHEN @NewTableNo IS NOT NULL AND @NewTableNo <> @TableNo
+                       THEN CONCAT(N' is now Table ', @NewTableNo) ELSE N'' END,
+                  CASE WHEN @SeatCount IS NOT NULL
+                       THEN CONCAT(CASE WHEN @NewTableNo IS NOT NULL AND @NewTableNo <> @TableNo THEN N', ' ELSE N' ' END,
+                                   N'has ', @SeatCount, N' seats')
+                       ELSE N'' END,
+                  N'.') AS Message;
+END
+GO
+
 -- 29) SAMPLE DATA: remove everything flagged IsSample --------------------------
 -- Real students, sessions and tables are never touched.
 CREATE OR ALTER PROCEDURE dbo.usp_SampleData_Clear
@@ -1008,6 +1072,14 @@ BEGIN
     IF @BadNo IS NOT NULL
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @BadNo, N' would be outside the floor plan grid.') AS Message; RETURN;
+    END
+
+    -- 2b) every table is exactly 2 rows tall (only the width can change)
+    SET @BadNo = NULL;
+    SELECT TOP (1) @BadNo = TableNo FROM #Change WHERE Height <> 2 ORDER BY TableNo;
+    IF @BadNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @BadNo, N' must be 2 rows tall. Only the width can change.') AS Message; RETURN;
     END
 
     -- 3) seats: 1-20, and not below the students seated right now

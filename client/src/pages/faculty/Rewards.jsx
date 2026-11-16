@@ -212,8 +212,8 @@ export default function Rewards() {
         sample={data?.hasSampleData}
         subtitle={
           updatedAt
-            ? `Updated ${formatDateTime(updatedAt)}. Each member of a session receives that session's table score.`
-            : 'Each member of a session receives that session\u2019s table score.'
+            ? `Updated ${formatDateTime(updatedAt)}. Each visit is scored by the table\u2019s average noise level during that student\u2019s session.`
+            : 'Each visit is scored by the table\u2019s average noise level during that student\u2019s session.'
         }
       >
         <PeriodToggle period={period} onChange={setPeriod} />

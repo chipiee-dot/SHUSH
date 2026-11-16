@@ -277,7 +277,7 @@ export default function TableLayout() {
 
   const { tables, sample } = data;
   const selected = tables.find((t) => t.tableNo === selectedNo) ?? null;
-  const seatedTotal = tables.reduce((sum, t) => sum + t.occupancy.groupSize, 0);
+  const seatedTotal = tables.reduce((sum, t) => sum + t.occupancy.seated, 0);
   const seatTotal = tables.reduce((sum, t) => sum + t.seats, 0);
   const counts = Object.fromEntries(STATUS_ORDER.map((k) => [k, tables.filter((t) => t.status === k).length]));
   // A filter whose status no longer exists (after a refresh) is ignored rather than dimming everything.

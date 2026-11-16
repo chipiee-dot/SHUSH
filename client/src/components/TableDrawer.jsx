@@ -22,7 +22,7 @@ export default function TableDrawer({ table, isAdmin, onClose }) {
   const { level, threshold, max } = meterScale(device);
   const rows = [
     ['Status', STATUS_META[table.status].label],
-    ['Seated', `${table.occupancy.groupSize} of ${table.seats}`],
+    ['Seated', `${table.occupancy.seated} of ${table.seats}`],
     ['Session started', table.sessionStartedAt ? formatTime(table.sessionStartedAt) : 'No one seated'],
     ['Device', device ? device.code : 'Not connected'],
     ['Noise level', device ? formatNumber(level) : '—'],

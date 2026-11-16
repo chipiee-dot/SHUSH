@@ -112,7 +112,7 @@ export default function Dashboard() {
 
   // Seats
   const seatTotal = tables.reduce((sum, t) => sum + (t.seats || 0), 0);
-  const seatTaken = tables.reduce((sum, t) => sum + (t.occupancy?.groupSize || 0), 0);
+  const seatTaken = tables.reduce((sum, t) => sum + (t.occupancy?.seated || 0), 0);
 
   // Tables by status, in the same order and with the same labels as the Table layout page.
   const statusItems = Object.keys(STATUS_META)
@@ -178,7 +178,7 @@ export default function Dashboard() {
           label="Tables occupied"
           value={<><CountUp value={s.tablesOccupied} /><span className="text-shush-muted"> / {formatNumber(s.tablesTotal)}</span></>}
           progress={ratio(s.tablesOccupied, s.tablesTotal)}
-          hint="Tables with at least one group seated"
+          hint="Tables with at least one student seated"
         />
         <Stat
           icon={<BellIcon />}
@@ -308,7 +308,7 @@ export default function Dashboard() {
                       />
                     </div>
                     <div className="mt-3 text-xs text-shush-muted">
-                      {t.occupancy.groupSize}/{t.occupancy.seats} seated · seen {timeAgo(t.device.lastSeenAt)}
+                      {t.occupancy.seated}/{t.occupancy.seats} seated · seen {timeAgo(t.device.lastSeenAt)}
                     </div>
                   </li>
                 );

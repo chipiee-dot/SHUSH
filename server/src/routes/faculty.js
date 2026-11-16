@@ -71,7 +71,7 @@ export function createFacultyRouter(db, config) {
         sample: layout.sample,
         summary: {
           tablesTotal: layout.tables.length,
-          tablesOccupied: layout.tables.filter((t) => t.occupancy.groupSize > 0).length,
+          tablesOccupied: layout.tables.filter((t) => t.occupancy.seated > 0).length,
           activeAlerts: layout.tables.filter((t) => t.status === 'ALERT').length,
           devicesTotal: devices.length,
           devicesOnline: devices.filter((t) => t.device.online).length,

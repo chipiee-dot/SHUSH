@@ -266,7 +266,6 @@ BEGIN
     (
         Id          BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_LibrarySession PRIMARY KEY,
         TableId     INT                  NOT NULL CONSTRAINT FK_LibrarySession_Table REFERENCES dbo.LibraryTable (Id),
-        GroupSize   TINYINT              NOT NULL CONSTRAINT CK_LibrarySession_Group CHECK (GroupSize BETWEEN 1 AND 20),
         StartedAt   DATETIME2(0)         NOT NULL,
         EndedAt     DATETIME2(0)         NULL,
         AvgLevel    INT                  NULL,
@@ -274,6 +273,24 @@ BEGIN
         IsSample    BIT                  NOT NULL CONSTRAINT DF_LibrarySession_Sample DEFAULT (0),
         CONSTRAINT CK_LibrarySession_Times CHECK (EndedAt IS NULL OR EndedAt >= StartedAt)
     );
+END
+GO
+
+-- 8b) Existing databases: a session is one student, so it no longer stores a group size.
+-- Its own batch: SQL Server checks a whole batch before running it, so a statement that
+-- names a column dropped in the same batch could fail. Safe to run any number of times.
+IF COL_LENGTH(N'dbo.LibrarySession', N'GroupSize') IS NOT NULL
+BEGIN
+    DECLARE @drop NVARCHAR(MAX) = N'';
+    DECLARE @colId INT = COLUMNPROPERTY(OBJECT_ID(N'dbo.LibrarySession'), N'GroupSize', 'ColumnId');
+    SELECT @drop += N'ALTER TABLE dbo.LibrarySession DROP CONSTRAINT ' + QUOTENAME(name) + N'; '
+    FROM sys.check_constraints
+    WHERE parent_object_id = OBJECT_ID(N'dbo.LibrarySession') AND parent_column_id = @colId;
+    SELECT @drop += N'ALTER TABLE dbo.LibrarySession DROP CONSTRAINT ' + QUOTENAME(name) + N'; '
+    FROM sys.default_constraints
+    WHERE parent_object_id = OBJECT_ID(N'dbo.LibrarySession') AND parent_column_id = @colId;
+    SET @drop += N'ALTER TABLE dbo.LibrarySession DROP COLUMN GroupSize;';
+    EXEC sys.sp_executesql @drop;
 END
 GO
 
@@ -348,20 +365,20 @@ BEGIN
     SELECT t.TableNo, t.SeatCount, t.GridCol, t.GridRow, t.GridWidth, t.GridHeight,
            t.IsSample AS TableIsSample,
            d.DeviceCode, d.Threshold, d.LastStatus, d.LastLevel, d.LastSeenAt, d.IsSample,
-           s.Id AS SessionId, s.GroupSize, s.StartedAt AS SessionStartedAt,
+           s.Id AS SessionId, s.StartedAt AS SessionStartedAt,
            occ.Occupied
     FROM dbo.LibraryTable AS t
     LEFT JOIN dbo.Device AS d ON d.TableId = t.Id
     OUTER APPLY
     (
-        SELECT TOP (1) ls.Id, ls.GroupSize, ls.StartedAt
+        SELECT TOP (1) ls.Id, ls.StartedAt
         FROM dbo.LibrarySession AS ls
         WHERE ls.TableId = t.Id AND ls.EndedAt IS NULL
         ORDER BY ls.StartedAt DESC
     ) AS s
     OUTER APPLY
     (
-        SELECT ISNULL(SUM(ls2.GroupSize), 0) AS Occupied
+        SELECT COUNT(*) AS Occupied
         FROM dbo.LibrarySession AS ls2
         WHERE ls2.TableId = t.Id AND ls2.EndedAt IS NULL
     ) AS occ
@@ -521,7 +538,7 @@ BEGIN
     SET NOCOUNT ON;
 
     SELECT st.Id AS StudentId, st.FullName, st.Section,
-           s.Id AS SessionId, t.TableNo, s.GroupSize,
+           s.Id AS SessionId, t.TableNo,
            s.StartedAt, s.EndedAt, s.AvgLevel, s.HadAlert,
            CAST(CASE WHEN s.IsSample = 1 OR st.IsSample = 1 THEN 1 ELSE 0 END AS BIT) AS IsSample
     FROM dbo.SessionMember AS sm
@@ -584,7 +601,7 @@ BEGIN
         SELECT N'session',
                s.StartedAt,
                t.TableNo,
-               CAST(CONCAT(N'Group of ', s.GroupSize) AS NVARCHAR(200)),
+               CAST(N'Student session' AS NVARCHAR(200)),
                CAST(CASE WHEN s.EndedAt IS NULL
                          THEN N'In progress'
                          ELSE CONCAT(N'Average level ', s.AvgLevel, N' over ',
@@ -679,7 +696,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT TOP (1) s.Id AS SessionId, t.TableNo, s.GroupSize, s.StartedAt
+    SELECT TOP (1) s.Id AS SessionId, t.TableNo, s.StartedAt
     FROM dbo.SessionMember AS sm
     JOIN dbo.LibrarySession AS s ON s.Id = sm.SessionId
     JOIN dbo.LibraryTable   AS t ON t.Id = s.TableId
@@ -690,12 +707,11 @@ GO
 
 -- 24) START A SESSION (choose table, confirm) ---------------------------------
 -- Checks the student is free, the table exists, is not under maintenance, and has
--- enough free seats for the group. Runs in one transaction with a row lock on the table.
+-- a free seat (one student takes one seat). Runs in one transaction with a row lock on the table.
 -- Returns: Success, Message, SessionId
 CREATE OR ALTER PROCEDURE dbo.usp_Session_Start
     @StudentId INT,
     @TableNo   INT,
-    @GroupSize INT,
     @Now       DATETIME2(0)
 AS
 BEGIN
@@ -737,21 +753,21 @@ BEGIN
         RETURN;
     END
 
-    SELECT @Occupied = ISNULL(SUM(GroupSize), 0)
+    SELECT @Occupied = COUNT(*)
     FROM dbo.LibrarySession
     WHERE TableId = @TableId AND EndedAt IS NULL;
 
-    IF @Seats - @Occupied < @GroupSize
+    IF @Occupied >= @Seats
     BEGIN
         ROLLBACK;
         SELECT CAST(0 AS BIT) AS Success,
-               CONCAT(N'Table ', @TableNo, N' does not have ', @GroupSize, N' free seats.') AS Message,
+               CONCAT(N'Table ', @TableNo, N' is full.') AS Message,
                CAST(NULL AS BIGINT) AS SessionId;
         RETURN;
     END
 
-    INSERT INTO dbo.LibrarySession (TableId, GroupSize, StartedAt, IsSample)
-    VALUES (@TableId, @GroupSize, @Now, 0);
+    INSERT INTO dbo.LibrarySession (TableId, StartedAt, IsSample)
+    VALUES (@TableId, @Now, 0);
     SET @SessionId = CAST(SCOPE_IDENTITY() AS BIGINT);
 
     INSERT INTO dbo.SessionMember (SessionId, StudentId) VALUES (@SessionId, @StudentId);
@@ -867,13 +883,13 @@ BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
     END
 
-    SELECT @Occupied = ISNULL(SUM(GroupSize), 0)
+    SELECT @Occupied = COUNT(*)
     FROM dbo.LibrarySession WHERE TableId = @TableId AND EndedAt IS NULL;
 
     IF @SeatCount < @Occupied
     BEGIN
         SELECT CAST(0 AS BIT) AS Success,
-               CONCAT(N'Table ', @TableNo, N' has ', @Occupied, N' people seated, so it cannot have fewer than ', @Occupied, N' seats.') AS Message;
+               CONCAT(N'Table ', @TableNo, N' has ', @Occupied, N' students seated, so it cannot have fewer than ', @Occupied, N' seats.') AS Message;
         RETURN;
     END
 

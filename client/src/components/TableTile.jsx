@@ -60,7 +60,7 @@ function tiltHandlers() {
 const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSelect, variant = 'plan' }, ref) {
   const { tableNo, seats, status, occupancy, device, grid } = table;
   const meta = STATUS_META[status] ?? STATUS_META.OFFLINE;
-  const seated = occupancy.groupSize;
+  const seated = occupancy.seated;
   const topCount = Math.ceil(seats / 2);
   const { level, threshold, max } = meterScale(device);
 

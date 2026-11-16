@@ -6,36 +6,10 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { formatTime } from '../../lib/format.js';
 
-const MAX_GROUP = 10;
 const REFRESH_MS = 20000;
 
-function GroupSizePicker({ value, onChange }) {
-  return (
-    <div>
-      <div className="text-sm font-semibold text-shush-ink">How many are in your group?</div>
-      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Group size">
-        {Array.from({ length: MAX_GROUP }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            type="button"
-            aria-pressed={value === n}
-            onClick={() => onChange(n)}
-            className={`h-11 w-11 rounded-xl border text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange ${
-              value === n
-                ? 'border-shush-orange bg-shush-goldSoft text-shush-orange700 shadow-md'
-                : 'border-shush-lineStrong bg-shush-white text-shush-ink hover:bg-shush-creamDeep'
-            }`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function TableTile({ table, selected, onSelect }) {
-  const disabled = !table.fits;
+  const disabled = !table.open;
   const reason = table.underMaintenance ? 'Under maintenance' : table.free === 0 ? 'Full' : `Only ${table.free} free`;
   return (
     <button
@@ -62,7 +36,6 @@ function TableTile({ table, selected, onSelect }) {
 export default function StudentTable() {
   const { student, session, checking, refresh, logout } = useStudentAuth();
   const navigate = useNavigate();
-  const [groupSize, setGroupSize] = useState(1);
   const [tables, setTables] = useState([]);
   const [selected, setSelected] = useState(null);
   const [confirming, setConfirming] = useState(false);
@@ -70,11 +43,11 @@ export default function StudentTable() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
 
-  const loadTables = useCallback(async (size) => {
+  const loadTables = useCallback(async () => {
     try {
-      const data = await api.studentTables(size);
+      const data = await api.studentTables();
       setTables(data.tables);
-      setSelected((current) => (data.tables.some((t) => t.tableNo === current && t.fits) ? current : null));
+      setSelected((current) => (data.tables.some((t) => t.tableNo === current && t.open) ? current : null));
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
     }
@@ -90,10 +63,10 @@ export default function StudentTable() {
 
   useEffect(() => {
     if (!student || seated) return undefined;
-    loadTables(groupSize);
-    const timer = setInterval(() => loadTables(groupSize), REFRESH_MS);
+    loadTables();
+    const timer = setInterval(loadTables, REFRESH_MS);
     return () => clearInterval(timer);
-  }, [student, seated, groupSize, loadTables]);
+  }, [student, seated, loadTables]);
 
   if (!checking && !student) return <Navigate to="/student/login" replace />;
   if (checking || !student) return <p className="text-sm text-shush-inkSoft">Loading…</p>;
@@ -105,7 +78,7 @@ export default function StudentTable() {
     setBusy(true);
     setMessage(null);
     try {
-      await api.studentStartSession(selected, groupSize);
+      await api.studentStartSession(selected);
       setConfirming(false);
       // Back to sign-in. The session stays open until the student signs in again or 2 hours pass.
       navigate('/student/login', {
@@ -124,7 +97,7 @@ export default function StudentTable() {
         await refresh();
       } else {
         setMessage({ type: 'error', text: err.message });
-        loadTables(groupSize);
+        loadTables();
       }
     } finally {
       setBusy(false);
@@ -159,14 +132,10 @@ export default function StudentTable() {
         </div>
         <Alert type={message?.type ?? 'success'}>{message?.text}</Alert>
         <div className="rounded-xl border border-shush-line bg-shush-white px-5 py-4">
-          <dl className="grid gap-4 sm:grid-cols-3">
+          <dl className="grid gap-4 sm:grid-cols-2">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wider text-shush-muted">Table</dt>
               <dd className="mt-1 text-2xl font-semibold text-shush-ink">{session.tableNo}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-shush-muted">Group</dt>
-              <dd className="mt-1 text-2xl font-semibold text-shush-ink">{session.groupSize}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wider text-shush-muted">Since</dt>
@@ -208,14 +177,6 @@ export default function StudentTable() {
 
       <Alert type={message?.type ?? 'error'}>{message?.text}</Alert>
 
-      <GroupSizePicker
-        value={groupSize}
-        onChange={(n) => {
-          setGroupSize(n);
-          setSelected(null);
-        }}
-      />
-
       <div>
         <div className="text-sm font-semibold text-shush-ink">Choose a table</div>
         {tables.length === 0 ? (
@@ -227,9 +188,9 @@ export default function StudentTable() {
             ))}
           </div>
         )}
-        {tables.length > 0 && !tables.some((t) => t.fits) && (
+        {tables.length > 0 && !tables.some((t) => t.open) && (
           <p className="mt-3 text-sm text-shush-inkSoft">
-            No table has {groupSize} free seats right now. Try a smaller group or check back soon.
+            No table has a free seat right now. Check back soon.
           </p>
         )}
       </div>
@@ -237,7 +198,7 @@ export default function StudentTable() {
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-shush-line bg-shush-white px-5 py-4">
         <div className="text-sm text-shush-inkSoft">
           {chosen
-            ? <>Table <b className="text-shush-ink">{chosen.tableNo}</b> for <b className="text-shush-ink">{groupSize}</b> {groupSize === 1 ? 'person' : 'people'}</>
+            ? <>Table <b className="text-shush-ink">{chosen.tableNo}</b></>
             : 'Select a table to continue.'}
         </div>
         <button
@@ -263,7 +224,7 @@ export default function StudentTable() {
           <div className="rounded-xl border border-shush-line bg-shush-white px-4 py-3">
             <div className="text-lg font-semibold text-shush-ink">Table {chosen.tableNo}</div>
             <div className="text-sm text-shush-inkSoft">
-              {groupSize} {groupSize === 1 ? 'person' : 'people'} · {chosen.free} seats were free
+              {chosen.free} of {chosen.seats} seats free
             </div>
           </div>
         )}

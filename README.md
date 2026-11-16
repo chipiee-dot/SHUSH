@@ -105,10 +105,10 @@ Run the server tests with `npm test --prefix server`.
 
 ### Student check-in
 
-- Start page at `/` offers **Student check-in** and **Faculty console**.
+- Start page at `/` offers only **Student check-in**. Faculty reach their sign-in with **Ctrl+Shift+F** on the start page.
 - Sign up at `/student/signup`: student number (`21-0001`, the dash is added automatically), last name, first name, optional middle initial, and section such as `BSIT-3D`, `BSCS-1D` or `BSEE-2D`.
 - Sign in at `/student/login`: enter the student number, confirm the name shown in the pop-up, and sign in.
-- At `/student/table`: choose a group size, choose a table with enough free seats, and confirm. After confirming a table, the student returns to sign-in. Signing in again ends the session. A session also ends automatically after 2 hours.
+- At `/student/table`: choose a table with a free seat and confirm. After confirming a table, the student returns to sign-in. Signing in again ends the session. A session also ends automatically after 2 hours.
 - Student sessions are written to the same tables the faculty pages read, so the dashboard, table layout, rewards and history update from real visits.
 
 Students use their own cookie (`shush_student`) and cannot open faculty pages, and faculty cookies do not work on student routes.
@@ -124,5 +124,5 @@ On **Settings**, administrators can add a table by its number and seat count. Co
 - Maintenance mode is recorded and shown, but alerts are not suppressed until device ingest exists.
 - Threshold changes are saved, but devices only pick them up once device sync exists.
 - Student sign-in uses the student number only (no password), so anyone who knows a number can sign in as that student. A PIN is a sensible next step.
-- Group members cannot join a session started by another student yet; the session records the group size only.
+- Each student signs in on their own and takes one seat. A table holds as many students as it has seats.
 - Quietest Visitor needs device noise readings, so real sessions only appear in Most Frequent and Quiet Streak until devices report.

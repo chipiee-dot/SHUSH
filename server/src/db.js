@@ -167,12 +167,11 @@ export function createDb(dbConfig) {
     return oneOf(await run('usp_Student_ActiveSession', [['StudentId', sql.Int, studentId]]));
   }
 
-  async function startSession({ studentId, tableNo, groupSize, now }) {
+  async function startSession({ studentId, tableNo, now }) {
     return oneOf(
       await run('usp_Session_Start', [
         ['StudentId', sql.Int, studentId],
         ['TableNo', sql.Int, tableNo],
-        ['GroupSize', sql.Int, groupSize],
         ['Now', sql.DateTime2(0), now],
       ])
     );

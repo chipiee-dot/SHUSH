@@ -20,8 +20,8 @@ const fakeDb = {
   ping: async () => {},
   closeStaleSessions: async () => {},
   getLayout: async () => [
-    { tableNo: 1, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: 'SHUSH-T01', threshold: 1600, lastStatus: 'ALERT', lastLevel: 1725, lastSeenAt: now, isSample: true, groupSize: 3, sessionStartedAt: now },
-    { tableNo: 2, seatCount: 2, gridCol: 2, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: null, threshold: null, lastStatus: null, lastLevel: null, lastSeenAt: null, isSample: false, groupSize: null, sessionStartedAt: null },
+    { tableNo: 1, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: 'SHUSH-T01', threshold: 1600, lastStatus: 'ALERT', lastLevel: 1725, lastSeenAt: now, isSample: true, occupied: 3, sessionStartedAt: now },
+    { tableNo: 2, seatCount: 2, gridCol: 2, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: null, threshold: null, lastStatus: null, lastLevel: null, lastSeenAt: null, isSample: false, occupied: 0, sessionStartedAt: null },
   ],
   getDashboardSummary: async () => ({ sessionsToday: 5, studentsToday: 9, alertsToday: 2 }),
   getRecentAlerts: async () => [{ id: 1, tableNo: 1, deviceCode: 'SHUSH-T01', level: 1725, threshold: 1600, triggeredAt: now, isSample: true }],
@@ -84,7 +84,7 @@ test('dashboard summarises tables, devices and alerts', async () => {
 test('layout reports each table with occupancy and status', async () => {
   const { body } = await call('GET', '/api/layout', { cookie: FACULTY });
   assert.deepEqual(body.tables.map((t) => t.status), ['ALERT', 'NO_DEVICE']);
-  assert.deepEqual(body.tables[0].occupancy, { groupSize: 3, seats: 4 });
+  assert.deepEqual(body.tables[0].occupancy, { seated: 3, seats: 4 });
   assert.deepEqual(body.tables[0].grid, { col: 0, row: 0, width: 2, height: 2 });
 });
 

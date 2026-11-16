@@ -41,22 +41,22 @@ test('table status: maintenance beats everything, then device state', () => {
 
 test('buildLayout applies all-table and single-table maintenance', () => {
   const now = new Date('2026-11-11T04:00:00Z');
-  const base = { groupSize: null, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, threshold: 1600, lastLevel: 1000, lastSeenAt: now, isSample: false };
+  const base = { occupied: 0, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, threshold: 1600, lastLevel: 1000, lastSeenAt: now, isSample: false };
   const rows = [
-    { ...base, tableNo: 1, deviceCode: 'SHUSH-T01', lastStatus: 'QUIET', groupSize: 3 },
+    { ...base, tableNo: 1, deviceCode: 'SHUSH-T01', lastStatus: 'QUIET', occupied: 3 },
     { ...base, tableNo: 2, deviceCode: 'SHUSH-T02', lastStatus: 'QUIET' },
     { ...base, tableNo: 3, deviceCode: null, lastStatus: null },
   ];
   const single = buildLayout(rows, [{ tableNo: 2, allTables: false }], { now, offlineAfterMs: 120_000 });
   assert.deepEqual(single.map((t) => t.status), ['QUIET', 'MAINTENANCE', 'NO_DEVICE']);
-  assert.deepEqual(single[0].occupancy, { groupSize: 3, seats: 4 });
+  assert.deepEqual(single[0].occupancy, { seated: 3, seats: 4 });
 
   const all = buildLayout(rows, [{ tableNo: null, allTables: true }], { now, offlineAfterMs: 120_000 });
   assert.ok(all.every((t) => t.status === 'MAINTENANCE' || t.status === 'NO_DEVICE'));
 });
 
 const session = (over) => ({
-  studentId: 1, fullName: 'A', sessionId: 1, tableNo: 1, groupSize: 2,
+  studentId: 1, fullName: 'A', sessionId: 1, tableNo: 1,
   startedAt: '2026-11-10T02:00:00Z', endedAt: '2026-11-10T02:45:00Z',
   avgLevel: 1000, hadAlert: false, isSample: false, ...over,
 });

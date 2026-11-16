@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import Card from '../../components/Card.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import SampleBadge from '../../components/SampleBadge.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import useClickOutside from '../../hooks/useClickOutside.js';
 import usePolling from '../../hooks/usePolling.js';
-import { HISTORY_KIND_META, csvCell, dateInputValue, formatTime } from '../../lib/format.js';
+import { buildHistoryWorkbook, downloadBlob, downloadCsvFile, exportFileName } from '../../lib/exportHistory.js';
+import { HISTORY_KIND_META, dateInputValue, formatTime } from '../../lib/format.js';
 
 const KIND_CHIPS = [
   { value: 'all', label: 'All', pill: 'border-shush-lineStrong bg-shush-white text-shush-ink', dot: 'bg-shush-ink' },
@@ -79,33 +82,6 @@ function dayLabel(key, sample) {
   return new Date(sample).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function downloadCsv(rows, filename) {
-  const header = ['Time', 'Type', 'Table', 'Summary', 'Details', 'Sample data'];
-  const lines = rows.map((r) =>
-    [
-      new Date(r.occurredAt).toISOString(),
-      HISTORY_KIND_META[r.kind]?.label ?? r.kind,
-      r.tableNo ?? 'All tables',
-      r.summary,
-      r.detail,
-      r.isSample ? 'yes' : 'no',
-    ]
-      .map(csvCell)
-      .join(',')
-  );
-  const blob = new Blob([[header.map(csvCell).join(','), ...lines].join('\r\n')], {
-    type: 'text/csv;charset=utf-8',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 function TimelineRow({ row, last }) {
   const icon = KIND_ICON[row.kind] ?? KIND_ICON.session;
   return (
@@ -144,6 +120,11 @@ export default function History() {
   const [range, setRange] = useState('week');
   const [custom, setCustom] = useState({ from: '', to: '' });
   const [exportError, setExportError] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState(''); // 'xlsx' or 'csv' while the file is being prepared
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  const { user } = useAuth();
 
   const dates = useMemo(() => rangeDates(range, custom), [range, custom]);
   const fetchKey = JSON.stringify([dates, tableNo]);
@@ -191,13 +172,55 @@ export default function History() {
     };
   }
 
-  function exportReport() {
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  useClickOutside(menuRef, menuOpen, closeMenu);
+
+  // Move focus into the menu when it opens; give it back to the button when it closes.
+  useEffect(() => {
+    if (menuOpen) menuRef.current?.querySelector('[role="menuitem"]')?.focus();
+  }, [menuOpen]);
+
+  function onMenuKey(e) {
+    const items = [...(menuRef.current?.querySelectorAll('[role="menuitem"]') ?? [])];
+    const i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') items[(i + 1) % items.length]?.focus();
+    else if (e.key === 'ArrowUp') items[(i - 1 + items.length) % items.length]?.focus();
+    else if (e.key === 'Home') items[0]?.focus();
+    else if (e.key === 'End') items[items.length - 1]?.focus();
+    else if (e.key === 'Escape') menuButtonRef.current?.focus();
+    else return;
+    e.preventDefault();
+  }
+
+  // Exports exactly the rows on screen (same filters).
+  async function exportReport(type) {
+    setMenuOpen(false);
+    menuButtonRef.current?.focus();
     setExportError('');
     if (visible.length === 0) {
       setExportError('There is nothing to export for these filters.');
       return;
     }
-    downloadCsv(visible, `shush-history-${kind}-${dateInputValue()}.csv`);
+    setExporting(type);
+    try {
+      if (type === 'xlsx') {
+        const blob = await buildHistoryWorkbook(visible, {
+          typeLabel: KIND_CHIPS.find((c) => c.value === kind)?.label ?? 'All',
+          tableLabel: tableNo === 'all' ? 'All tables' : `Table ${tableNo}`,
+          from: dates?.from,
+          to: dates?.to,
+          by: user ? `${user.firstName} ${user.lastName}`.trim() : '',
+          generatedAt: new Date(),
+        });
+        downloadBlob(blob, exportFileName(kind, 'xlsx'));
+      } else {
+        downloadCsvFile(visible, exportFileName(kind, 'csv'));
+      }
+    } catch (err) {
+      setExportError(err?.message ? `Could not prepare the export. ${err.message}` : 'Could not prepare the export.');
+    } finally {
+      setExporting('');
+    }
   }
 
   const refreshing = loading && data !== null;
@@ -206,15 +229,50 @@ export default function History() {
     <div className="space-y-6">
       <PageHeader
         title="History"
-        subtitle="Alerts, maintenance and sessions. Export the filtered list as a CSV report."
+        subtitle="Alerts, maintenance and sessions. Export the filtered list as an Excel report or a CSV."
       >
-        <button
-          type="button"
-          onClick={exportReport}
-          className="rounded-xl bg-shush-orange px-4 py-2.5 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
-        >
-          Export CSV
-        </button>
+        <div ref={menuRef} className="relative">
+          <button
+            ref={menuButtonRef}
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            disabled={Boolean(exporting)}
+            onClick={() => setMenuOpen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-xl bg-shush-orange600 px-4 py-2.5 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+          >
+            {exporting ? 'Preparing…' : 'Export'}
+            {!exporting && (
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              aria-label="Export format"
+              onKeyDown={onMenuKey}
+              className="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-shush-line bg-shush-white p-1.5 shadow-[0_16px_36px_-18px_rgba(242,95,19,0.5)]"
+            >
+              {[
+                ['xlsx', 'Excel report (.xlsx)', 'Colored and formatted'],
+                ['csv', 'CSV (.csv)', 'Plain data for other tools'],
+              ].map(([type, title, hint]) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => exportReport(type)}
+                  className="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-shush-creamDeep focus:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange"
+                >
+                  <span className="block text-sm font-semibold text-shush-ink">{title}</span>
+                  <span className="block text-xs text-shush-inkSoft">{hint}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </PageHeader>
 
       {/* Filters stay in the normal flow (not sticky) so they never cover the page header or the timeline. */}
@@ -268,7 +326,7 @@ export default function History() {
                   onClick={() => change(setRange)(r.value)}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-1 ${
                     active
-                      ? 'border-shush-orange bg-shush-orange text-white'
+                      ? 'border-shush-orange600 bg-shush-orange600 text-white'
                       : 'border-shush-lineStrong bg-shush-white text-shush-inkSoft hover:bg-shush-creamDeep'
                   }`}
                 >

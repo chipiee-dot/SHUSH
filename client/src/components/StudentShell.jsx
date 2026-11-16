@@ -5,6 +5,9 @@ import AuthLayout, { AuthHero } from './AuthLayout.jsx';
 import CloudBackground from './CloudBackground.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import Logo from './Logo.jsx';
+import { formatTime } from '../lib/format.js';
+import './motion.css';
+import './student-table.css';
 
 const SLIDES = [
   { title: 'Enter your student number', text: 'No password needed.' },
@@ -63,8 +66,8 @@ export default function StudentShell() {
 
       <header className="sticky top-0 z-30 border-b border-shush-line bg-shush-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Logo className="h-8 w-8 flex-none text-shush-orange" />
+          <div className="m-logo-hover flex items-center gap-3">
+            <Logo className="m-logo h-8 w-8 flex-none text-shush-orange" />
             <div className="leading-tight">
               <div className="text-xl font-bold tracking-wider text-shush-ink">SHUSH</div>
               <div className="text-[11px] font-semibold uppercase tracking-widest text-shush-muted">Student check-in</div>
@@ -73,6 +76,12 @@ export default function StudentShell() {
 
           {signedIn && (
             <div className="flex items-center gap-2 sm:gap-3">
+              {session && (
+                <p className="st-pill">
+                  <span>Table {session.tableNo}</span>
+                  <span className="hidden sm:inline">· since {formatTime(session.startedAt)}</span>
+                </p>
+              )}
               <div className="flex items-center gap-2.5" aria-label={`Signed in as ${student.name}, ${student.section}`}>
                 <span
                   className="grid h-9 w-9 flex-none place-items-center rounded-full bg-shush-goldSoft text-sm font-bold text-shush-orange700"

@@ -170,7 +170,51 @@
 }
 .st-mine .st-no { font-size: 3rem; }
 
+/* ---- Seated view: soft glow and studs behind your table, time ring ---- */
+.st-seat-stage { position: relative; isolation: isolate; }
+.st-seat-stage::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -2rem;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(247, 181, 71, 0.32) 0%, transparent 65%);
+}
+.st-mine .tl-top {
+  background-color: var(--shush-gold-soft);
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(242, 95, 19, 0.3) 0 2px, transparent 2.6px),
+    radial-gradient(circle at 50% 50%, rgba(242, 95, 19, 0.3) 0 2px, transparent 2.6px);
+  background-size: 16px 12px, 16px 12px;
+  background-repeat: repeat-x, repeat-x;
+  background-position: 4px 3px, 12px calc(100% - 3px);
+}
+.st-time-arc {
+  fill: none;
+  stroke: var(--shush-orange);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+/* Header pill: "Table 5 · since 9:30 AM" */
+.st-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--shush-line-strong);
+  background: var(--shush-gold-soft);
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--shush-ink);
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .st-time-arc { transition: none; }
   .st-skel::after { animation: none; transform: none; opacity: 0; }
   .st-chip { animation: none; }
   .st-ring-arc { transition: none; }
@@ -186,7 +230,12 @@
   width: 9.5rem;
   height: 7.5rem;
 }
-.ct-diagram .tl-top { background: var(--shush-gold-soft); }
+.ct-diagram .tl-top { background-color: var(--shush-gold-soft); }
+.ct-mine { animation: ct-breathe 3.2s ease-in-out infinite; }
+@keyframes ct-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: 0.8; }
+}
 .ct-no { font-size: 2rem; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: var(--shush-ink); }
 
 /* The student's chair: filled orange with a slow ring (transform and opacity only). */
@@ -206,5 +255,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ct-mine { animation: none; }
   .ct-mine::after { animation: none; transform: none; opacity: 0.6; }
 }

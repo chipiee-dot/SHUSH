@@ -5,6 +5,8 @@ import Alert from '../../components/Alert.jsx';
 import { SECTION_RE, STUDENT_NO_RE, formatSectionInput, formatStudentNumberInput } from '../../lib/studentNumber.js';
 import Logo from '../../components/Logo.jsx';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
+import SuccessCheck from '../../components/SuccessCheck.jsx';
+import '../../components/motion.css';
 
 const LABEL = 'text-xs font-semibold uppercase tracking-wider text-shush-inkSoft lg:text-sm 2xl:text-base';
 // Keeps the six boxes on one line inside the card. Same 44px boxes as the component default from 640px up.
@@ -63,15 +65,18 @@ export default function StudentSignUp() {
 
   if (done) {
     return (
-      <div className="space-y-6">
+      <div className="shush-rise space-y-6">
         {brand}
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-shush-goldSoft text-shush-orange700">
+          <SuccessCheck className="h-10 w-10" />
+        </span>
         <div>
           <h2 id="student-auth-heading" className="text-3xl font-bold tracking-tight text-shush-ink lg:text-4xl 2xl:text-5xl">You are registered</h2>
           <p className="mt-1.5 text-sm text-shush-inkSoft lg:mt-2 lg:text-base 2xl:text-lg">You can now sign in with your student number.</p>
         </div>
         <Link
           to="/student/login"
-          className="inline-flex w-full items-center justify-center rounded-xl bg-shush-orange px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+          className="m-shine inline-flex w-full items-center justify-center rounded-xl bg-shush-orange600 px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
         >
           Go to sign in
         </Link>
@@ -142,7 +147,7 @@ export default function StudentSignUp() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-shush-orange px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="m-shine w-full rounded-xl bg-shush-orange600 px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? 'Creating account…' : 'Create account'}
           </button>

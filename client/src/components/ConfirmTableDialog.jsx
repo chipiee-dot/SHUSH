@@ -1,6 +1,7 @@
 import ConfirmDialog from './ConfirmDialog.jsx';
 import './table-layout.css';
 import './student-table.css';
+import './motion.css';
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
@@ -36,7 +37,7 @@ function SeatDiagram({ seats, free }) {
   return (
     <div className="ct-diagram" aria-hidden="true">
       {row(0, topCount)}
-      <div className="tl-top ct-top" />
+      <div className="tl-top ct-top m-studs" />
       {row(topCount, Math.max(0, total - topCount))}
     </div>
   );

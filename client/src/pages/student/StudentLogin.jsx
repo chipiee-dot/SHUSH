@@ -4,6 +4,8 @@ import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import Logo from '../../components/Logo.jsx';
+import SuccessCheck from '../../components/SuccessCheck.jsx';
+import '../../components/motion.css';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import useFacultyShortcut from '../../hooks/useFacultyShortcut.js';
@@ -101,7 +103,14 @@ export default function StudentLogin() {
       </header>
 
       <form onSubmit={handleContinue} className="mt-6 space-y-4 lg:mt-8 lg:space-y-5" noValidate>
-        {notice && <Alert type={notice.type}>{notice.text}</Alert>}
+        {notice && notice.type === 'success' ? (
+          <div role="status" className="shush-rise flex items-start gap-3 rounded-xl border border-shush-success/30 bg-shush-successSoft px-4 py-3 text-sm text-shush-success">
+            <SuccessCheck className="mt-0.5 h-5 w-5" />
+            <span>{notice.text}</span>
+          </div>
+        ) : (
+          notice && <Alert type={notice.type}>{notice.text}</Alert>
+        )}
         <Alert>{error}</Alert>
         <div>
           <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-shush-inkSoft lg:text-sm 2xl:text-base">
@@ -119,7 +128,7 @@ export default function StudentLogin() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-xl bg-shush-orange px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="m-shine w-full rounded-xl bg-shush-orange600 px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>

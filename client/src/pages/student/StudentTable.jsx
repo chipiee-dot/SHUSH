@@ -10,6 +10,7 @@ import StudentTableTile, { StudentTableSkeleton, YourTable } from '../../compone
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { formatTime } from '../../lib/format.js';
 import '../../components/student-table.css';
+import '../../components/motion.css';
 
 const REFRESH_MS = 20000;
 
@@ -54,6 +55,65 @@ function LivePill({ updatedAt }) {
       {updatedAt && <RefreshRing updatedAt={updatedAt} />}
       <span className="sr-only">Seats refresh every 20 seconds.</span>
     </p>
+  );
+}
+
+/* Adapted from BrewedOps Motion Library: Ring progress */
+const TIME_R = 44;
+const TIME_C = 2 * Math.PI * TIME_R;
+const CLOCK_MS = 30000;
+
+function formatSpan(ms) {
+  const mins = Math.max(0, Math.floor(ms / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/* "Seated for 1h 12m" and a ring of time used out of the session maximum. Updates every 30 seconds.
+   maxHours comes from the server; without it the ring is left out. */
+function SessionClock({ startedAt, maxHours }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), CLOCK_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const start = new Date(startedAt).getTime();
+  const elapsed = Number.isFinite(start) ? Math.max(0, now - start) : 0;
+  const maxMs = maxHours ? maxHours * 3600000 : 0;
+  const used = maxMs > 0 ? Math.min(1, elapsed / maxMs) : 0;
+  const left = maxMs > 0 ? Math.max(0, maxMs - elapsed) : 0;
+  const label = elapsed < 60000 ? 'Seated for less than a minute' : `Seated for ${formatSpan(elapsed)}`;
+
+  return (
+    <div className="flex items-center gap-4">
+      {maxMs > 0 && (
+        <div
+          className="relative h-24 w-24 flex-none"
+          role="img"
+          aria-label={`${formatSpan(elapsed)} used of ${maxHours} ${maxHours === 1 ? 'hour' : 'hours'}`}
+        >
+          <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true" focusable="false">
+            <circle cx="50" cy="50" r={TIME_R} className="st-ring-track" />
+            <circle
+              cx="50"
+              cy="50"
+              r={TIME_R}
+              className="st-time-arc"
+              strokeDasharray={TIME_C}
+              strokeDashoffset={TIME_C * (1 - used)}
+              style={{ opacity: used > 0 ? 1 : 0 }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center" aria-hidden="true">
+            <span className="text-lg font-extrabold leading-none text-shush-ink">{formatSpan(left)}</span>
+            <span className="mt-0.5 text-[11px] font-semibold text-shush-inkSoft">left</span>
+          </div>
+        </div>
+      )}
+      <p className="text-base font-semibold text-shush-ink">{label}</p>
+    </div>
   );
 }
 
@@ -182,12 +242,16 @@ export default function StudentTable() {
           </div>
 
           <div className="mt-6 grid items-center gap-8 md:grid-cols-[18rem_1fr]">
-            <YourTable
-              tableNo={session.tableNo}
-              seats={mine?.seats}
-              taken={mine ? mine.seats - mine.free : 0}
-            />
+            <div className="st-seat-stage">
+              <YourTable
+                tableNo={session.tableNo}
+                seats={mine?.seats}
+                taken={mine ? mine.seats - mine.free : 0}
+              />
+            </div>
             <div>
+              <SessionClock startedAt={session.startedAt} maxHours={maxHours} />
+              <div className="mt-5" />
               <dl className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wider text-shush-muted">Table</dt>
@@ -207,7 +271,7 @@ export default function StudentTable() {
               <button
                 type="button"
                 onClick={() => setEnding(true)}
-                className={`mt-6 rounded-xl bg-shush-orange600 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 ${RING}`}
+                className={`m-shine mt-6 rounded-xl bg-shush-orange600 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 ${RING}`}
               >
                 End session
               </button>

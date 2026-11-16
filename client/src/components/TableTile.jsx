@@ -74,6 +74,8 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
   const seated = occupancy.seated;
   const topCount = Math.ceil(seats / 2);
   const { level, threshold, max } = meterScale(device);
+  // The status only flips after 5 seconds above the threshold; the meter can show it immediately.
+  const overThreshold = Boolean(device && device.threshold != null && level > threshold);
 
   const dragRef = useRef(null);
   // If the tile goes away mid-drag (Cancel, Save), stop listening for Esc.
@@ -228,8 +230,8 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
       value={level}
       max={max}
       markerAt={device.threshold == null ? undefined : threshold}
-      colorVar={meterColor(status)}
-      label={`Table ${tableNo} noise level against its threshold`}
+      colorVar={overThreshold ? '--shush-danger' : meterColor(status)}
+      label={`Table ${tableNo} noise level against its threshold${overThreshold ? ', above threshold' : ''}`}
       className="!py-0.5"
     />
   );

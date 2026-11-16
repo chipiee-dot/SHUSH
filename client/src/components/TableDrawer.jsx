@@ -20,6 +20,7 @@ export default function TableDrawer({ table, isAdmin, onClose }) {
 
   const { device } = table;
   const { level, threshold, max } = meterScale(device);
+  const overThreshold = Boolean(device && device.threshold != null && level > threshold);
   const rows = [
     ['Status', STATUS_META[table.status].label],
     ['Seated', `${table.occupancy.seated} of ${table.seats}`],
@@ -73,10 +74,23 @@ export default function TableDrawer({ table, isAdmin, onClose }) {
             value={level}
             max={max}
             markerAt={device.threshold == null ? undefined : threshold}
-            colorVar={meterColor(table.status)}
-            label={`Table ${table.tableNo} noise level against its threshold`}
+            colorVar={overThreshold ? '--shush-danger' : meterColor(table.status)}
+            label={`Table ${table.tableNo} noise level against its threshold${overThreshold ? ', above threshold' : ''}`}
           />
         </div>
+      )}
+
+      {overThreshold && (
+        <p className="mt-3 flex items-start gap-2 rounded-xl border border-shush-danger/40 bg-shush-danger/10 px-3 py-2 text-xs text-shush-ink">
+          <span className="mt-1 h-2 w-2 flex-none rounded-full bg-shush-danger" aria-hidden="true" />
+          <span>
+            {table.status === 'ALERT'
+              ? 'This table is above its alert threshold.'
+              : device.isSample
+                ? `The last sample reading is above the threshold. Sample devices send no live readings, so the status may still show ${STATUS_META[table.status].label}.`
+                : 'The last reading is above the threshold. An alert is raised after 5 seconds above it.'}
+          </span>
+        </p>
       )}
 
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">

@@ -6,6 +6,7 @@ import Card from '../../components/Card.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import GlowButton from '../../components/GlowButton.jsx';
+import Modal from '../../components/Modal.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import Stat from '../../components/Stat.jsx';
 import { useErrorToast, useToast } from '../../components/Toast.jsx';
@@ -25,6 +26,8 @@ const SMALL_BTN =
   'rounded-xl bg-shush-orange600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2';
 const GHOST_BTN =
   'rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
+const HEADER_BTN =
+  'inline-flex items-center gap-2 rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2.5 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
 const LIST = 'divide-y divide-shush-line overflow-hidden rounded-xl border border-shush-line bg-shush-white';
 const FOCUS_ROW = 'bg-shush-goldSoft';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider text-shush-muted';
@@ -102,6 +105,8 @@ function AdminSettings() {
   const [params] = useSearchParams();
   const focusNo = Number(params.get('table')) || null; // "Edit table" on the floor plan opens that table here
   const [editingNo, setEditingNo] = useState(focusNo); // one table is edited at a time
+  const [showAttention, setShowAttention] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const tablesQ = usePolling(api.adminTables, 0);
   const devicesQ = usePolling(api.devices, 0);
   useErrorToast(tablesQ.error);
@@ -109,6 +114,7 @@ function AdminSettings() {
 
   const tables = tablesQ.data?.tables ?? [];
   const devices = devicesQ.data?.devices ?? [];
+  const attention = attentionItems(tables, devices);
   const reloadAll = () => {
     tablesQ.reload();
     devicesQ.reload();
@@ -124,13 +130,52 @@ function AdminSettings() {
     }, 60);
   }
 
+  // Close the modal first, then reveal the table behind it.
+  function openAttentionTable(no) {
+    setShowAttention(false);
+    openTable(no);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Settings"
         icon={NAV_ICONS.settings}
         subtitle="Tables, seats and device thresholds. Administrators only."
-      />
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAttention(true)}
+            className={HEADER_BTN}
+            aria-haspopup="dialog"
+          >
+            <span
+              className={`[&>svg]:h-4 [&>svg]:w-4 ${attention.length > 0 ? 'text-shush-danger' : 'text-shush-success'}`}
+              aria-hidden="true"
+            >
+              {ALERT_ICON}
+            </span>
+            Needs attention
+            {attention.length > 0 && (
+              <span className="rounded-full bg-shush-danger px-1.5 py-0.5 text-[10px] font-bold leading-none text-white tabular-nums">
+                {attention.length}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowGuide(true)}
+            className={HEADER_BTN}
+            aria-haspopup="dialog"
+          >
+            <span className="text-shush-orange700 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
+              {INFO_ICON}
+            </span>
+            How it fits together
+          </button>
+        </div>
+      </PageHeader>
 
       <Overview tables={tables} loaded={Boolean(tablesQ.data)} />
 
@@ -147,11 +192,17 @@ function AdminSettings() {
           <DeviceSettings q={devicesQ} focusNo={focusNo} />
         </div>
         <aside className="min-w-0 space-y-6 xl:sticky xl:top-6">
-          <AttentionCard tables={tables} devices={devices} onOpen={openTable} />
-          <GuideCard />
           <SampleDataSettings onCleared={reloadAll} />
         </aside>
       </div>
+
+      <AttentionModal
+        open={showAttention}
+        items={attention}
+        onOpen={openAttentionTable}
+        onClose={() => setShowAttention(false)}
+      />
+      <GuideModal open={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 }
@@ -261,10 +312,13 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
   const [drafts, setDrafts] = useState({}); // { [tableNo]: { number, seats, device } } while editing
   const [savingNo, setSavingNo] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [newTable, setNewTable] = useState({ tableNo: '', seats: '4' });
+  const [newTable, setNewTable] = useState({ tableNo: '', seats: '4', device: '' });
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
+
+  // Clicking the active filter pill again returns to All.
+  const toggleFilter = (key) => setFilter((cur) => (cur === key ? 'all' : key));
 
   const deviceByTable = useMemo(() => new Map(devices.map((dv) => [dv.tableNo, dv])), [devices]);
   const counts = useMemo(
@@ -355,11 +409,27 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
 
   async function addTable(e) {
     e.preventDefault();
+    const device = newTable.device.trim();
+    if (device !== '' && !DEVICE_RE.test(device)) {
+      toast.error('Device code must be 1 to 20 letters, numbers or dashes.');
+      return;
+    }
     setAdding(true);
     try {
       const result = await api.addTable({ tableNo: newTable.tableNo, seats: newTable.seats });
-      toast.success(result.message || 'Table added.');
-      setNewTable({ tableNo: '', seats: '4' });
+      const addedNo = result?.tableNo ?? Number(newTable.tableNo);
+      if (device) {
+        try {
+          await api.assignDevice(addedNo, device);
+          toast.success(`Table ${addedNo} added and device ${device} connected.`);
+        } catch (err) {
+          // The table exists; only the device connection failed.
+          toast.error(`Table ${addedNo} was added, but the device could not be connected: ${err.message}`);
+        }
+      } else {
+        toast.success(result.message || 'Table added.');
+      }
+      setNewTable({ tableNo: '', seats: '4', device: '' });
       setShowAdd(false);
       onChanged();
     } catch (err) {
@@ -368,6 +438,9 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
       setAdding(false);
     }
   }
+
+  const newDevice = newTable.device.trim();
+  const newDeviceError = newDevice !== '' && !DEVICE_RE.test(newDevice);
 
   return (
     <Card
@@ -411,15 +484,33 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
                 onChange={(e) => setNewTable((t) => ({ ...t, seats: e.target.value }))}
               />
             </label>
-            <GlowButton type="submit" disabled={adding} className={SMALL_BTN}>
+            <label className="block w-48">
+              <span className={LABEL}>
+                Device code <span className="normal-case tracking-normal text-shush-muted">(optional)</span>
+              </span>
+              <input
+                className={`${INPUT} font-mono ${newDeviceError ? INPUT_BAD : ''}`}
+                type="text"
+                maxLength={20}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="e.g. SHUSH-T03"
+                aria-invalid={newDeviceError}
+                value={newTable.device}
+                onChange={(e) => setNewTable((t) => ({ ...t, device: e.target.value }))}
+              />
+            </label>
+            <GlowButton type="submit" disabled={adding || newDeviceError} className={SMALL_BTN}>
               {adding ? 'Adding…' : 'Add table'}
             </GlowButton>
             <button type="button" onClick={() => setShowAdd(false)} className={GHOST_BTN}>
               Cancel
             </button>
           </div>
-          <p className="mt-2 text-xs text-shush-inkSoft">
-            The new table is placed automatically on the floor plan. Connect its device after adding it.
+          <p className={`mt-2 text-xs ${newDeviceError ? 'text-shush-danger' : 'text-shush-inkSoft'}`}>
+            {newDeviceError
+              ? 'Device code must be 1 to 20 letters, numbers or dashes.'
+              : 'The new table is placed automatically on the floor plan. Add a device code now, or connect it later with Edit / connect.'}
           </p>
         </form>
       )}
@@ -453,11 +544,11 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
                 className="block w-full rounded-xl border-shush-lineStrong bg-shush-white py-2 pl-9 pr-3 text-sm text-shush-ink focus:border-shush-orange focus:ring-shush-orange"
               />
             </label>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter tables">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter tables. Click a selected filter again to show all.">
               <Chip active={filter === 'all'} count={counts.all} onClick={() => setFilter('all')}>All</Chip>
-              <Chip active={filter === 'nodevice'} count={counts.nodevice} onClick={() => setFilter('nodevice')}>No device</Chip>
+              <Chip active={filter === 'nodevice'} count={counts.nodevice} onClick={() => toggleFilter('nodevice')}>No device</Chip>
               {counts.sample > 0 && (
-                <Chip active={filter === 'sample'} count={counts.sample} onClick={() => setFilter('sample')}>Sample</Chip>
+                <Chip active={filter === 'sample'} count={counts.sample} onClick={() => toggleFilter('sample')}>Sample</Chip>
               )}
             </div>
           </div>
@@ -658,8 +749,13 @@ function DeviceSettings({ q, focusNo }) {
     }
     setSavingCode(device.deviceCode);
     try {
+      const over = device.lastLevel != null && Number(device.lastLevel) > value;
       const result = await api.saveThreshold(device.deviceCode, value);
-      toast.success(result.message || 'Threshold saved.');
+      toast.success(
+        over
+          ? `Threshold saved. Table ${device.tableNo} is currently above it and will alert once a reading stays above it for 5 seconds.`
+          : result.message || 'Threshold saved.',
+      );
       setDrafts((d) => {
         const next = { ...d };
         delete next[device.deviceCode];
@@ -703,6 +799,7 @@ function DeviceSettings({ q, focusNo }) {
             const draftNum = Number(draft);
             const shownThreshold = draft.trim() !== '' && Number.isFinite(draftNum) ? Math.min(MAX_THRESHOLD, Math.max(0, draftNum)) : d.threshold;
             const saving = savingCode === d.deviceCode;
+            const over = d.lastLevel != null && Number(d.lastLevel) > shownThreshold;
             const setDraft = (value) => setDrafts((prev) => ({ ...prev, [d.deviceCode]: String(value) }));
             return (
               <li key={d.deviceCode} className={d.tableNo === focusNo ? FOCUS_ROW : ''}>
@@ -711,6 +808,11 @@ function DeviceSettings({ q, focusNo }) {
                     <span className="rounded-lg bg-shush-goldSoft px-2 py-0.5 text-xs font-semibold text-shush-orange700">Table {d.tableNo}</span>
                     <span className="font-mono text-xs text-shush-ink">{d.deviceCode}</span>
                     {d.isSample && <span className={SAMPLE_TAG}>Sample</span>}
+                    {over && (
+                      <span className="rounded-full bg-shush-danger px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                        Above threshold
+                      </span>
+                    )}
                     {dirty && (
                       <span className="rounded-full border border-shush-amber/50 bg-shush-goldSoft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-shush-ink">
                         Unsaved
@@ -722,6 +824,25 @@ function DeviceSettings({ q, focusNo }) {
                   </div>
 
                   <LevelMeter level={d.lastLevel ?? null} threshold={shownThreshold} />
+
+                  {over && (
+                    <div
+                      role="status"
+                      className="flex items-start gap-2 rounded-xl border border-shush-danger/40 bg-shush-danger/10 px-3 py-2 text-xs text-shush-ink"
+                    >
+                      <span className="mt-0.5 flex-none text-shush-danger [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
+                        {ALERT_ICON}
+                      </span>
+                      <span>
+                        The last reading ({formatNumber(d.lastLevel)}) is above{' '}
+                        {dirty ? 'the threshold you entered' : 'this threshold'} ({formatNumber(shownThreshold)}).
+                        {d.isSample
+                          ? ' This device is sample data and sends no live readings, so the table status will not change until a real device reports.'
+                          : ` Table ${d.tableNo} will raise an alert once the level stays above the threshold for 5 seconds.`}
+                        {dirty ? ' Save to apply the new threshold.' : ''}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap items-center gap-3">
                     <input
@@ -760,26 +881,34 @@ function DeviceSettings({ q, focusNo }) {
   );
 }
 
-// ---- Side column -----------------------------------------------------------------
+// ---- Attention + guide modals ----------------------------------------------------
 
-function AttentionCard({ tables, devices, onOpen }) {
+// Everything that needs a quick fix. Shared by the header badge and the modal.
+function attentionItems(tables, devices) {
   const noDevice = tables.filter((t) => !t.hasDevice);
   const silent = devices.filter((d) => !d.lastSeenAt && !d.isSample);
-  const items = [
+  return [
     ...noDevice.map((t) => ({ key: `t${t.tableNo}`, text: `Table ${t.tableNo} has no device`, action: 'Connect', tableNo: t.tableNo })),
     ...silent.map((d) => ({ key: `d${d.deviceCode}`, text: `${d.deviceCode} has not sent a reading yet`, action: 'View', tableNo: d.tableNo })),
   ];
-  const shown = items.slice(0, 5);
+}
 
+function AttentionModal({ open, items, onOpen, onClose }) {
   return (
-    <Card icon={ALERT_ICON} title="Needs attention" subtitle="Quick fixes for tables and devices.">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Needs attention"
+      subtitle="Quick fixes for tables and devices."
+      icon={ALERT_ICON}
+    >
       {items.length === 0 ? (
         <p className="rounded-xl border border-shush-line bg-shush-cream px-3 py-3 text-sm text-shush-inkSoft">
           All set. Every table has a device that is reporting.
         </p>
       ) : (
         <ul className="space-y-2">
-          {shown.map((item) => (
+          {items.map((item) => (
             <li
               key={item.key}
               className="flex items-center justify-between gap-3 rounded-xl border border-shush-line bg-shush-cream px-3 py-2"
@@ -790,37 +919,43 @@ function AttentionCard({ tables, devices, onOpen }) {
               </button>
             </li>
           ))}
-          {items.length > shown.length && (
-            <li className="px-1 text-xs text-shush-muted">+{items.length - shown.length} more</li>
-          )}
         </ul>
       )}
-    </Card>
+      <p className="mt-4 text-xs text-shush-inkSoft">
+        Connect opens the table below so you can enter the device code printed on its sensor.
+      </p>
+    </Modal>
   );
 }
 
-function GuideCard() {
+function GuideModal({ open, onClose }) {
   const steps = [
-    ['Add the table', 'Give it a number and seats. It lands on the floor plan by itself.'],
-    ['Connect a device', 'Edit the table and enter the code printed on its sensor.'],
-    ['Set the threshold', 'Pick the noise level that should raise an alert.'],
+    ['Add the table', 'Give it a number and seats. You can also add its device code in the same form.'],
+    ['Connect a device', 'Enter the code printed on the sensor, either while adding the table or later with Edit / connect.'],
+    ['Set the threshold', 'Pick the noise level that should raise an alert. The table alerts after 5 seconds above it.'],
   ];
   return (
-    <Card icon={INFO_ICON} title="How it fits together" tone="accent">
-      <ol className="space-y-3">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="How it fits together"
+      subtitle="Three steps from a new table to live alerts."
+      icon={INFO_ICON}
+    >
+      <ol className="space-y-4">
         {steps.map(([title, text], i) => (
           <li key={title} className="flex gap-3">
-            <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-shush-goldSoft text-xs font-semibold text-shush-orange700">
+            <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-shush-goldSoft text-xs font-semibold text-shush-orange700">
               {i + 1}
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-shush-ink">{title}</p>
-              <p className="text-xs text-shush-inkSoft">{text}</p>
+              <p className="mt-0.5 text-xs text-shush-inkSoft">{text}</p>
             </div>
           </li>
         ))}
       </ol>
-    </Card>
+    </Modal>
   );
 }
 

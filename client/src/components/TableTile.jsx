@@ -23,7 +23,7 @@ export function meterColor(status) {
   return METER_COLOR[status] ?? '--shush-orange';
 }
 
-function Chairs({ count, firstIndex, occupied }) {
+export function Chairs({ count, firstIndex, occupied }) {
   return (
     <div className="tl-chairs" aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (

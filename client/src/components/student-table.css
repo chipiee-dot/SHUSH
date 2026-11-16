@@ -1,0 +1,102 @@
+/* Student table page: table-shaped tiles, legend dots, skeleton shimmer, seated view.
+   Builds on .tl-tile, .tl-chairs, .tl-chair, .tl-top and the tl-s-* status classes in table-layout.css.
+   Colors come only from the --shush-* tokens in index.css. */
+
+/* ---- Tile ---- */
+.st-tile { width: 100%; height: 9.75rem; cursor: pointer; }
+.st-tile .tl-top { align-items: center; justify-content: center; gap: 0.3rem; text-align: center; }
+.st-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--shush-muted);
+}
+.st-no { font-size: 2.1rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; color: var(--shush-ink); }
+.st-note { font-size: 0.75rem; font-weight: 600; line-height: 1.2; color: var(--shush-ink-soft); }
+.st-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.3;
+  background: var(--shush-amber);
+  color: var(--shush-ink);
+}
+
+/* Full and under maintenance cannot be picked: no lift, no tilt. */
+.st-tile:disabled,
+.st-tile:disabled:hover {
+  cursor: not-allowed;
+  transform: none;
+}
+.st-tile[data-state='full'] { opacity: 0.6; }
+.st-tile[data-state='full'] .tl-top { background: var(--shush-cream-deep); }
+
+/* ---- Legend dots (same looks as the tiles) ---- */
+.st-dot {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: none;
+  border-radius: 0.3rem;
+  border: 2px solid var(--shush-gold);
+  background: var(--shush-white);
+}
+.st-dot--last { border-color: var(--shush-amber); background: var(--shush-amber); }
+.st-dot--full { border: 2px dashed var(--shush-line-strong); background: var(--shush-cream-deep); }
+.st-dot--maint {
+  border-color: var(--shush-line-strong);
+  background: repeating-linear-gradient(45deg, rgba(247, 181, 71, 0.7) 0 3px, var(--shush-white) 3px 6px);
+}
+
+/* ---- Skeleton shimmer ---- */
+/* Adapted from BrewedOps Motion Library: Skeleton shimmer (a light band sliding across; transform only) */
+.st-skel {
+  position: relative;
+  overflow: hidden;
+  height: 9.75rem;
+  border: 1px solid var(--shush-line);
+  border-radius: 1rem;
+  background: var(--shush-cream-deep);
+}
+.st-skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  animation: st-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes st-shimmer { to { transform: translateX(100%); } }
+
+/* ---- Seated view: your table seen from above ---- */
+.st-mine {
+  position: relative;
+  width: 100%;
+  max-width: 17rem;
+  margin: 0 auto;
+}
+.st-mine.tl-tile:hover { transform: none; box-shadow: 0 8px 22px -16px rgba(242, 95, 19, 0.5); }
+.st-mine .tl-chairs { height: 18px; }
+.st-mine .tl-chair { height: 9px; }
+.st-mine .tl-chair--mine {
+  background: var(--shush-orange);
+  box-shadow: 0 0 0 3px rgba(242, 95, 19, 0.28);
+}
+.st-mine .tl-top {
+  min-height: 7rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.35rem;
+  background: var(--shush-gold-soft);
+}
+.st-mine .st-no { font-size: 3rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .st-skel::after { animation: none; transform: none; opacity: 0; }
+}

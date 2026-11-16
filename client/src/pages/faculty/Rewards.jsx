@@ -175,7 +175,7 @@ function PeriodToggle({ period, onChange }) {
     >
       <span
         aria-hidden="true"
-        className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-shush-orange600 shadow-md transition-transform duration-300 ease-out"
+        className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-shush-orange shadow-md transition-transform duration-300 ease-out"
         style={{ transform: `translateX(${index * 100}%)` }}
       />
       {PERIODS.map((p) => (

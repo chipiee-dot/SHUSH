@@ -111,16 +111,6 @@ input[type="number"] {
   overflow: hidden;
 }
 
-/* The colored hero panel inside an auth card. */
-.auth-hero {
-  position: relative;
-  overflow: hidden;
-  color: var(--shush-white);
-  background:
-    radial-gradient(24rem 24rem at 110% 10%, rgba(252, 235, 181, 0.45), transparent 60%),
-    linear-gradient(160deg, var(--shush-orange) 0%, var(--shush-orange-600) 100%);
-}
-
 /* The form column inside an auth card. */
 .auth-form {
   background: var(--shush-white);

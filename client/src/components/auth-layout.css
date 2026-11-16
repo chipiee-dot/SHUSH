@@ -22,12 +22,10 @@
   overflow: hidden;
   color: var(--shush-white);
   border-radius: 0 0 2rem 2rem;
-  /* Inspiration orange. The deeper orange sits behind the text; the brighter orange and the
-     amber/cream glows are decoration only (bottom right, top right). */
+  /* One brand orange, the same as every button. A soft white glow is the only decoration. */
   background:
-    radial-gradient(30rem 24rem at 100% 100%, rgba(247, 181, 71, 0.6), transparent 65%),
-    radial-gradient(26rem 20rem at 90% 6%, rgba(252, 235, 181, 0.35), transparent 70%),
-    linear-gradient(165deg, var(--shush-orange) 0%, var(--shush-orange) 50%, var(--shush-orange-bright) 100%);
+    radial-gradient(28rem 22rem at 92% 4%, rgba(255, 255, 255, 0.16), transparent 68%),
+    var(--shush-orange);
   box-shadow: var(--shush-shadow);
 }
 

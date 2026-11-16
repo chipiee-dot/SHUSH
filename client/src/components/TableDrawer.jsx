@@ -97,7 +97,7 @@ export default function TableDrawer({ table, isAdmin, onClose }) {
       {isAdmin && (
         <Link
           to={`/console/settings?table=${table.tableNo}`}
-          className="mt-5 inline-block rounded-xl bg-shush-orange600 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange700 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
+          className="mt-5 inline-block rounded-xl bg-shush-orange px-4 py-2 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
         >
           Edit table
         </Link>

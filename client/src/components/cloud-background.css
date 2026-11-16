@@ -16,12 +16,12 @@
   --cb-wave: rgba(242, 95, 19, 0.14);
 }
 
-/* Hero: soft white and gold clouds over the deep orange panel.
+/* Hero: soft white clouds over the brand-orange panel.
    Peak alpha stays at or below 0.06 so white text keeps AA contrast. */
 .cloud-bg--hero {
   --cb-cloud-1: rgba(255, 255, 255, 0.06);
-  --cb-cloud-2: rgba(252, 235, 181, 0.06);
-  --cb-glow: rgba(252, 235, 181, 0.28);
+  --cb-cloud-2: rgba(255, 255, 255, 0.06);
+  --cb-glow: rgba(255, 255, 255, 0.16);
   --cb-wave: rgba(255, 255, 255, 0.16);
 }
 

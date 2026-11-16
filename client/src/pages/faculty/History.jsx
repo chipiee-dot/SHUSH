@@ -211,7 +211,7 @@ export default function History() {
         <button
           type="button"
           onClick={exportReport}
-          className="rounded-xl bg-shush-orange px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange600 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+          className="rounded-xl bg-shush-orange px-4 py-2.5 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
         >
           Export CSV
         </button>
@@ -268,7 +268,7 @@ export default function History() {
                   onClick={() => change(setRange)(r.value)}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-1 ${
                     active
-                      ? 'border-shush-orange600 bg-shush-orange600 text-white'
+                      ? 'border-shush-orange bg-shush-orange text-white'
                       : 'border-shush-lineStrong bg-shush-white text-shush-inkSoft hover:bg-shush-creamDeep'
                   }`}
                 >

@@ -20,7 +20,7 @@ const STATUS_ORDER = ['QUIET', 'LOUD', 'ALERT', 'MAINTENANCE', 'OFFLINE', 'NO_DE
 const EMPTY_FORM = { tableNo: '', seats: '4' };
 
 const PRIMARY_BTN =
-  'rounded-xl bg-shush-orange600 px-4 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-shush-orange700 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2';
+  'rounded-xl bg-shush-orange px-4 py-2.5 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2';
 const INPUT =
   'mt-1 block w-full rounded-xl border-shush-lineStrong bg-shush-white text-sm text-shush-ink focus:border-shush-orange focus:ring-shush-orange';
 
@@ -348,7 +348,7 @@ export default function TableLayout() {
                         aria-pressed={view === key}
                         onClick={() => setView(key)}
                         className={`rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange ${
-                          view === key ? 'bg-shush-orange600 text-white' : 'text-shush-inkSoft hover:bg-shush-creamDeep'
+                          view === key ? 'bg-shush-orange text-white' : 'text-shush-inkSoft hover:bg-shush-creamDeep'
                         }`}
                       >
                         {text}

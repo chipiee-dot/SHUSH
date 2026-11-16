@@ -116,7 +116,7 @@ export default function StudentLogin() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-xl bg-shush-orange600 px-4 py-3.5 text-sm font-semibold text-white shadow-md lg:py-4 lg:text-base 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-shush-orange px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>

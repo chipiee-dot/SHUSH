@@ -1,18 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
+import Logo from '../../components/Logo.jsx';
+import SuccessCheck from '../../components/SuccessCheck.jsx';
+import '../../components/motion.css';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
+import useFacultyShortcut from '../../hooks/useFacultyShortcut.js';
 import { formatTime } from '../../lib/format.js';
 import { STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
 
+// Keeps the six boxes on one line inside the card. Same 44px boxes as the component default from 640px up.
+const BOXES_FIT =
+  '[&_input]:h-12 [&_input]:w-9 [&>div]:gap-1.5 sm:[&_input]:h-14 sm:[&_input]:w-11 sm:[&>div]:gap-2 lg:[&_input]:h-16 lg:[&_input]:w-12 lg:[&_input]:text-2xl lg:[&>div]:gap-3 2xl:[&_input]:h-[4.5rem] 2xl:[&_input]:w-14';
+const FOCUS_LINK =
+  'rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
+
 export default function StudentLogin() {
   const { setStudent, logout } = useStudentAuth();
+  // Ctrl+Shift+F opens the faculty sign-in. Deliberately not shown anywhere on the page.
+  useFacultyShortcut();
   const navigate = useNavigate();
   const location = useLocation();
-  const [raw, setRaw] = useState('');
+  // The landing page can hand over a student number: look it up straight away.
+  const prefill = location.state?.studentNo ?? '';
+  const [raw, setRaw] = useState(STUDENT_NO_RE.test(prefill) ? prefill : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [found, setFound] = useState(null); // { student, session }
@@ -20,23 +34,33 @@ export default function StudentLogin() {
 
   const seated = Boolean(found?.session);
 
-  async function handleContinue(e) {
-    e.preventDefault();
+  async function lookup(studentNo) {
     setError('');
     setNotice(null);
-    if (!STUDENT_NO_RE.test(raw)) {
+    if (!STUDENT_NO_RE.test(studentNo)) {
       setError('Enter your student number, like 21-0001.');
       return;
     }
     setBusy(true);
     try {
-      setFound(await api.studentLookup(raw));
+      setFound(await api.studentLookup(studentNo));
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
     }
   }
+
+  function handleContinue(e) {
+    e.preventDefault();
+    lookup(raw);
+  }
+
+  useEffect(() => {
+    if (STUDENT_NO_RE.test(prefill)) lookup(prefill);
+    // Only on first load; the number came from the landing page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleConfirm() {
     setBusy(true);
@@ -66,18 +90,33 @@ export default function StudentLogin() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
-      <h1 className="text-3xl font-semibold tracking-tight text-[#152549]">Sign in</h1>
-      <p className="mt-2 text-sm text-slate-600">Enter your student number. You will confirm your name next.</p>
+    <div>
+      <header className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Logo className="h-8 w-8 text-shush-orange lg:h-10 lg:w-10" />
+          <span className="text-xl font-extrabold tracking-[0.18em] text-shush-ink lg:text-2xl">SHUSH</span>
+        </div>
+        <div>
+          <h2 id="student-auth-heading" className="text-3xl font-bold tracking-tight text-shush-ink lg:text-4xl 2xl:text-5xl">Sign in</h2>
+          <p className="mt-1.5 text-sm text-shush-inkSoft lg:mt-2 lg:text-base 2xl:text-lg">Enter your student number. You will confirm your name next.</p>
+        </div>
+      </header>
 
-      <form onSubmit={handleContinue} className="mt-8 space-y-4" noValidate>
-        {notice && <Alert type={notice.type}>{notice.text}</Alert>}
+      <form onSubmit={handleContinue} className="mt-6 space-y-4 lg:mt-8 lg:space-y-5" noValidate>
+        {notice && notice.type === 'success' ? (
+          <div role="status" className="shush-rise flex items-start gap-3 rounded-xl border border-shush-success/30 bg-shush-successSoft px-4 py-3 text-sm text-shush-success">
+            <SuccessCheck className="mt-0.5 h-5 w-5" />
+            <span>{notice.text}</span>
+          </div>
+        ) : (
+          notice && <Alert type={notice.type}>{notice.text}</Alert>
+        )}
         <Alert>{error}</Alert>
         <div>
-          <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-slate-600">
+          <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-shush-inkSoft lg:text-sm 2xl:text-base">
             Student number
           </label>
-          <div className="mt-3">
+          <div className={`mt-3 ${BOXES_FIT}`}>
             <StudentNumberInput
               id="student-no"
               value={raw}
@@ -89,30 +128,26 @@ export default function StudentLogin() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-xl bg-[#1b2d5a] px-4 py-3.5 text-sm font-medium text-white shadow-md transition hover:bg-[#16254a] disabled:opacity-60"
+          className="m-shine w-full rounded-xl bg-shush-orange600 px-4 py-3.5 text-base font-semibold text-white shadow-md lg:py-4 2xl:py-[1.1rem] 2xl:text-lg transition hover:bg-shush-orange700 active:bg-shush-orange700 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
-        New here?{' '}
-        <Link
-          to="/student/signup"
-          className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
-        >
-          Sign up with your student number
-        </Link>
-      </p>
+      <div aria-hidden="true" className="my-6 flex items-center gap-3 text-xs font-medium tracking-wider text-shush-muted lg:my-8 lg:text-sm 2xl:text-base">
+        <span className="h-px flex-1 bg-shush-line" />
+        OR
+        <span className="h-px flex-1 bg-shush-line" />
+      </div>
 
-      <p className="mt-2 text-center text-sm text-slate-600">
-        <Link
-          to="/login"
-          className="font-medium text-[#1b2d5a] underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-[#1b2d5a] focus:ring-offset-2 rounded px-1"
-        >
-          Faculty sign-in
-        </Link>
-      </p>
+      <div className="space-y-3 text-center text-xs text-shush-inkSoft lg:text-sm 2xl:text-base">
+        <p>
+          New here?
+          <Link to="/student/signup" className={`ml-1 font-medium text-shush-orange700 hover:underline underline-offset-2 ${FOCUS_LINK}`}>
+            Sign up with your student number
+          </Link>
+        </p>
+      </div>
 
       <ConfirmDialog
         open={Boolean(found)}
@@ -124,14 +159,14 @@ export default function StudentLogin() {
         busy={busy}
       >
         {found && (
-          <div className="rounded-xl border border-[#d6cfbe] bg-white px-4 py-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Name</div>
-            <div className="text-lg font-semibold text-[#152549]">{found.student.name}</div>
-            <div className="mt-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Section</div>
-            <div className="font-medium text-[#152549]">{found.student.section}</div>
-            <div className="mt-2 text-xs text-slate-500">Student number {found.student.studentNo}</div>
+          <div className="rounded-xl border border-shush-line bg-shush-creamDeep px-4 py-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-shush-muted">Name</div>
+            <div className="text-lg font-semibold text-shush-ink">{found.student.name}</div>
+            <div className="mt-2 text-xs font-semibold uppercase tracking-wider text-shush-muted">Section</div>
+            <div className="font-medium text-shush-ink">{found.student.section}</div>
+            <div className="mt-2 text-xs text-shush-muted">Student number {found.student.studentNo}</div>
             {seated && (
-              <p className="mt-3 text-sm text-slate-700">
+              <p className="mt-3 text-sm text-shush-inkSoft">
                 You are seated at Table {found.session.tableNo}, since {formatTime(found.session.startedAt)}.
               </p>
             )}

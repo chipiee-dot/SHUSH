@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { addDays, parseLocalDate, startOfLocalDay, startOfLocalMonth, startOfLocalWeek } from '../src/services/time.js';
 import { buildLayout, deriveTableStatus, isDeviceOnline } from '../src/services/tableStatus.js';
 import { computeRewards } from '../src/services/rewards.js';
+import { validateLayoutChanges } from '../src/services/layoutRules.js';
 
 const PH = 480; // UTC+8
 const iso = (d) => d.toISOString();
@@ -41,22 +42,22 @@ test('table status: maintenance beats everything, then device state', () => {
 
 test('buildLayout applies all-table and single-table maintenance', () => {
   const now = new Date('2026-11-11T04:00:00Z');
-  const base = { groupSize: null, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, threshold: 1600, lastLevel: 1000, lastSeenAt: now, isSample: false };
+  const base = { occupied: 0, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, threshold: 1600, lastLevel: 1000, lastSeenAt: now, isSample: false };
   const rows = [
-    { ...base, tableNo: 1, deviceCode: 'SHUSH-T01', lastStatus: 'QUIET', groupSize: 3 },
+    { ...base, tableNo: 1, deviceCode: 'SHUSH-T01', lastStatus: 'QUIET', occupied: 3 },
     { ...base, tableNo: 2, deviceCode: 'SHUSH-T02', lastStatus: 'QUIET' },
     { ...base, tableNo: 3, deviceCode: null, lastStatus: null },
   ];
   const single = buildLayout(rows, [{ tableNo: 2, allTables: false }], { now, offlineAfterMs: 120_000 });
   assert.deepEqual(single.map((t) => t.status), ['QUIET', 'MAINTENANCE', 'NO_DEVICE']);
-  assert.deepEqual(single[0].occupancy, { groupSize: 3, seats: 4 });
+  assert.deepEqual(single[0].occupancy, { seated: 3, seats: 4 });
 
   const all = buildLayout(rows, [{ tableNo: null, allTables: true }], { now, offlineAfterMs: 120_000 });
   assert.ok(all.every((t) => t.status === 'MAINTENANCE' || t.status === 'NO_DEVICE'));
 });
 
 const session = (over) => ({
-  studentId: 1, fullName: 'A', sessionId: 1, tableNo: 1, groupSize: 2,
+  studentId: 1, fullName: 'A', sessionId: 1, tableNo: 1,
   startedAt: '2026-11-10T02:00:00Z', endedAt: '2026-11-10T02:45:00Z',
   avgLevel: 1000, hadAlert: false, isSample: false, ...over,
 });
@@ -92,4 +93,57 @@ test('rewards: quiet streak is 0 (not listed) when the latest session had an ale
     { periodStart: new Date('2026-01-01T00:00:00Z'), now: new Date('2026-11-11T00:00:00Z') }
   );
   assert.deepEqual(r.quietStreak, []);
+});
+
+// ---- Floor-plan layout save ----
+const plan = [
+  { tableNo: 1, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, occupied: 3 },
+  { tableNo: 2, gridCol: 2, gridRow: 0, gridWidth: 2, gridHeight: 2, occupied: 0 },
+  { tableNo: 3, gridCol: 4, gridRow: 0, gridWidth: 2, gridHeight: 2, occupied: 0 },
+];
+const move = (tableNo, col, row, extra = {}) => ({ tableNo, col, row, width: 2, height: 2, ...extra });
+
+test('layout: a valid move is accepted', () => {
+  assert.deepEqual(validateLayoutChanges([move(3, 0, 6)], plan), { ok: true });
+});
+
+test('layout: moving onto another table is a 409', () => {
+  const r = validateLayoutChanges([move(2, 0, 0)], plan);
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 409);
+});
+
+test('layout: two tables can swap places in one save', () => {
+  assert.deepEqual(validateLayoutChanges([move(2, 0, 0), move(1, 2, 0)], plan), { ok: true });
+});
+
+test('layout: column + width past 12 is a 400', () => {
+  assert.equal(validateLayoutChanges([move(3, 11, 0)], plan).status, 400);
+});
+
+test('layout: a row past 99 is a 400', () => {
+  assert.equal(validateLayoutChanges([move(3, 0, 99)], plan).status, 400);
+  assert.deepEqual(validateLayoutChanges([move(3, 0, 98)], plan), { ok: true });
+});
+
+test('layout: seats above 20 are a 400', () => {
+  assert.equal(validateLayoutChanges([move(3, 0, 6, { seats: 21 })], plan).status, 400);
+});
+
+test('layout: seats below the students seated now are a 409', () => {
+  const r = validateLayoutChanges([move(1, 0, 6, { seats: 2 })], plan);
+  assert.equal(r.status, 409);
+  assert.deepEqual(validateLayoutChanges([move(1, 0, 6, { seats: 3 })], plan), { ok: true });
+});
+
+test('layout: duplicate and unknown tables are a 400', () => {
+  assert.equal(validateLayoutChanges([move(3, 0, 6), move(3, 0, 8)], plan).status, 400);
+  assert.equal(validateLayoutChanges([move(9, 0, 6)], plan).status, 400);
+});
+
+test('layout: bad input shapes are a 400', () => {
+  assert.equal(validateLayoutChanges(undefined, plan).status, 400);
+  assert.equal(validateLayoutChanges([], plan).status, 400);
+  assert.equal(validateLayoutChanges([move(3, 1.5, 6)], plan).status, 400);
+  assert.equal(validateLayoutChanges(Array.from({ length: 101 }, () => move(3, 0, 6)), plan).status, 400);
 });

@@ -61,9 +61,9 @@ export const api = {
   studentLogin: (studentNo) => request('/student/login', { method: 'POST', body: { studentNo } }),
   studentLogout: () => request('/student/logout', { method: 'POST' }),
   studentMe: () => request('/student/me'),
-  studentTables: (groupSize) => request(`/student/tables${query({ groupSize })}`),
-  studentStartSession: (tableNo, groupSize) =>
-    request('/student/session', { method: 'POST', body: { tableNo, groupSize } }),
+  studentTables: () => request('/student/tables'),
+  studentStartSession: (tableNo) =>
+    request('/student/session', { method: 'POST', body: { tableNo } }),
   studentEndSession: () => request('/student/session/end', { method: 'POST' }),
 
   // Settings (administrators only)
@@ -71,6 +71,7 @@ export const api = {
   addTable: (fields) => request('/settings/tables', { method: 'POST', body: fields }),
   setTableSeats: (tableNo, seats) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { seats } }),
+  saveLayout: (tables) => request('/settings/layout', { method: 'PUT', body: { tables } }),
   clearSampleData: () => request('/settings/sample-data/clear', { method: 'POST' }),
   devices: () => request('/settings/devices'),
   saveThreshold: (deviceCode, threshold) =>

@@ -45,7 +45,7 @@ export function buildLayout(rows, windows, { now, offlineAfterMs }) {
         deviceOnline,
         deviceStatus: row.lastStatus,
       }),
-      occupancy: { groupSize: row.occupied ?? row.groupSize ?? 0, seats: row.seatCount },
+      occupancy: { seated: row.occupied ?? 0, seats: row.seatCount },
       sessionStartedAt: row.sessionStartedAt ?? null,
       device: hasDevice
         ? {

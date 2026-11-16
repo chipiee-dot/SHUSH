@@ -4,7 +4,7 @@
 export const GRID_COLUMNS = 12;
 export const DEFAULT_SIZE = 2;
 
-const overlaps = (a, b) =>
+export const overlaps = (a, b) =>
   a.col < b.col + b.width && a.col + a.width > b.col &&
   a.row < b.row + b.height && a.row + a.height > b.row;
 

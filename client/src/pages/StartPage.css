@@ -1,285 +1,241 @@
-/* ==========================================================================
-   SHUSH Landing Page — Cohesive Tokens (Matches AppShell.css)
-   ========================================================================== */
+/* Landing page. Three parts, as in the layout brief:
+   yellow = library snapshot, white = page content, orange = the check-in form.
+   Colors are the --shush-* tokens from index.css. */
 
-.landing-shell {
+.landing-page {
   position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
   min-height: 100dvh;
-  padding: 24px;
-  overflow: hidden;
-  background: radial-gradient(circle at 50% 35%, #1e3262 0%, #152549 65%, #0f1b38 100%);
-  color: #152549;
+  display: flex;
+  flex-direction: column;
+  background: var(--shush-white);
+  font-family: inherit;
 }
 
-/* Subtle concentric acoustic wave rings */
-.acoustic-rings {
+/* ---- Yellow part: library snapshot ---- */
+.landing-photo {
+  position: relative;
+  height: 16rem;
+  overflow: hidden;
+  background: var(--shush-gold);
+}
+.landing-photo-img {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-
-.acoustic-rings span {
+/* Warm yellow wash so the photo reads as "yellow" and stays on theme. */
+.landing-photo-tint {
   position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.045);
+  inset: 0;
+  background:
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--shush-gold) 70%, transparent) 0%,
+      color-mix(in srgb, var(--shush-amber) 45%, transparent) 100%);
 }
 
-.acoustic-rings span:nth-child(1) { width: 680px; height: 680px; }
-.acoustic-rings span:nth-child(2) { width: 980px; height: 980px; }
-.acoustic-rings span:nth-child(3) { width: 1320px; height: 1320px; }
-
-/* Main Warm Cream Container */
-.landing-card {
+/* ---- White part: content ---- */
+.landing-content {
   position: relative;
   z-index: 1;
-  width: 100%;
-  max-width: 660px;
-  padding: 44px 48px 36px;
-  border-radius: 32px;
-  background: #f7f5ed;
-  box-shadow:
-    0 24px 60px rgba(8, 14, 32, 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
-/* Brand Header Row */
-.landing-brand-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 32px;
+  flex-direction: column;
+  flex: 1;
+  background: var(--shush-white);
+  order: 2;
+  padding: 2rem 1.5rem 2rem;
 }
 
-.landing-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: #152549;
-}
-
-.landing-logo-icon {
-  width: 24px;
-  height: 24px;
-  color: #152549;
-}
-
-.landing-wordmark {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: #152549;
-}
-
-.landing-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(21, 37, 73, 0.06);
-  color: #66666b;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #5b4bdb;
-  box-shadow: 0 0 0 3px rgba(91, 75, 219, 0.18);
-}
-
-/* Welcome Typography */
-.landing-header {
-  margin-bottom: 28px;
+.landing-brand { display: flex; align-items: center; gap: 0.6rem; }
+.landing-brand-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--shush-ink);
 }
 
 .landing-title {
-  margin: 0 0 6px;
-  font-size: 32px;
-  font-weight: 700;
+  margin: 1.5rem 0 0.5rem;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.15;
   letter-spacing: -0.02em;
-  color: #152549;
+  color: var(--shush-ink);
 }
-
 .landing-subtitle {
   margin: 0;
-  font-size: 15px;
-  color: #66666b;
-}
-
-/* Role Selection Grid */
-.role-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.role-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 22px;
-  border-radius: 20px;
-  background: #fbfaf5;
-  border: 1px solid #e4e0d3;
-  text-decoration: none;
-  color: #152549;
-  transition:
-    transform 0.18s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.role-card:hover {
-  transform: translateY(-2px);
-  background: #ffffff;
-  border-color: rgba(91, 75, 219, 0.45);
-  box-shadow: 0 12px 26px rgba(21, 37, 73, 0.08);
-}
-
-.role-card:focus-visible {
-  outline: 2px solid #5b4bdb;
-  outline-offset: 2px;
-}
-
-.role-card:active {
-  transform: scale(0.98);
-}
-
-.role-card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.role-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(21, 37, 73, 0.07);
-  color: #152549;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.role-icon--purple {
-  background: rgba(91, 75, 219, 0.12);
-  color: #5b4bdb;
-}
-
-.role-card:hover .role-icon {
-  background: #152549;
-  color: #ffffff;
-}
-
-.role-card--faculty:hover .role-icon--purple {
-  background: linear-gradient(180deg, #6a5be6 0%, #5b4bdb 100%);
-  color: #ffffff;
-}
-
-.role-icon svg,
-.role-arrow svg {
-  width: 18px;
-  height: 18px;
-}
-
-.role-arrow {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  color: #9ca3af;
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.role-card:hover .role-arrow {
-  color: #5b4bdb;
-  transform: translateX(3px);
-}
-
-.role-title {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #152549;
-}
-
-.role-desc {
-  margin: 0;
-  font-size: 13.5px;
+  font-size: 1rem;
   line-height: 1.5;
-  color: #66666b;
+  color: var(--shush-ink-soft);
 }
 
-/* Cursor-Tracking Glow Effect (Subtle Purple Light on Cream Surface) */
-.landing-shell .glow-btn {
-  position: relative;
-  overflow: hidden;
-  --glow-x: 50%;
-  --glow-y: 50%;
+.landing-steps {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.75rem 0 2rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: landing-step;
 }
-
-.landing-shell .glow-btn .glow-light {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    circle 90px at var(--glow-x) var(--glow-y),
-    rgba(91, 75, 219, 0.14) 0%,
-    rgba(91, 75, 219, 0.05) 50%,
-    rgba(91, 75, 219, 0) 100%
-  );
-  opacity: 0;
-  transition: opacity 350ms ease;
-  pointer-events: none;
+.landing-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  counter-increment: landing-step;
 }
-
-.landing-shell .glow-btn:hover .glow-light,
-.landing-shell .glow-btn:focus-visible .glow-light {
-  opacity: 1;
+.landing-step-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 9999px;
+  background: var(--shush-orange);
+  color: var(--shush-white);
+  font-size: 0.875rem;
+  font-weight: 700;
 }
+.landing-step-num::before { content: counter(landing-step); }
+.landing-step-title { display: block; font-size: 0.95rem; font-weight: 700; color: var(--shush-ink); }
+.landing-step-text { display: block; margin-top: 0.1rem; font-size: 0.875rem; color: var(--shush-ink-soft); }
 
-.landing-shell .glow-btn .glow-text {
-  position: relative;
-  z-index: 1;
-}
-
-/* Footer */
 .landing-footer {
-  margin-top: 28px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(21, 37, 73, 0.08);
+  margin: auto 0 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--shush-line);
+  font-size: 0.8125rem;
+  color: var(--shush-muted);
+}
+
+/* ---- Orange part: the form ---- */
+.landing-form {
+  position: relative;
+  z-index: 2;
+  order: 1;
+  /* small screens: the card overlaps the bottom of the photo, above the white content */
+  margin: -5rem auto 0;
+  width: min(30rem, calc(100% - 2rem));
+  padding: 1.25rem;
+  border-radius: 2rem;
+  color: var(--shush-white);
+  background:
+    radial-gradient(18rem 14rem at 100% 0%, rgba(255, 255, 255, 0.16), transparent 70%),
+    var(--shush-orange);
+  box-shadow: var(--shush-shadow);
+  animation: landing-form-in 0.6s ease both;
+}
+
+.landing-form-title { margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; }
+.landing-form-text { margin: 0.35rem 0 1rem; font-size: 0.9rem; line-height: 1.45; }
+
+.landing-form-field {
+  margin: 1rem 0;
+  padding: 1rem 0.75rem 1.1rem;
+  border-radius: 1.25rem;
+  background: var(--shush-white);
+}
+.landing-form-label {
+  display: block;
+  margin-bottom: 0.75rem;
   text-align: center;
-  font-size: 12.5px;
-  color: #828287;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--shush-ink-soft);
 }
 
-/* Mobile Breakpoint */
-@media (max-width: 640px) {
-  .landing-card {
-    padding: 32px 24px 28px;
-    border-radius: 26px;
-  }
+.landing-form-btn {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--shush-white);
+  color: var(--shush-orange-700);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.landing-form-btn:hover { background: var(--shush-gold-soft); }
+.landing-form-btn:active { transform: scale(0.99); }
+.landing-form-btn:focus-visible { outline: 3px solid var(--shush-gold); outline-offset: 2px; }
+.landing-form-arrow { width: 1.2rem; height: 1.2rem; transition: transform 0.2s ease; }
+.landing-form-btn:hover .landing-form-arrow { transform: translateX(3px); }
 
-  .role-grid {
-    grid-template-columns: 1fr;
-  }
+.landing-form-link { margin: 1rem 0 0; text-align: center; font-size: 0.875rem; }
+.landing-form-link a {
+  border-radius: 0.25rem;
+  padding: 0 0.15rem;
+  font-weight: 700;
+  color: var(--shush-white);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.landing-form-link a:focus-visible { outline: 3px solid var(--shush-gold); outline-offset: 2px; }
 
-  .landing-title {
-    font-size: 28px;
+@keyframes landing-form-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Keep the six number boxes inside the white tile on narrow phones. */
+@media (max-width: 480px) {
+  .landing-form-field { padding: 0.9rem 0.25rem 1rem; }
+  .landing-form-field input { width: 2.3rem; height: 3.25rem; }
+}
+
+/* ---- Desktop: white left, yellow photo right, orange form on the edge ---- */
+@media (min-width: 1024px) {
+  .landing-page { display: grid; grid-template-columns: 1.1fr 0.9fr; }
+
+  .landing-photo { grid-column: 2; grid-row: 1; height: auto; min-height: 100dvh; }
+  .landing-content {
+    grid-column: 1;
+    grid-row: 1;
+    justify-content: center;
+    /* right padding keeps text clear of the orange card's left half */
+    padding: 3rem calc(min(27rem, 40vw) / 2 + 2.5rem) 3rem clamp(2.5rem, 6vw, 6rem);
+  }
+  .landing-title { font-size: 2.75rem; }
+
+  .landing-photo { order: 0; }
+  .landing-content { order: 0; }
+  .landing-form {
+    position: absolute;
+    margin: 0;
+    top: 50%;
+    left: 55%; /* the white/yellow edge: 1.1fr / (1.1fr + 0.9fr) */
+    width: min(27rem, 40vw);
+    padding: 2rem;
+    transform: translate(-50%, -50%);
+    animation-name: landing-form-in-desktop;
+  }
+  @keyframes landing-form-in-desktop {
+    from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
   }
 }
 
+/* Landing page, tall desktop screens: bigger text and spacing inside the Welcome card. */
+@media (min-width: 1024px) and (min-height: 801px) {
+  .landing-title { font-size: 3.25rem; }
+  .landing-subtitle { font-size: 1.25rem; }
+  .landing-steps { gap: 1.25rem; margin: 2.25rem 0 2.5rem; }
+  .landing-step { gap: 1.1rem; }
+  .landing-step-num { width: 2.5rem; height: 2.5rem; font-size: 1.0625rem; }
+  .landing-step-title { font-size: 1.1875rem; }
+  .landing-step-text { margin-top: 0.15rem; font-size: 1.0625rem; }
+  .landing-footer { padding-top: 1.4rem; font-size: 0.9375rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-form { animation: none; }
+  .landing-form-btn, .landing-form-arrow { transition: none; }
+  .landing-form-btn:hover .landing-form-arrow { transform: none; }
+}

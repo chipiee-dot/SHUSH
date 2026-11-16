@@ -20,6 +20,8 @@ export default function usePolling(fetcher, intervalMs = 0, deps = []) {
 
   useEffect(() => {
     let alive = true;
+    // A reload or a changed filter is a new request; background timer refreshes stay silent.
+    setState((prev) => (prev.loading ? prev : { ...prev, loading: true }));
 
     async function run() {
       try {

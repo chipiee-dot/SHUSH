@@ -17,11 +17,12 @@ const config = {
 const now = new Date();
 const fakeDb = {
   lastHistoryArgs: null,
+  lastLayout: null,
   ping: async () => {},
   closeStaleSessions: async () => {},
   getLayout: async () => [
-    { tableNo: 1, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: 'SHUSH-T01', threshold: 1600, lastStatus: 'ALERT', lastLevel: 1725, lastSeenAt: now, isSample: true, groupSize: 3, sessionStartedAt: now },
-    { tableNo: 2, seatCount: 2, gridCol: 2, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: null, threshold: null, lastStatus: null, lastLevel: null, lastSeenAt: null, isSample: false, groupSize: null, sessionStartedAt: null },
+    { tableNo: 1, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: 'SHUSH-T01', threshold: 1600, lastStatus: 'ALERT', lastLevel: 1725, lastSeenAt: now, isSample: true, occupied: 3, sessionStartedAt: now },
+    { tableNo: 2, seatCount: 2, gridCol: 2, gridRow: 0, gridWidth: 2, gridHeight: 2, deviceCode: null, threshold: null, lastStatus: null, lastLevel: null, lastSeenAt: null, isSample: false, occupied: 0, sessionStartedAt: null },
   ],
   getDashboardSummary: async () => ({ sessionsToday: 5, studentsToday: 9, alertsToday: 2 }),
   getRecentAlerts: async () => [{ id: 1, tableNo: 1, deviceCode: 'SHUSH-T01', level: 1725, threshold: 1600, triggeredAt: now, isSample: true }],
@@ -32,6 +33,10 @@ const fakeDb = {
     deviceCode === 'SHUSH-T01'
       ? { success: true, message: 'Threshold saved.' }
       : { success: false, message: 'That device does not exist.' },
+  saveLayout: async (changes) => {
+    fakeDb.lastLayout = changes;
+    return { success: true, message: `Layout saved. ${changes.length} table(s) updated.` };
+  },
   getRewardSessions: async () => [],
   getHistory: async (args) => {
     fakeDb.lastHistoryArgs = args;
@@ -84,7 +89,7 @@ test('dashboard summarises tables, devices and alerts', async () => {
 test('layout reports each table with occupancy and status', async () => {
   const { body } = await call('GET', '/api/layout', { cookie: FACULTY });
   assert.deepEqual(body.tables.map((t) => t.status), ['ALERT', 'NO_DEVICE']);
-  assert.deepEqual(body.tables[0].occupancy, { groupSize: 3, seats: 4 });
+  assert.deepEqual(body.tables[0].occupancy, { seated: 3, seats: 4 });
   assert.deepEqual(body.tables[0].grid, { col: 0, row: 0, width: 2, height: 2 });
 });
 
@@ -142,4 +147,26 @@ test('rewards accepts only the known periods', async () => {
   assert.equal(status, 200);
   assert.equal(body.period, 'week');
   assert.deepEqual(body.mostFrequent, []);
+});
+
+test('saving the layout needs sign-in and is validated', async () => {
+  const body = { tables: [{ tableNo: 2, col: 0, row: 6, width: 2, height: 2 }] };
+  assert.equal((await call('PUT', '/api/settings/layout', { body })).status, 401);
+  assert.equal((await call('PUT', '/api/settings/layout', { cookie: FACULTY, body })).status, 200);
+
+  const ok = await call('PUT', '/api/settings/layout', { cookie: ADMIN, body });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(fakeDb.lastLayout, body.tables);
+
+  // Table 2 onto Table 1 (columns 0-1, rows 0-1)
+  const overlap = await call('PUT', '/api/settings/layout', {
+    cookie: ADMIN, body: { tables: [{ tableNo: 2, col: 0, row: 0, width: 2, height: 2 }] },
+  });
+  assert.equal(overlap.status, 409);
+
+  // Column 11 with width 2 runs off the 12-column grid
+  const outside = await call('PUT', '/api/settings/layout', {
+    cookie: ADMIN, body: { tables: [{ tableNo: 2, col: 11, row: 0, width: 2, height: 2 }] },
+  });
+  assert.equal(outside.status, 400);
 });

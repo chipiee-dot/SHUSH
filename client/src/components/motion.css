@@ -1,0 +1,133 @@
+/* Shared motion styles for the student pages (Phases 2, 3 and 7).
+   Each class re-implements a BrewedOps Motion Library element in this repo's own CSS, with its credit comment.
+   Colors come only from the --shush-* tokens in index.css. Animate transform and opacity only
+   (the one exception: stroke-dashoffset on small SVG rings). Every effect has a reduced-motion rule, and
+   nothing here is the only way a fact is shown. */
+
+/* ---- Spotlight border ----
+   Adapted from BrewedOps Motion Library: Spotlight border (a gold glow follows the cursor along the border).
+   JS sets --mx and --my (px) on the element. Mouse only, never on a disabled element. */
+.m-spotlight { position: relative; }
+.m-spotlight::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  padding: 2px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: radial-gradient(150px circle at var(--mx, 50%) var(--my, 50%), var(--shush-amber), rgba(248, 222, 140, 0) 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .m-spotlight:not(:disabled):hover::before { opacity: 1; }
+}
+
+/* ---- Studs ----
+   The block-puzzle look: two rows of faint studs on a tabletop. Put it on the element that has the cream face
+   (.tl-top). Uses background-image only, so a background-color set elsewhere still shows. */
+.m-studs {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(242, 95, 19, 0.3) 0 2px, transparent 2.6px),
+    radial-gradient(circle at 50% 50%, rgba(242, 95, 19, 0.3) 0 2px, transparent 2.6px);
+  background-size: 16px 12px, 16px 12px;
+  background-repeat: repeat-x, repeat-x;
+  background-position: 4px 3px, 12px calc(100% - 3px);
+}
+
+/* ---- Press and settle ----
+   Adapted from BrewedOps Motion Library: Press and settle (scale to 0.97 while pressed, springs back).
+   Written for the table tiles, which already lift and tilt on hover, so the press keeps the perspective. */
+@media (prefers-reduced-motion: no-preference) {
+  .tl-tile.m-press { transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.25s ease, box-shadow 0.2s ease; }
+  .tl-tile.m-press:not(:disabled):active { transform: perspective(700px) scale(0.97); }
+}
+
+/* ---- Equalizer bars ----
+   Adapted from BrewedOps Motion Library: Equalizer bars (four bars shaped like the SHUSH logo).
+   Each bar sets --h, its resting height as a fraction of the box. */
+.m-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 1.75rem;
+}
+.m-eq > span {
+  display: block;
+  width: 5px;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--shush-orange);
+  transform-origin: bottom;
+  transform: scaleY(var(--h, 0.5));
+  animation: m-eq-bounce 1s ease-in-out infinite;
+}
+.m-eq > span:nth-child(2) { animation-delay: -0.25s; }
+.m-eq > span:nth-child(3) { animation-delay: -0.5s; }
+.m-eq > span:nth-child(4) { animation-delay: -0.75s; }
+@keyframes m-eq-bounce {
+  0%, 100% { transform: scaleY(calc(var(--h, 0.5) * 0.55)); }
+  50% { transform: scaleY(1); }
+}
+
+/* ---- Button shine sweep ----
+   Adapted from BrewedOps Motion Library: Button shine sweep (a light band crosses the button on hover; used in Phase 3). */
+.m-shine { position: relative; overflow: hidden; }
+.m-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-160%) skewX(-20deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .m-shine:not(:disabled):hover::after,
+  .m-shine:not(:disabled):focus-visible::after {
+    transform: translateX(360%) skewX(-20deg);
+    transition: transform 0.7s ease;
+  }
+}
+
+/* ---- Success check ----
+   Adapted from BrewedOps Motion Library: Success check (the tick draws once; used in Phase 3).
+   Put it on the <path> of the tick. The path is 24 units long. */
+.m-check {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: m-check-draw 0.5s 0.15s ease-out forwards;
+}
+@keyframes m-check-draw { to { stroke-dashoffset: 0; } }
+
+/* ---- Logo bars ----
+   Adapted from BrewedOps Motion Library: Icons that animate (each logo bar eases up and down, staggered).
+   Put .m-logo on the <Logo> and .m-logo-hover on a parent; the bars move while the parent is hovered or focused. */
+.m-logo rect { transform-box: fill-box; transform-origin: center bottom; }
+@media (prefers-reduced-motion: no-preference) {
+  .m-logo-hover:hover .m-logo rect,
+  .m-logo-hover:focus-within .m-logo rect { animation: m-logo-bar 0.7s ease-in-out; }
+  .m-logo-hover:hover .m-logo rect:nth-child(2) { animation-delay: 0.08s; }
+  .m-logo-hover:hover .m-logo rect:nth-child(3) { animation-delay: 0.16s; }
+  .m-logo-hover:hover .m-logo rect:nth-child(4) { animation-delay: 0.24s; }
+}
+@keyframes m-logo-bar {
+  0%, 100% { transform: scaleY(1); }
+  40% { transform: scaleY(0.6); }
+  70% { transform: scaleY(1.08); }
+}
+
+/* ---- Reduced motion: every effect shows its finished state and nothing loops ---- */
+@media (prefers-reduced-motion: reduce) {
+  .m-logo rect { animation: none; }
+  .m-eq > span { animation: none; }
+  .m-shine::after { display: none; }
+  .m-check { animation: none; stroke-dashoffset: 0; }
+  .m-spotlight::before { display: none; }
+}

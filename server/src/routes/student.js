@@ -2,7 +2,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import { buildLayout, isUnderMaintenance } from '../services/tableStatus.js';
-import { MAX_GROUP_SIZE, MAX_SESSION_HOURS } from '../services/limits.js';
+import { MAX_SESSION_HOURS } from '../services/limits.js';
 import { normalizeStudentNo, validateStudentSignup } from '../services/validators.js';
 import { sendDatabaseError, toInt, wrap } from './helpers.js';
 
@@ -26,9 +26,15 @@ function displayName(student) {
   return `${student.firstName}${middle} ${student.lastName}`;
 }
 
+// endsAt: the session closes by itself MAX_SESSION_HOURS after it starts.
 function sessionInfo(current) {
   return current
-    ? { sessionId: current.sessionId, tableNo: current.tableNo, groupSize: current.groupSize, startedAt: current.startedAt }
+    ? {
+        sessionId: current.sessionId,
+        tableNo: current.tableNo,
+        startedAt: current.startedAt,
+        endsAt: new Date(new Date(current.startedAt).getTime() + MAX_SESSION_HOURS * 60 * 60 * 1000).toISOString(),
+      }
     : null;
 }
 
@@ -146,38 +152,33 @@ export function createStudentRouter(db, config) {
       const student = publicStudent({ id, studentNo, firstName, lastName, middleInitial, section });
       res.json({
         student,
-        session: current
-          ? { sessionId: current.sessionId, tableNo: current.tableNo, groupSize: current.groupSize, startedAt: current.startedAt }
-          : null,
+        session: sessionInfo(current),
       });
     })
   );
 
-  // ---- Tables that fit the group ---------------------------------------------
+  // ---- Tables and their free seats ---------------------------------------------
   // Shows seats free and whether the table is open. Device readings are not shared with students.
   router.get(
     '/tables',
     requireStudent,
     wrap(async (req, res) => {
-      const groupSize = toInt(req.query.groupSize) ?? 1;
-      if (groupSize < 1 || groupSize > MAX_GROUP_SIZE) {
-        return res.status(400).json({ message: `Group size must be between 1 and ${MAX_GROUP_SIZE}.` });
-      }
       const now = new Date();
       await db.closeStaleSessions(now, MAX_SESSION_HOURS);
       const [rows, windows] = await Promise.all([db.getLayout(), db.getActiveMaintenance(now)]);
       const tables = buildLayout(rows, windows, { now, offlineAfterMs }).map((t) => {
-        const free = t.seats - t.occupancy.groupSize;
+        const free = t.seats - t.occupancy.seated;
         const underMaintenance = isUnderMaintenance(t.tableNo, windows);
         return {
           tableNo: t.tableNo,
           seats: t.seats,
           free,
           underMaintenance,
-          fits: !underMaintenance && free >= groupSize,
+          open: !underMaintenance && free >= 1,
+          grid: t.grid, // saved floor-plan position, for the student floor-plan view
         };
       });
-      res.json({ groupSize, tables });
+      res.json({ maxSessionHours: MAX_SESSION_HOURS, tables });
     })
   );
 
@@ -187,12 +188,8 @@ export function createStudentRouter(db, config) {
     requireStudent,
     wrap(async (req, res) => {
       const tableNo = toInt(req.body?.tableNo);
-      const groupSize = toInt(req.body?.groupSize);
       if (tableNo === null || tableNo < 1) return res.status(400).json({ message: 'Choose a table.' });
-      if (groupSize === null || groupSize < 1 || groupSize > MAX_GROUP_SIZE) {
-        return res.status(400).json({ message: `Group size must be between 1 and ${MAX_GROUP_SIZE}.` });
-      }
-      const result = await db.startSession({ studentId: req.student.id, tableNo, groupSize, now: new Date() });
+      const result = await db.startSession({ studentId: req.student.id, tableNo, now: new Date() });
       if (!result?.success) return res.status(400).json({ message: result?.message ?? 'Could not start the session.' });
       return res.status(201).json({ message: result.message, sessionId: result.sessionId });
     })

@@ -16,7 +16,7 @@ import StudentSignUp from './pages/student/StudentSignUp.jsx';
 import StudentTable from './pages/student/StudentTable.jsx';
 
 function Splash() {
-  return <div className="min-h-screen bg-[#1b2d5a]" aria-busy="true" />;
+  return <div className="min-h-screen shush-cloud" aria-busy="true" />;
 }
 
 // Only signed-in faculty may open the console.

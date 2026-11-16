@@ -57,14 +57,14 @@ export default function StudentNumberInput({ id, value = '', onChange, autoFocus
       onKeyDown={(e) => handleKeyDown(i, e)}
       onFocus={(e) => e.target.select()}
       onPaste={handlePaste}
-      className="h-14 w-11 rounded-xl border border-[#d6cfbe] bg-transparent text-center text-xl font-semibold text-[#152549] focus:border-[#1b2d5a] focus:outline-none focus:ring-2 focus:ring-[#1b2d5a]/30"
+      className="h-14 w-11 rounded-xl border border-shush-lineStrong bg-transparent text-center text-xl font-semibold text-shush-ink focus:border-shush-orange focus:outline-none focus:ring-2 focus:ring-shush-orange/40"
     />
   );
 
   return (
     <div role="group" aria-label="Student number" className="flex items-center justify-center gap-2">
       {[0, 1].map(box)}
-      <span aria-hidden="true" className="px-1 text-2xl font-semibold text-slate-500">-</span>
+      <span aria-hidden="true" className="px-1 text-2xl font-semibold text-shush-muted">-</span>
       {[2, 3, 4, 5].map(box)}
     </div>
   );

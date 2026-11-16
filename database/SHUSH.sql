@@ -266,7 +266,6 @@ BEGIN
     (
         Id          BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_LibrarySession PRIMARY KEY,
         TableId     INT                  NOT NULL CONSTRAINT FK_LibrarySession_Table REFERENCES dbo.LibraryTable (Id),
-        GroupSize   TINYINT              NOT NULL CONSTRAINT CK_LibrarySession_Group CHECK (GroupSize BETWEEN 1 AND 20),
         StartedAt   DATETIME2(0)         NOT NULL,
         EndedAt     DATETIME2(0)         NULL,
         AvgLevel    INT                  NULL,
@@ -274,6 +273,24 @@ BEGIN
         IsSample    BIT                  NOT NULL CONSTRAINT DF_LibrarySession_Sample DEFAULT (0),
         CONSTRAINT CK_LibrarySession_Times CHECK (EndedAt IS NULL OR EndedAt >= StartedAt)
     );
+END
+GO
+
+-- 8b) Existing databases: a session is one student, so it no longer stores a group size.
+-- Its own batch: SQL Server checks a whole batch before running it, so a statement that
+-- names a column dropped in the same batch could fail. Safe to run any number of times.
+IF COL_LENGTH(N'dbo.LibrarySession', N'GroupSize') IS NOT NULL
+BEGIN
+    DECLARE @drop NVARCHAR(MAX) = N'';
+    DECLARE @colId INT = COLUMNPROPERTY(OBJECT_ID(N'dbo.LibrarySession'), N'GroupSize', 'ColumnId');
+    SELECT @drop += N'ALTER TABLE dbo.LibrarySession DROP CONSTRAINT ' + QUOTENAME(name) + N'; '
+    FROM sys.check_constraints
+    WHERE parent_object_id = OBJECT_ID(N'dbo.LibrarySession') AND parent_column_id = @colId;
+    SELECT @drop += N'ALTER TABLE dbo.LibrarySession DROP CONSTRAINT ' + QUOTENAME(name) + N'; '
+    FROM sys.default_constraints
+    WHERE parent_object_id = OBJECT_ID(N'dbo.LibrarySession') AND parent_column_id = @colId;
+    SET @drop += N'ALTER TABLE dbo.LibrarySession DROP COLUMN GroupSize;';
+    EXEC sys.sp_executesql @drop;
 END
 GO
 
@@ -348,20 +365,20 @@ BEGIN
     SELECT t.TableNo, t.SeatCount, t.GridCol, t.GridRow, t.GridWidth, t.GridHeight,
            t.IsSample AS TableIsSample,
            d.DeviceCode, d.Threshold, d.LastStatus, d.LastLevel, d.LastSeenAt, d.IsSample,
-           s.Id AS SessionId, s.GroupSize, s.StartedAt AS SessionStartedAt,
+           s.Id AS SessionId, s.StartedAt AS SessionStartedAt,
            occ.Occupied
     FROM dbo.LibraryTable AS t
     LEFT JOIN dbo.Device AS d ON d.TableId = t.Id
     OUTER APPLY
     (
-        SELECT TOP (1) ls.Id, ls.GroupSize, ls.StartedAt
+        SELECT TOP (1) ls.Id, ls.StartedAt
         FROM dbo.LibrarySession AS ls
         WHERE ls.TableId = t.Id AND ls.EndedAt IS NULL
         ORDER BY ls.StartedAt DESC
     ) AS s
     OUTER APPLY
     (
-        SELECT ISNULL(SUM(ls2.GroupSize), 0) AS Occupied
+        SELECT COUNT(*) AS Occupied
         FROM dbo.LibrarySession AS ls2
         WHERE ls2.TableId = t.Id AND ls2.EndedAt IS NULL
     ) AS occ
@@ -521,7 +538,7 @@ BEGIN
     SET NOCOUNT ON;
 
     SELECT st.Id AS StudentId, st.FullName, st.Section,
-           s.Id AS SessionId, t.TableNo, s.GroupSize,
+           s.Id AS SessionId, t.TableNo,
            s.StartedAt, s.EndedAt, s.AvgLevel, s.HadAlert,
            CAST(CASE WHEN s.IsSample = 1 OR st.IsSample = 1 THEN 1 ELSE 0 END AS BIT) AS IsSample
     FROM dbo.SessionMember AS sm
@@ -584,7 +601,7 @@ BEGIN
         SELECT N'session',
                s.StartedAt,
                t.TableNo,
-               CAST(CONCAT(N'Group of ', s.GroupSize) AS NVARCHAR(200)),
+               CAST(N'Student session' AS NVARCHAR(200)),
                CAST(CASE WHEN s.EndedAt IS NULL
                          THEN N'In progress'
                          ELSE CONCAT(N'Average level ', s.AvgLevel, N' over ',
@@ -679,7 +696,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT TOP (1) s.Id AS SessionId, t.TableNo, s.GroupSize, s.StartedAt
+    SELECT TOP (1) s.Id AS SessionId, t.TableNo, s.StartedAt
     FROM dbo.SessionMember AS sm
     JOIN dbo.LibrarySession AS s ON s.Id = sm.SessionId
     JOIN dbo.LibraryTable   AS t ON t.Id = s.TableId
@@ -690,12 +707,11 @@ GO
 
 -- 24) START A SESSION (choose table, confirm) ---------------------------------
 -- Checks the student is free, the table exists, is not under maintenance, and has
--- enough free seats for the group. Runs in one transaction with a row lock on the table.
+-- a free seat (one student takes one seat). Runs in one transaction with a row lock on the table.
 -- Returns: Success, Message, SessionId
 CREATE OR ALTER PROCEDURE dbo.usp_Session_Start
     @StudentId INT,
     @TableNo   INT,
-    @GroupSize INT,
     @Now       DATETIME2(0)
 AS
 BEGIN
@@ -737,21 +753,21 @@ BEGIN
         RETURN;
     END
 
-    SELECT @Occupied = ISNULL(SUM(GroupSize), 0)
+    SELECT @Occupied = COUNT(*)
     FROM dbo.LibrarySession
     WHERE TableId = @TableId AND EndedAt IS NULL;
 
-    IF @Seats - @Occupied < @GroupSize
+    IF @Occupied >= @Seats
     BEGIN
         ROLLBACK;
         SELECT CAST(0 AS BIT) AS Success,
-               CONCAT(N'Table ', @TableNo, N' does not have ', @GroupSize, N' free seats.') AS Message,
+               CONCAT(N'Table ', @TableNo, N' is full.') AS Message,
                CAST(NULL AS BIGINT) AS SessionId;
         RETURN;
     END
 
-    INSERT INTO dbo.LibrarySession (TableId, GroupSize, StartedAt, IsSample)
-    VALUES (@TableId, @GroupSize, @Now, 0);
+    INSERT INTO dbo.LibrarySession (TableId, StartedAt, IsSample)
+    VALUES (@TableId, @Now, 0);
     SET @SessionId = CAST(SCOPE_IDENTITY() AS BIGINT);
 
     INSERT INTO dbo.SessionMember (SessionId, StudentId) VALUES (@SessionId, @StudentId);
@@ -823,6 +839,7 @@ BEGIN
     END
     IF @GridCol < 0 OR @GridCol > 11 OR @GridRow < 0 OR @GridRow > 99
        OR @GridWidth < 1 OR @GridWidth > 12 OR @GridHeight < 1 OR @GridHeight > 12
+       OR @GridCol + @GridWidth > 12
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'That spot on the floor plan is outside the grid.' AS Message; RETURN;
     END
@@ -867,13 +884,13 @@ BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
     END
 
-    SELECT @Occupied = ISNULL(SUM(GroupSize), 0)
+    SELECT @Occupied = COUNT(*)
     FROM dbo.LibrarySession WHERE TableId = @TableId AND EndedAt IS NULL;
 
     IF @SeatCount < @Occupied
     BEGIN
         SELECT CAST(0 AS BIT) AS Success,
-               CONCAT(N'Table ', @TableNo, N' has ', @Occupied, N' people seated, so it cannot have fewer than ', @Occupied, N' seats.') AS Message;
+               CONCAT(N'Table ', @TableNo, N' has ', @Occupied, N' students seated, so it cannot have fewer than ', @Occupied, N' seats.') AS Message;
         RETURN;
     END
 
@@ -914,5 +931,149 @@ BEGIN
     COMMIT;
 
     SELECT CAST(1 AS BIT) AS Success, N'Sample data removed. Real records were kept.' AS Message;
+END
+GO
+
+-- 30) LAYOUT: save moved / resized tables in one step ---------------------------
+-- @Json is an array of { tableNo, col, row, width, height, seats } (changed tables only; seats optional).
+-- All or nothing: if anything is wrong, nothing is saved. The overlap check looks at the FINAL layout
+-- (every active table with the changes applied), so two tables can swap places in one save.
+-- Needs SQL Server 2016+ and database compatibility level 130+ (OPENJSON).
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Layout_Save
+    @Json NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Json IS NULL OR ISJSON(@Json) <> 1 OR LEFT(LTRIM(@Json), 1) <> N'['
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'The layout data is not valid.' AS Message; RETURN;
+    END
+
+    CREATE TABLE #Change
+    (
+        TableNo INT NULL,
+        Col     INT NULL,
+        [Row]   INT NULL,
+        Width   INT NULL,
+        Height  INT NULL,
+        Seats   INT NULL
+    );
+
+    INSERT INTO #Change (TableNo, Col, [Row], Width, Height, Seats)
+    SELECT TableNo, Col, [Row], Width, Height, Seats
+    FROM OPENJSON(@Json)
+    WITH (
+        TableNo INT '$.tableNo',
+        Col     INT '$.col',
+        [Row]   INT '$.row',
+        Width   INT '$.width',
+        Height  INT '$.height',
+        Seats   INT '$.seats'
+    );
+
+    IF NOT EXISTS (SELECT 1 FROM #Change)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'There are no changes to save.' AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM #Change WHERE TableNo IS NULL)
+       OR EXISTS (SELECT 1 FROM #Change GROUP BY TableNo HAVING COUNT(*) > 1)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Each table can appear only once in a layout.' AS Message; RETURN;
+    END
+
+    -- 1) every table exists and is active
+    DECLARE @MissingNo INT;
+    SELECT TOP (1) @MissingNo = c.TableNo
+    FROM #Change AS c
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.LibraryTable AS t WHERE t.TableNo = c.TableNo AND t.IsActive = 1)
+    ORDER BY c.TableNo;
+    IF @MissingNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @MissingNo, N' does not exist.') AS Message; RETURN;
+    END
+
+    -- 2) inside the 12-column grid
+    DECLARE @BadNo INT;
+    SELECT TOP (1) @BadNo = TableNo
+    FROM #Change
+    WHERE Col IS NULL OR [Row] IS NULL OR Width IS NULL OR Height IS NULL
+       OR Col < 0 OR [Row] < 0
+       OR Width < 1 OR Width > 12 OR Height < 1 OR Height > 12
+       OR Col + Width > 12 OR [Row] + Height > 100
+    ORDER BY TableNo;
+    IF @BadNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @BadNo, N' would be outside the floor plan grid.') AS Message; RETURN;
+    END
+
+    -- 3) seats: 1-20, and not below the students seated right now
+    SET @BadNo = NULL;
+    SELECT TOP (1) @BadNo = TableNo FROM #Change WHERE Seats IS NOT NULL AND (Seats < 1 OR Seats > 20) ORDER BY TableNo;
+    IF @BadNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Seats must be between 1 and 20.' AS Message; RETURN;
+    END
+
+    DECLARE @SeatedNo INT, @Seated INT;
+    SELECT TOP (1) @SeatedNo = c.TableNo, @Seated = o.Occupied
+    FROM #Change AS c
+    JOIN dbo.LibraryTable AS t ON t.TableNo = c.TableNo AND t.IsActive = 1
+    CROSS APPLY
+    (
+        SELECT COUNT(*) AS Occupied FROM dbo.LibrarySession AS s WHERE s.TableId = t.Id AND s.EndedAt IS NULL
+    ) AS o
+    WHERE c.Seats IS NOT NULL AND c.Seats < o.Occupied
+    ORDER BY c.TableNo;
+    IF @SeatedNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               CONCAT(N'Table ', @SeatedNo, N' has ', @Seated, N' students seated, so it cannot have fewer than ', @Seated, N' seats.') AS Message;
+        RETURN;
+    END
+
+    -- 4) no overlaps in the final layout
+    SELECT t.TableNo,
+           COALESCE(c.Col, t.GridCol)    AS Col,
+           COALESCE(c.[Row], t.GridRow)  AS [Row],
+           COALESCE(c.Width, t.GridWidth)   AS Width,
+           COALESCE(c.Height, t.GridHeight) AS Height
+    INTO #Final
+    FROM dbo.LibraryTable AS t
+    LEFT JOIN #Change AS c ON c.TableNo = t.TableNo
+    WHERE t.IsActive = 1;
+
+    DECLARE @NoA INT, @NoB INT;
+    SELECT TOP (1) @NoA = a.TableNo, @NoB = b.TableNo
+    FROM #Final AS a
+    JOIN #Final AS b
+      ON a.TableNo < b.TableNo
+     AND a.Col < b.Col + b.Width AND a.Col + a.Width > b.Col
+     AND a.[Row] < b.[Row] + b.Height AND a.[Row] + a.Height > b.[Row]
+    ORDER BY a.TableNo, b.TableNo;
+    IF @NoA IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               CONCAT(N'Table ', @NoA, N' and Table ', @NoB, N' would overlap: that spot on the floor plan is already taken.') AS Message;
+        RETURN;
+    END
+
+    DECLARE @Updated INT;
+    BEGIN TRANSACTION;
+
+    UPDATE t
+       SET GridCol = c.Col, GridRow = c.[Row], GridWidth = c.Width, GridHeight = c.Height,
+           SeatCount = COALESCE(c.Seats, t.SeatCount)
+    FROM dbo.LibraryTable AS t
+    JOIN #Change AS c ON c.TableNo = t.TableNo
+    WHERE t.IsActive = 1;
+
+    SET @Updated = @@ROWCOUNT;
+    COMMIT;
+
+    SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Layout saved. ', @Updated, N' table(s) updated.') AS Message;
 END
 GO

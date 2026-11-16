@@ -1,0 +1,259 @@
+/* Table layout page: floor-plan canvas, illustrated tables, status motion, drawer. */
+
+/* Adapted from BrewedOps Motion Library: Dot grid spotlight */
+.tl-canvas {
+  position: relative;
+  border: 1px solid var(--shush-line);
+  border-radius: 1rem;
+  background-color: var(--shush-cream);
+  background-image: radial-gradient(circle, rgba(242, 95, 19, 0.22) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+}
+.tl-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(248, 222, 140, 0.6), transparent 70%);
+}
+.tl-canvas:hover::before { opacity: 1; }
+
+/* ---- Tile (a table seen from above) ---- */
+.tl-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  border: 1px solid var(--shush-line);
+  border-radius: 1rem;
+  background: var(--shush-white);
+  box-shadow: 0 8px 22px -16px rgba(242, 95, 19, 0.5);
+  transition: transform 0.18s ease-out, opacity 0.25s ease, box-shadow 0.2s ease;
+}
+/* Adapted from BrewedOps Motion Library: 3D tilt (max 4deg, set from JS on mouse hover only) */
+.tl-tile:hover {
+  transform: perspective(700px) translateY(-2px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  box-shadow: 0 14px 28px -16px rgba(242, 95, 19, 0.6);
+}
+.tl-tile:focus-visible { outline: 2px solid var(--shush-orange); outline-offset: 2px; }
+.tl-tile[aria-pressed='true'] {
+  border-color: var(--shush-orange);
+  box-shadow: 0 0 0 3px rgba(242, 95, 19, 0.35), 0 8px 22px -16px rgba(242, 95, 19, 0.5);
+}
+.tl-tile[aria-pressed='true'] .tl-top { background: var(--shush-gold-soft); }
+.tl-dim { opacity: 0.35; }
+
+.tl-chairs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 14px;
+  padding: 0 14px;
+}
+.tl-chair {
+  flex: 1 1 0;
+  min-width: 6px;
+  max-width: 24px;
+  height: 7px;
+  border: 1.5px solid var(--shush-orange);
+  border-radius: 999px;
+  background: transparent;
+}
+.tl-chair--on { background: var(--shush-orange); }
+
+.tl-top {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  margin: 0 4px;
+  padding: 4px 6px;
+  overflow: hidden;
+  border: 1px solid var(--shush-line);
+  border-radius: 0.75rem;
+  background: var(--shush-cream);
+}
+.tl-top > * { position: relative; }
+.tl-pill { min-width: 0; max-width: 100%; overflow: hidden; }
+.tl-pill > span { font-size: 10px; padding: 1px 6px; }
+
+/* ---- Status motion (transform and opacity only) ---- */
+.tl-s-QUIET { box-shadow: 0 0 0 2px rgba(248, 222, 140, 0.9), 0 8px 22px -16px rgba(242, 95, 19, 0.5); }
+
+.tl-s-LOUD::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 1.2rem;
+  pointer-events: none;
+  box-shadow: 0 0 18px 4px rgba(247, 181, 71, 0.85);
+  opacity: 0.25;
+  animation: tl-breathe 3s ease-in-out infinite;
+}
+@keyframes tl-breathe { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
+
+.tl-s-ALERT { border-color: var(--shush-danger); }
+.tl-s-ALERT::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--shush-danger);
+  border-radius: 1.2rem;
+  pointer-events: none;
+  animation: tl-alert 1.2s ease-out infinite;
+}
+@keyframes tl-alert { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.07); opacity: 0; } }
+
+/* Adapted from BrewedOps Motion Library: Moving stripes (28.28px = one 45deg stripe period) */
+.tl-s-MAINTENANCE .tl-top::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 -32px;
+  pointer-events: none;
+  background: repeating-linear-gradient(45deg, rgba(247, 181, 71, 0.35) 0 10px, transparent 10px 20px);
+  animation: tl-stripes 2.4s linear infinite;
+}
+@keyframes tl-stripes { to { transform: translateX(28.28px); } }
+
+.tl-s-OFFLINE { filter: saturate(0.25); }
+.tl-s-NO_DEVICE { border-style: dashed; border-color: var(--shush-line-strong); }
+
+/* ---- Drawer: right side panel at 1024px+, bottom sheet below ---- */
+.tl-drawer { animation: tl-sheet-in 0.25s ease-out both; }
+@keyframes tl-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@media (min-width: 1024px) {
+  .tl-drawer { animation-name: tl-drawer-in; }
+  @keyframes tl-drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+}
+
+/* ---- Add-table modal ---- */
+.tl-modal { animation: tl-modal-in 0.2s ease-out both; }
+@keyframes tl-modal-in { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---- Edit mode (admins rearrange the floor plan) ---- */
+/* Cell guides: the 12-column grid made visible. They never take clicks. */
+.tl-cell {
+  pointer-events: none;
+  border: 1px dashed var(--shush-line-strong);
+  border-radius: 0.5rem;
+  opacity: 0.7;
+}
+/* Where the dragged table will land: gold when free, red when blocked or outside the grid. */
+.tl-ghost {
+  pointer-events: none;
+  border: 2px dashed var(--shush-amber);
+  border-radius: 1rem;
+  background: rgba(248, 222, 140, 0.35);
+}
+.tl-ghost--bad {
+  border-color: var(--shush-danger);
+  background: rgba(180, 35, 24, 0.12);
+}
+.tl-tile.tl-edit { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.tl-tile.tl-edit:hover { transform: none; }
+.tl-tile.tl-edit[data-lifting] {
+  cursor: grabbing;
+  box-shadow: 0 22px 38px -14px rgba(242, 95, 19, 0.6);
+}
+/* Less visual noise while arranging: status animations stand still (the status pill still says the status). */
+.tl-edit.tl-s-LOUD::after,
+.tl-edit.tl-s-ALERT::after,
+.tl-edit.tl-s-MAINTENANCE .tl-top::before { animation: none; }
+.tl-edit.tl-s-LOUD::after { opacity: 0.5; }
+.tl-edit.tl-s-ALERT::after { opacity: 0.6; transform: none; }
+
+/* ---- Tall tables: chairs on the left and right edges ---- */
+.tl-tile--v { flex-direction: row; }
+.tl-tile--v .tl-top { margin: 4px 0; }
+.tl-chairs--v {
+  flex-direction: column;
+  width: 14px;
+  height: auto;
+  padding: 14px 0;
+}
+.tl-chairs--v .tl-chair {
+  flex: 1 1 0;
+  width: 7px;
+  height: auto;
+  min-width: 0;
+  max-width: none;
+  min-height: 6px;
+  max-height: 24px;
+}
+
+/* ---- Small tiles: show less as the tile gets narrower ---- */
+.tl-plan { container-type: inline-size; }
+@container (max-width: 96px) {
+  .tl-pill, .tl-meter { display: none; }
+}
+@container (max-width: 64px) {
+  .tl-word, .tl-row, .tl-count { display: none; }
+}
+
+/* ---- Resize handles (edit mode) ---- */
+/* The grip you see is small; the box around it is 24px so it is easy to hit with a finger. */
+.tl-handle {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.15s ease;
+}
+.tl-handle--e { top: 14px; bottom: 14px; right: -12px; width: 24px; }
+.tl-handle--s { left: 14px; right: 14px; bottom: -12px; height: 24px; }
+.tl-handle--se { right: -12px; bottom: -12px; width: 24px; height: 24px; z-index: 4; }
+.tl-grip {
+  display: block;
+  border: 2px solid var(--shush-white);
+  border-radius: 999px;
+  background: var(--shush-orange600);
+  box-shadow: 0 1px 4px rgba(42, 26, 18, 0.35);
+}
+.tl-handle--e .tl-grip { width: 8px; height: 100%; max-height: 28px; min-height: 12px; }
+.tl-handle--s .tl-grip { height: 8px; width: 100%; max-width: 28px; min-width: 12px; }
+.tl-handle--se .tl-grip { width: 14px; height: 14px; }
+.tl-edit:hover .tl-handle,
+.tl-edit:focus-within .tl-handle,
+.tl-edit[data-lifting] .tl-handle,
+.tl-edit[data-resizing] .tl-handle { opacity: 1; }
+
+/* "8 seats" while resizing */
+.tl-badge {
+  position: absolute;
+  z-index: 5;
+  top: -14px;
+  right: 6px;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--shush-white);
+  background: var(--shush-orange700);
+  box-shadow: 0 2px 6px rgba(42, 26, 18, 0.3);
+  pointer-events: none;
+}
+/* A blocked size sits above the tile so the red edge can be seen. */
+.tl-ghost--bad { position: relative; z-index: 10; }
+
+/* ---- Reduced motion: static end states ---- */
+@media (prefers-reduced-motion: reduce) {
+  .tl-tile, .tl-tile:hover { transform: none; transition: none; }
+  .tl-s-LOUD::after { animation: none; opacity: 0.6; }
+  .tl-s-ALERT::after { animation: none; opacity: 1; transform: none; }
+  .tl-s-MAINTENANCE .tl-top::before { animation: none; }
+  .tl-canvas::before { display: none; }
+  .tl-drawer, .tl-modal { animation: none; }
+  .tl-handle { transition: none; }
+}

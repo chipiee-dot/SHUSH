@@ -15,13 +15,14 @@ let tables = [
   { tableNo: 1, seatCount: 4, gridCol: 0, gridRow: 0, gridWidth: 2, gridHeight: 2 },
   { tableNo: 2, seatCount: 2, gridCol: 2, gridRow: 0, gridWidth: 2, gridHeight: 2 },
 ];
-const occupied = (tableNo) => sessions.filter((s) => s.tableNo === tableNo && !s.endedAt).reduce((n, s) => n + s.groupSize, 0);
+// Each open session is one student in one seat.
+const occupied = (tableNo) => sessions.filter((s) => s.tableNo === tableNo && !s.endedAt).length;
 
 const fakeDb = {
   ping: async () => {},
   closeStaleSessions: async () => {},
   getActiveMaintenance: async () => [],
-  getLayout: async () => tables.map((t) => ({ ...t, deviceCode: null, threshold: null, lastStatus: null, lastLevel: null, lastSeenAt: null, isSample: false, tableIsSample: false, occupied: occupied(t.tableNo), groupSize: null, sessionStartedAt: null })),
+  getLayout: async () => tables.map((t) => ({ ...t, deviceCode: null, threshold: null, lastStatus: null, lastLevel: null, lastSeenAt: null, isSample: false, tableIsSample: false, occupied: occupied(t.tableNo), sessionStartedAt: null })),
   findStudent: async (no) => students.find((s) => s.studentNo === no) ?? null,
   registerStudent: async (d) => {
     if (students.some((s) => s.studentNo === d.studentNo)) return { success: false, message: 'That student number is already registered.' };
@@ -30,15 +31,15 @@ const fakeDb = {
   },
   getActiveStudentSession: async (id) => {
     const s = sessions.find((x) => x.studentId === id && !x.endedAt);
-    return s ? { sessionId: s.id, tableNo: s.tableNo, groupSize: s.groupSize, startedAt: s.startedAt } : null;
+    return s ? { sessionId: s.id, tableNo: s.tableNo, startedAt: s.startedAt } : null;
   },
-  startSession: async ({ studentId, tableNo, groupSize, now }) => {
+  startSession: async ({ studentId, tableNo, now }) => {
     if (sessions.some((s) => s.studentId === studentId && !s.endedAt)) return { success: false, message: 'You already have a table. End your current session first.' };
     const t = tables.find((x) => x.tableNo === tableNo);
     if (!t) return { success: false, message: 'That table does not exist.' };
-    if (t.seatCount - occupied(tableNo) < groupSize) return { success: false, message: `Table ${tableNo} does not have ${groupSize} free seats.` };
+    if (occupied(tableNo) >= t.seatCount) return { success: false, message: `Table ${tableNo} is full.` };
     const id = sessions.length + 1;
-    sessions.push({ id, studentId, tableNo, groupSize, startedAt: now, endedAt: null });
+    sessions.push({ id, studentId, tableNo, startedAt: now, endedAt: null });
     return { success: true, message: 'Session started.', sessionId: id };
   },
   endSession: async ({ studentId, now }) => {
@@ -55,7 +56,7 @@ const fakeDb = {
   setTableSeats: async ({ tableNo, seatCount }) => {
     const t = tables.find((x) => x.tableNo === tableNo);
     if (!t) return { success: false, message: 'That table does not exist.' };
-    if (seatCount < occupied(tableNo)) return { success: false, message: `Table ${tableNo} has ${occupied(tableNo)} people seated, so it cannot have fewer than ${occupied(tableNo)} seats.` };
+    if (seatCount < occupied(tableNo)) return { success: false, message: `Table ${tableNo} has ${occupied(tableNo)} students seated, so it cannot have fewer than ${occupied(tableNo)} seats.` };
     t.seatCount = seatCount;
     return { success: true, message: `Table ${tableNo} now has ${seatCount} seats.` };
   },
@@ -122,30 +123,49 @@ test('student routes need a student cookie, and faculty cookies do not work ther
 });
 
 test('tables show free seats, and a session is started and ended', async () => {
-  const list = await call('GET', '/api/student/tables?groupSize=3', { cookie: student() });
+  const list = await call('GET', '/api/student/tables', { cookie: student() });
   assert.equal(list.status, 200);
-  assert.deepEqual(list.body.tables.map((t) => t.fits), [true, false]);
+  assert.equal(list.body.maxSessionHours, 2);
+  assert.deepEqual(list.body.tables.map((t) => t.open), [true, true]);
+  assert.deepEqual(list.body.tables.map((t) => t.free), [4, 2]);
   assert.equal(list.body.tables[0].device, undefined, 'device data is not shared with students');
+  assert.deepEqual(list.body.tables[0].grid, { col: 0, row: 0, width: 2, height: 2 }, 'the floor-plan position is included');
+  assert.deepEqual(list.body.tables[1].grid, { col: 2, row: 0, width: 2, height: 2 });
+  for (const key of ['device', 'status', 'level', 'threshold', 'occupancy', 'noise']) {
+    assert.equal(list.body.tables[0][key], undefined, `${key} is not shared with students`);
+  }
 
-  const start = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1, groupSize: 3 } });
+  const start = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1 } });
   assert.equal(start.status, 201);
 
-  const again = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1, groupSize: 1 } });
+  const again = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1 } });
   assert.equal(again.status, 400);
   assert.match(again.body.message, /already have a table/);
 
   const me = await call('GET', '/api/student/me', { cookie: student() });
   assert.equal(me.body.session.tableNo, 1);
+  assert.equal(me.body.session.groupSize, undefined, 'a session is one student; there is no group size');
+  assert.ok(me.body.session.endsAt, 'the session shows when it ends');
 
   const end = await call('POST', '/api/student/session/end', { cookie: student() });
   assert.equal(end.status, 200);
   assert.equal((await call('POST', '/api/student/session/end', { cookie: student() })).status, 404);
 });
 
-test('a full table is refused with a clear message', async () => {
-  const res = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 2, groupSize: 5 } });
+test('a full table is refused with a clear message and shows as not open', async () => {
+  // Table 2 has 2 seats: two other students are already seated there.
+  sessions.push({ id: 91, studentId: 7, tableNo: 2, startedAt: new Date(), endedAt: null });
+  sessions.push({ id: 92, studentId: 8, tableNo: 2, startedAt: new Date(), endedAt: null });
+
+  const list = await call('GET', '/api/student/tables', { cookie: student() });
+  assert.deepEqual(list.body.tables.map((t) => t.open), [true, false]);
+  assert.equal(list.body.tables[1].free, 0);
+
+  const res = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 2 } });
   assert.equal(res.status, 400);
-  assert.match(res.body.message, /Table 2 does not have 5 free seats/);
+  assert.match(res.body.message, /Table 2 is full/);
+
+  sessions = sessions.filter((s) => s.id !== 91 && s.id !== 92);
 });
 
 test('admins can add a table by number and change its seats; students and faculty cannot', async () => {
@@ -166,11 +186,11 @@ test('admins can add a table by number and change its seats; students and facult
 });
 
 test('seats cannot drop below the number already seated', async () => {
-  sessions.push({ id: 99, studentId: 7, tableNo: 1, groupSize: 3, startedAt: new Date(), endedAt: null });
+  [99, 100, 101].forEach((id, i) => sessions.push({ id, studentId: 7 + i, tableNo: 1, startedAt: new Date(), endedAt: null }));
   const res = await call('PUT', '/api/settings/tables/1', { cookie: faculty('Admin'), body: { seats: 2 } });
   assert.equal(res.status, 400);
-  assert.match(res.body.message, /3 people seated/);
-  sessions = sessions.filter((s) => s.id !== 99);
+  assert.match(res.body.message, /3 students seated/);
+  sessions = sessions.filter((s) => ![99, 100, 101].includes(s.id));
 });
 
 test('free spot finder avoids overlaps', () => {
@@ -181,7 +201,7 @@ test('free spot finder avoids overlaps', () => {
 });
 
 test('signing in while seated returns the open session, so the student can end it', async () => {
-  const start = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1, groupSize: 1 } });
+  const start = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1 } });
   assert.equal(start.status, 201);
 
   const lookup = await call('POST', '/api/student/lookup', { body: { studentNo: '21-0001' } });

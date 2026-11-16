@@ -53,16 +53,21 @@ SELECT CONCAT(N'SAMPLE-', RIGHT(CONCAT(N'0', n), 2)),
        1
 FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12)) AS x (n);
 
--- Sessions over the last 30 days (tables 1-6), with members and alerts
+-- Sessions over the last 30 days (tables 1-6). One session = one student, so a table-day
+-- with several visitors gets several separate sessions (never more than the table has seats).
 DECLARE @day INT = 30;
 DECLARE @tableNo INT;
 DECLARE @tableId INT;
+DECLARE @seats INT;
+DECLARE @visits INT;
+DECLARE @i INT;
 DECLARE @start DATETIME2(0);
+DECLARE @firstStart DATETIME2(0);
 DECLARE @duration INT;
 DECLARE @avg INT;
 DECLARE @hadAlert BIT;
-DECLARE @group INT;
 DECLARE @sessionId BIGINT;
+DECLARE @firstSessionId BIGINT;
 DECLARE @deviceId INT;
 DECLARE @midnight DATETIME2(0);
 
@@ -71,43 +76,78 @@ BEGIN
     SET @tableNo = 1;
     WHILE @tableNo <= 6
     BEGIN
-        IF (ABS(CHECKSUM(NEWID())) % 3) > 0      -- about two in three table-days have a visit
+        IF (ABS(CHECKSUM(NEWID())) % 3) > 0      -- about two in three table-days have visits
         BEGIN
-            SELECT @tableId = Id, @deviceId = (SELECT Id FROM dbo.Device WHERE TableId = t.Id)
+            SELECT @tableId = t.Id, @seats = t.SeatCount, @deviceId = (SELECT Id FROM dbo.Device WHERE TableId = t.Id)
             FROM dbo.LibraryTable AS t WHERE t.TableNo = @tableNo;
 
-            SET @midnight = CAST(CAST(DATEADD(DAY, -@day, SYSUTCDATETIME()) AS DATE) AS DATETIME2(0));
-            SET @start    = DATEADD(MINUTE, ABS(CHECKSUM(NEWID())) % 600, @midnight);   -- 08:00-18:00 local
-            SET @duration = 15 + ABS(CHECKSUM(NEWID())) % 120;
-            SET @avg      = 900 + ABS(CHECKSUM(NEWID())) % 700;
-            SET @hadAlert = CASE WHEN ABS(CHECKSUM(NEWID())) % 4 = 0 THEN 1 ELSE 0 END;
-            SET @group    = 1 + ABS(CHECKSUM(NEWID())) % 4;
+            SET @midnight   = CAST(CAST(DATEADD(DAY, -@day, SYSUTCDATETIME()) AS DATE) AS DATETIME2(0));
+            SET @firstStart = DATEADD(MINUTE, ABS(CHECKSUM(NEWID())) % 540, @midnight);   -- 08:00-17:00 local
+            SET @visits     = 1 + ABS(CHECKSUM(NEWID())) % (CASE WHEN @seats < 4 THEN @seats ELSE 4 END);
+            SET @hadAlert   = CASE WHEN ABS(CHECKSUM(NEWID())) % 4 = 0 THEN 1 ELSE 0 END;
+            SET @firstSessionId = NULL;
+            SET @i = 1;
 
-            INSERT INTO dbo.LibrarySession (TableId, GroupSize, StartedAt, EndedAt, AvgLevel, HadAlert, IsSample)
-            VALUES (@tableId, @group, @start, DATEADD(MINUTE, @duration, @start), @avg, @hadAlert, 1);
-            SET @sessionId = CAST(SCOPE_IDENTITY() AS BIGINT);
+            WHILE @i <= @visits
+            BEGIN
+                SET @start    = DATEADD(MINUTE, (@i - 1) * 5, @firstStart);   -- a few minutes apart
+                SET @duration = 15 + ABS(CHECKSUM(NEWID())) % 120;
+                SET @avg      = 900 + ABS(CHECKSUM(NEWID())) % 700;
 
-            INSERT INTO dbo.SessionMember (SessionId, StudentId)
-            SELECT TOP (@group) @sessionId, Id FROM dbo.Student ORDER BY NEWID();
+                INSERT INTO dbo.LibrarySession (TableId, StartedAt, EndedAt, AvgLevel, HadAlert, IsSample)
+                VALUES (@tableId, @start, DATEADD(MINUTE, @duration, @start), @avg,
+                        CASE WHEN @i = 1 THEN @hadAlert ELSE 0 END, 1);
+                SET @sessionId = CAST(SCOPE_IDENTITY() AS BIGINT);
+                IF @i = 1 SET @firstSessionId = @sessionId;
+
+                -- one distinct student per session at this table on this day
+                INSERT INTO dbo.SessionMember (SessionId, StudentId)
+                SELECT TOP (1) @sessionId, st.Id
+                FROM dbo.Student AS st
+                WHERE NOT EXISTS (SELECT 1
+                                  FROM dbo.SessionMember AS sm
+                                  JOIN dbo.LibrarySession AS ls ON ls.Id = sm.SessionId
+                                  WHERE sm.StudentId = st.Id AND ls.TableId = @tableId
+                                    AND ls.StartedAt >= @midnight AND ls.StartedAt < DATEADD(DAY, 1, @midnight))
+                ORDER BY NEWID();
+
+                SET @i = @i + 1;
+            END
 
             IF @hadAlert = 1
                 INSERT INTO dbo.Alert (DeviceId, TableId, SessionId, Level, Threshold, TriggeredAt, IsSample)
-                VALUES (@deviceId, @tableId, @sessionId, 1650 + ABS(CHECKSUM(NEWID())) % 200, 1600,
-                        DATEADD(MINUTE, 10, @start), 1);
+                VALUES (@deviceId, @tableId, @firstSessionId, 1650 + ABS(CHECKSUM(NEWID())) % 200, 1600,
+                        DATEADD(MINUTE, 10, @firstStart), 1);
         END
         SET @tableNo = @tableNo + 1;
     END
     SET @day = @day - 1;
 END
 
--- Two sessions in progress right now (so the layout shows occupancy)
-INSERT INTO dbo.LibrarySession (TableId, GroupSize, StartedAt, EndedAt, AvgLevel, HadAlert, IsSample)
-SELECT t.Id, 3, DATEADD(MINUTE, -25, SYSUTCDATETIME()), NULL, NULL, 0, 1
-FROM dbo.LibraryTable AS t WHERE t.TableNo = 1;
+-- Sessions in progress right now (so the layout shows occupancy): 3 students at table 1,
+-- 2 at table 2. Five different students, so nobody has two open sessions.
+DECLARE @open TABLE (Seq INT IDENTITY(1,1), StudentId INT);
+INSERT INTO @open (StudentId) SELECT TOP (5) Id FROM dbo.Student ORDER BY NEWID();
 
-INSERT INTO dbo.LibrarySession (TableId, GroupSize, StartedAt, EndedAt, AvgLevel, HadAlert, IsSample)
-SELECT t.Id, 2, DATEADD(MINUTE, -10, SYSUTCDATETIME()), NULL, NULL, 0, 1
-FROM dbo.LibraryTable AS t WHERE t.TableNo = 2;
+DECLARE @openSeq INT = 1;
+DECLARE @openTable INT;
+DECLARE @openTableId INT;
+DECLARE @openStudent INT;
+DECLARE @openSession BIGINT;
+
+WHILE @openSeq <= 5
+BEGIN
+    SET @openTable   = CASE WHEN @openSeq <= 3 THEN 1 ELSE 2 END;
+    SELECT @openTableId = Id FROM dbo.LibraryTable WHERE TableNo = @openTable;
+    SELECT @openStudent = StudentId FROM @open WHERE Seq = @openSeq;
+
+    INSERT INTO dbo.LibrarySession (TableId, StartedAt, EndedAt, AvgLevel, HadAlert, IsSample)
+    VALUES (@openTableId, DATEADD(MINUTE, -(30 - @openSeq * 4), SYSUTCDATETIME()), NULL, NULL, 0, 1);
+    SET @openSession = CAST(SCOPE_IDENTITY() AS BIGINT);
+
+    INSERT INTO dbo.SessionMember (SessionId, StudentId) VALUES (@openSession, @openStudent);
+    SET @openSeq = @openSeq + 1;
+END
 
 PRINT 'Sample data loaded.';
 GO

@@ -92,30 +92,53 @@ npm start          # serves the API and the built site on http://localhost:3001
 | Page | Route | Who |
 | --- | --- | --- |
 | Dashboard: summary, device status, recent alerts, maintenance mode | `/console/dashboard` | Faculty and admins |
-| Table layout: floor plan, seats, live status | `/console/layout` | Faculty and admins |
+| Table layout: floor plan, seats, live status. **Edit layout** to move and resize tables | `/console/layout` | Faculty and admins |
 | Rewards: most frequent, quietest, quiet streak (this week or month) | `/console/rewards` | Faculty and admins |
-| History: alerts, maintenance and sessions, with CSV export | `/console/history` | Faculty and admins |
+| History: alerts, maintenance and sessions, with Excel and CSV export | `/console/history` | Faculty and admins |
 | Settings: device alert thresholds | `/console/settings` | Administrators only |
 
 The top bar has notifications (recent alerts and maintenance ending soon) and the profile menu with sign out.
 
-API routes: `GET /api/dashboard`, `GET /api/layout`, `GET|POST /api/maintenance`, `POST /api/maintenance/:id/end`, `GET /api/notifications`, `GET /api/rewards?period=week|month`, `GET /api/history`, and for administrators `GET|PUT /api/settings/devices`.
+API routes: `GET /api/dashboard`, `GET /api/layout`, `GET|POST /api/maintenance`, `POST /api/maintenance/:id/end`, `GET /api/notifications`, `GET /api/rewards?period=week|month`, `GET /api/history`, `PUT /api/settings/layout` (any signed-in faculty, saves moved and resized tables), and for administrators `GET|PUT /api/settings/devices`.
 
 Run the server tests with `npm test --prefix server`.
 
 ### Student check-in
 
-- Start page at `/` offers **Student check-in** and **Faculty console**.
+- Start page at `/` offers only **Student check-in**. Faculty reach their sign-in with **Ctrl+Shift+F** on the start page or the student sign-in page.
 - Sign up at `/student/signup`: student number (`21-0001`, the dash is added automatically), last name, first name, optional middle initial, and section such as `BSIT-3D`, `BSCS-1D` or `BSEE-2D`.
 - Sign in at `/student/login`: enter the student number, confirm the name shown in the pop-up, and sign in.
-- At `/student/table`: choose a group size, choose a table with enough free seats, and confirm. After confirming a table, the student returns to sign-in. Signing in again ends the session. A session also ends automatically after 2 hours.
+- At `/student/table`: tap a table with a free seat and confirm it in the pop-up. From 768px up a **Cards | Floor plan** toggle switches to the real floor plan (see below). After confirming, the student returns to sign-in. Signing in again ends the session. A session also ends automatically after 2 hours. The **Sign out** button only signs the student out of this device; a seat stays active until the session ends.
 - Student sessions are written to the same tables the faculty pages read, so the dashboard, table layout, rewards and history update from real visits.
 
 Students use their own cookie (`shush_student`) and cannot open faculty pages, and faculty cookies do not work on student routes.
 
+### Editing the floor plan
+
+On **Table layout**, press **Edit layout** (768px and wider). Nothing changes for anyone else until you press **Save layout** and confirm.
+
+- **Move:** drag a table (or focus it and use the arrow keys). Tables snap to the 12-column grid and cannot overlap; an invalid drop springs back.
+- **Resize:** drag the right edge, bottom edge or corner (or Shift + arrow keys). Width is 1-10 and height is 1-4 cells.
+- **Seat rule:** chairs sit on the two longer sides. Each cell added to or removed from the long side adds or removes 2 chairs: `seatsAfter = seatsBefore + 2 * (max(newW,newH) - max(oldW,oldH))`. Changing only the short side keeps the seats. A resize below 1 seat, below the students seated now, or above 20 seats is refused. Exact seat counts can still be set in **Settings**.
+- **Undo / Reset / Cancel:** Undo steps back, Reset returns to the saved layout, Cancel asks before discarding.
+- **Database:** saving calls `dbo.usp_Layout_Save` (granted to `shush_app` in `create_app_login.sql`). It uses `OPENJSON`, so it needs SQL Server 2016 or newer and database compatibility level 130 or higher. Re-run `SHUSH.sql` and `create_app_login.sql` after updating.
+
+### Student floor plan
+
+At `/student/table`, from 768px up, students can switch from **Cards** to **Floor plan**. It shows tables at the positions and sizes saved on the faculty page, with taken chairs filled. Floor plan is the default from 1024px up, the choice is remembered for the browser tab, and below 768px only Cards show. **Open tables only** dims tables that are not open. Students never receive device or noise data; `GET /api/student/tables` only adds each table's `grid`.
+
+### History export
+
+On **History**, **Export** offers two files for the rows currently shown (same filters):
+
+- **Excel report (.xlsx):** colored and formatted, with summary boxes, a frozen filterable header, real date and time values, a color-coded Type column, a "Daily summary" sheet, and print setup (landscape, one page wide, repeating header, page numbers). The `exceljs` library loads only when this option is picked.
+- **CSV (.csv):** plain data with a UTF-8 BOM (Excel shows characters correctly), CRLF line ends and the columns Date, Time, Type, Table, Summary, Details, Sample data, Timestamp (UTC). Cells that start with `=`, `+`, `-` or `@` are quoted safely.
+
+File names: `shush-history-<type>-<YYYY-MM-DD>.xlsx` / `.csv`.
+
 ### Table management (administrators)
 
-On **Settings**, administrators can add a table by its number and seat count. Column and row are optional; if left empty, the table is placed in the next free space. They can also change a table's seats (never below the number currently seated), and remove the sample data once real data is in use.
+On **Settings**, administrators can add a table by its number and seat count. Column and row are optional; if left empty, the table is placed in the next free space (it can be moved afterwards with **Edit layout**). They can also change a table's seats (never below the number currently seated), and remove the sample data once real data is in use.
 
 ## Not built yet
 
@@ -124,5 +147,5 @@ On **Settings**, administrators can add a table by its number and seat count. Co
 - Maintenance mode is recorded and shown, but alerts are not suppressed until device ingest exists.
 - Threshold changes are saved, but devices only pick them up once device sync exists.
 - Student sign-in uses the student number only (no password), so anyone who knows a number can sign in as that student. A PIN is a sensible next step.
-- Group members cannot join a session started by another student yet; the session records the group size only.
+- Each student signs in on their own and takes one seat. A table holds as many students as it has seats.
 - Quietest Visitor needs device noise readings, so real sessions only appear in Most Frequent and Quiet Streak until devices report.

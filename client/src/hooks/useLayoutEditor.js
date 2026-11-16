@@ -1,5 +1,14 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { GRID_COLUMNS, MAX_ROWS, cellFromPoint, clampPlacement, diffPlacements, isFree } from '../lib/layoutRules.js';
+import {
+  GRID_COLUMNS,
+  MAX_ROWS,
+  UI_LIMITS,
+  cellFromPoint,
+  clampPlacement,
+  diffPlacements,
+  isFree,
+  resizeOutcome,
+} from '../lib/layoutRules.js';
 
 const UNDO_LIMIT = 50;
 const MIN_ROWS = 6;
@@ -9,6 +18,8 @@ const snapshot = (tables) =>
   Object.fromEntries(
     tables.map((t) => [t.tableNo, { col: t.grid.col, row: t.grid.row, width: t.grid.width, height: t.grid.height, seats: t.seats }])
   );
+
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
 // Every placement except the one for tableNo.
 const othersOf = (draft, tableNo) =>
@@ -28,12 +39,16 @@ export default function useLayoutEditor({ tables, canvasRef }) {
   const [undoStack, setUndoStack] = useState([]);
   const [message, setMessage] = useState('');
   const [drag, setDrag] = useState(null); // { tableNo, col, row, width, height, valid } for the ghost
+  const [resize, setResize] = useState(null); // { tableNo, width, height, seats, valid, ghost } while a handle is dragged
 
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const undoRef = useRef(undoStack);
   undoRef.current = undoStack;
   const dragRef = useRef(null);
+  const resizeRef = useRef(null);
+  const occupiedRef = useRef({});
+  occupiedRef.current = Object.fromEntries(tables.map((t) => [t.tableNo, t.occupancy?.seated ?? 0]));
 
   // Guides cover the lowest table plus two spare rows, so tables can be dragged further down.
   const rowCount = useMemo(() => {
@@ -61,7 +76,9 @@ export default function useLayoutEditor({ tables, canvasRef }) {
     setUndoStack([]);
     setMessage('');
     setDrag(null);
+    setResize(null);
     dragRef.current = null;
+    resizeRef.current = null;
     setEditing(true);
   }, [tables]);
 
@@ -71,7 +88,9 @@ export default function useLayoutEditor({ tables, canvasRef }) {
     setBase({});
     setUndoStack([]);
     setDrag(null);
+    setResize(null);
     dragRef.current = null;
+    resizeRef.current = null;
   }, []);
 
   // Moves a table to a cell if that spot is free. Used by drops and by the arrow keys.
@@ -104,22 +123,27 @@ export default function useLayoutEditor({ tables, canvasRef }) {
   // ---- Pointer drag ----
 
   // Reads the cell size from the rendered grid, so nothing about the row height is hard-coded here.
+  const measureCanvas = useCallback(() => {
+    const el = canvasRef.current;
+    if (!el) return null;
+    const cs = window.getComputedStyle(el);
+    const gapX = parseFloat(cs.columnGap) || 0;
+    const gapY = parseFloat(cs.rowGap) || 0;
+    const rowHeight = parseFloat(cs.gridAutoRows) || 104;
+    const inner = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    return { stepX: (inner - (GRID_COLUMNS - 1) * gapX) / GRID_COLUMNS + gapX, stepY: rowHeight + gapY };
+  }, [canvasRef]);
+
   const startDrag = useCallback(
     (tableNo) => {
-      const el = canvasRef.current;
       const origin = draftRef.current[tableNo];
-      if (!el || !origin) return null;
-      const cs = window.getComputedStyle(el);
-      const gapX = parseFloat(cs.columnGap) || 0;
-      const gapY = parseFloat(cs.rowGap) || 0;
-      const rowHeight = parseFloat(cs.gridAutoRows) || 104;
-      const inner = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
-      const stepX = (inner - (GRID_COLUMNS - 1) * gapX) / GRID_COLUMNS + gapX;
-      const stepY = rowHeight + gapY;
+      const metrics = measureCanvas();
+      if (!metrics || !origin) return null;
+      const { stepX, stepY } = metrics;
       dragRef.current = { tableNo, origin, stepX, stepY, target: origin, valid: true, shown: null };
       return { stepX, stepY };
     },
-    [canvasRef]
+    [measureCanvas]
   );
 
   // dx, dy: how far the pointer has moved since the drag started, in pixels.
@@ -157,6 +181,87 @@ export default function useLayoutEditor({ tables, canvasRef }) {
     setDrag(null);
   }, []);
 
+  // ---- Resize (handles and Shift+arrows) ----
+  // Seats follow the long side (see seatsAfterResize). A size that is blocked or refused is never applied:
+  // the tile stays at the last allowed size and the ghost turns red.
+
+  const startResize = useCallback(
+    (tableNo) => {
+      const origin = draftRef.current[tableNo];
+      const metrics = measureCanvas();
+      if (!metrics || !origin) return false;
+      resizeRef.current = { tableNo, origin, ...metrics, last: { width: origin.width, height: origin.height, seats: origin.seats }, shown: null };
+      return true;
+    },
+    [measureCanvas]
+  );
+
+  // axis: 'e' (right edge), 's' (bottom edge) or 'se' (corner). dx, dy: pixels moved since the drag started.
+  const resizeTo = useCallback((tableNo, axis, dx, dy) => {
+    const r = resizeRef.current;
+    if (!r || r.tableNo !== tableNo) return;
+    const { origin, stepX, stepY } = r;
+    const width = axis.includes('e') ? origin.width + Math.round(dx / stepX) : origin.width;
+    const height = axis.includes('s') ? origin.height + Math.round(dy / stepY) : origin.height;
+    const out = resizeOutcome({ origin, width, height, others: othersOf(draftRef.current, tableNo), occupied: occupiedRef.current[tableNo] ?? 0 });
+    if (out.valid) r.last = { width, height, seats: out.seats };
+    // The ghost shows the size being asked for, kept inside the grid so it never adds columns.
+    const ghost = {
+      col: origin.col,
+      row: origin.row,
+      width: clamp(width, 1, Math.min(UI_LIMITS.maxWidth, GRID_COLUMNS - origin.col)),
+      height: clamp(height, 1, Math.min(UI_LIMITS.maxHeight, MAX_ROWS - origin.row)),
+      valid: out.valid,
+    };
+    const key = `${r.last.width}x${r.last.height}:${ghost.width}x${ghost.height}:${out.valid}`;
+    if (r.shown !== key) {
+      r.shown = key;
+      setResize({ tableNo, width: r.last.width, height: r.last.height, seats: r.last.seats, valid: out.valid, ghost });
+    }
+  }, []);
+
+  // Ends the handle drag. With commit, the last allowed size becomes part of the draft.
+  const endResize = useCallback(
+    (tableNo, commit) => {
+      const r = resizeRef.current;
+      resizeRef.current = null;
+      setResize(null);
+      if (!commit || !r || r.tableNo !== tableNo) return;
+      const { origin, last } = r;
+      if (last.width === origin.width && last.height === origin.height) return;
+      pushUndo(draftRef.current);
+      setDraft({ ...draftRef.current, [tableNo]: { ...origin, ...last } });
+      setMessage(`Table ${tableNo} resized to ${last.width} by ${last.height}, ${last.seats} seats.`);
+    },
+    [pushUndo]
+  );
+
+  // Shift+arrow: one cell wider/narrower or taller/shorter, same limits as the handles.
+  const resizeBy = useCallback(
+    (tableNo, dWidth, dHeight) => {
+      const current = draftRef.current[tableNo];
+      if (!current) return;
+      const width = current.width + dWidth;
+      const height = current.height + dHeight;
+      const out = resizeOutcome({ origin: current, width, height, others: othersOf(draftRef.current, tableNo), occupied: occupiedRef.current[tableNo] ?? 0 });
+      if (!out.valid) {
+        setMessage(`Table ${tableNo} cannot be resized to ${width} by ${height}.`);
+        return;
+      }
+      pushUndo(draftRef.current);
+      setDraft({ ...draftRef.current, [tableNo]: { ...current, width, height, seats: out.seats } });
+      setMessage(`Table ${tableNo} resized to ${width} by ${height}, ${out.seats} seats.`);
+    },
+    [pushUndo]
+  );
+
+  // The placement to draw: the draft, with the live size while a handle is being dragged.
+  const placementOf = (tableNo) => {
+    const p = draft[tableNo];
+    if (p && resize && resize.tableNo === tableNo) return { ...p, width: resize.width, height: resize.height, seats: resize.seats };
+    return p;
+  };
+
   // ---- Undo and reset ----
 
   const undo = useCallback(() => {
@@ -179,6 +284,9 @@ export default function useLayoutEditor({ tables, canvasRef }) {
     visibleTables,
     rowCount,
     drag,
+    resize,
+    ghost: drag ?? (resize ? { ...resize.ghost, tableNo: resize.tableNo } : null),
+    placementOf,
     message,
     changes,
     dirty: changes.length > 0,
@@ -193,5 +301,9 @@ export default function useLayoutEditor({ tables, canvasRef }) {
     dragTo,
     endDrag,
     cancelDrag,
+    startResize,
+    resizeTo,
+    endResize,
+    resizeBy,
   };
 }

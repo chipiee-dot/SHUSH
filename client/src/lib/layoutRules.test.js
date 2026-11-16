@@ -1,7 +1,7 @@
 // Run with: node --test client/src/lib/*.test.js
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cellFromPoint, clampPlacement, diffPlacements, isFree, overlaps } from './layoutRules.js';
+import { cellFromPoint, clampPlacement, diffPlacements, isFree, overlaps, resizeOutcome, seatsAfterResize } from './layoutRules.js';
 
 const p = (col, row, width = 2, height = 2) => ({ col, row, width, height });
 
@@ -46,4 +46,41 @@ test('diffPlacements returns only the tables that changed', () => {
   assert.deepEqual(diffPlacements(server, server), []);
   // a table that is not in the saved layout is ignored
   assert.deepEqual(diffPlacements({ 1: p(0, 0) }, { 1: p(0, 0), 9: p(5, 5) }), []);
+});
+
+test('seatsAfterResize: the long side decides (examples from the plan)', () => {
+  const r = (oldW, oldH, newW, newH, seats, occupied = 0) => seatsAfterResize({ oldW, oldH, newW, newH, seats, occupied });
+  assert.equal(r(2, 2, 3, 2, 4), 6); // 2x2 -> 3x2
+  assert.equal(r(2, 2, 2, 3, 4), 6); // long side is now vertical
+  assert.equal(r(3, 2, 3, 1, 6), 6); // short side only
+  assert.equal(r(2, 2, 3, 2, 6), 8); // Table 3: keeps its 6 seats until resized
+  assert.equal(r(2, 2, 1, 1, 4, 3), null); // would be 2 seats with 3 seated
+  assert.equal(r(2, 2, 1, 2, 4, 3), 4); // 1x2: the long side is still 2, nothing changes
+});
+
+test('seatsAfterResize: refuses below 1 seat and above 20', () => {
+  assert.equal(seatsAfterResize({ oldW: 2, oldH: 2, newW: 1, newH: 1, seats: 3, occupied: 0 }), 1);
+  assert.equal(seatsAfterResize({ oldW: 2, oldH: 2, newW: 1, newH: 1, seats: 2, occupied: 0 }), null);
+  assert.equal(seatsAfterResize({ oldW: 2, oldH: 2, newW: 3, newH: 2, seats: 19, occupied: 0 }), null);
+  assert.equal(seatsAfterResize({ oldW: 2, oldH: 2, newW: 3, newH: 2, seats: 18, occupied: 0 }), 20);
+});
+
+test('resizeOutcome: limits, neighbours and seat rules', () => {
+  const origin = { col: 0, row: 0, width: 2, height: 2, seats: 4 };
+  const near = [p(3, 0)];
+  assert.deepEqual(resizeOutcome({ origin, width: 3, height: 2, others: near }), { valid: true, seats: 6 });
+  assert.equal(resizeOutcome({ origin, width: 4, height: 2, others: near }).valid, false); // hits the neighbour
+  assert.equal(resizeOutcome({ origin, width: 2, height: 5, others: [] }).valid, false); // taller than 4
+  assert.equal(resizeOutcome({ origin, width: 11, height: 2, others: [] }).valid, false); // wider than 10
+  assert.equal(resizeOutcome({ origin: { ...origin, col: 10 }, width: 3, height: 2, others: [] }).valid, false); // off the grid
+  assert.equal(resizeOutcome({ origin, width: 1, height: 1, others: [], occupied: 3 }).valid, false); // seated students
+});
+
+test('diffPlacements sends seats only when the seat count changed', () => {
+  const server = { 1: { ...p(0, 0), seats: 4 }, 2: { ...p(2, 0), seats: 4 } };
+  const draft = { 1: { ...p(0, 3), seats: 4 }, 2: { ...p(2, 0, 3, 2), seats: 6 } };
+  assert.deepEqual(diffPlacements(server, draft), [
+    { tableNo: 1, col: 0, row: 3, width: 2, height: 2 },
+    { tableNo: 2, col: 2, row: 0, width: 3, height: 2, seats: 6 },
+  ]);
 });

@@ -23,9 +23,10 @@ export function meterColor(status) {
   return METER_COLOR[status] ?? '--shush-orange';
 }
 
-export function Chairs({ count, firstIndex, occupied }) {
+/** A row of chairs. side 'h' (default) lays them out left to right; 'v' stacks them top to bottom (tall tables). */
+export function Chairs({ count, firstIndex, occupied, side = 'h' }) {
   return (
-    <div className="tl-chairs" aria-hidden="true">
+    <div className={`tl-chairs ${side === 'v' ? 'tl-chairs--v' : ''}`} aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
         <span key={i} className={`tl-chair ${firstIndex + i < occupied ? 'tl-chair--on' : ''}`} />
       ))}
@@ -55,6 +56,12 @@ function tiltHandlers() {
 
 const DRAG_THRESHOLD = 4; // pixels before a press becomes a drag, so a plain click is not a drag
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+// Resize handles: the right edge, the bottom edge and the corner.
+const HANDLES = [
+  ['e', 'tl-handle--e', 'ew-resize'],
+  ['s', 'tl-handle--s', 'ns-resize'],
+  ['se', 'tl-handle--se', 'nwse-resize'],
+];
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
@@ -62,6 +69,8 @@ const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: r
  * dimmed fades the tile when a status filter is on (it stays in place so the layout does not jump).
  * edit (admin floor-plan editing, plan variant only): the editor from useLayoutEditor. The tile then becomes a
  * draggable group: pointer drag with snap, and arrow keys to move one cell. Dragging moves it with transform only.
+ * In edit mode it also has resize handles (right edge, bottom edge, corner) and Shift+arrow keys to resize.
+ * Tables taller than wide put their chairs on the left and right edges.
  */
 const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSelect, edit, variant = 'plan' }, ref) {
   const { tableNo, seats, status, occupancy, device, grid } = table;
@@ -78,6 +87,55 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
     },
     []
   );
+
+  const resizeRef = useRef(null);
+  useEffect(
+    () => () => {
+      if (resizeRef.current?.onKey) window.removeEventListener('keydown', resizeRef.current.onKey);
+    },
+    []
+  );
+
+  function finishResize(commit) {
+    const r = resizeRef.current;
+    if (!r) return;
+    window.removeEventListener('keydown', r.onKey);
+    resizeRef.current = null;
+    edit.endResize(tableNo, commit);
+  }
+
+  // Props for one handle. The pointer is captured on the handle, and events stop here so the tile does not start a move.
+  const handleProps = (axis) => ({
+    onPointerDown(e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.stopPropagation();
+      if (!edit.startResize(tableNo)) return;
+      const r = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      // Esc puts the size back to what it was.
+      r.onKey = (ev) => {
+        if (ev.key !== 'Escape') return;
+        ev.preventDefault();
+        finishResize(false);
+      };
+      window.addEventListener('keydown', r.onKey);
+      resizeRef.current = r;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    },
+    onPointerMove(e) {
+      e.stopPropagation();
+      const r = resizeRef.current;
+      if (!r || r.id !== e.pointerId) return;
+      edit.resizeTo(tableNo, axis, e.clientX - r.x, e.clientY - r.y);
+    },
+    onPointerUp(e) {
+      e.stopPropagation();
+      if (resizeRef.current?.id === e.pointerId) finishResize(true);
+    },
+    onPointerCancel(e) {
+      e.stopPropagation();
+      if (resizeRef.current?.id === e.pointerId) finishResize(false);
+    },
+  });
 
   // Springs the tile to where it lands (or back to where it started), then updates the draft.
   function settle(d, commit) {
@@ -150,11 +208,13 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
       else dragRef.current = null;
     },
     onKeyDown(e) {
-      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || dragRef.current?.started) return;
+      if (e.altKey || e.ctrlKey || e.metaKey || dragRef.current?.started || resizeRef.current) return;
       const dir = ARROWS[e.key];
       if (!dir) return;
       e.preventDefault();
-      edit.nudge(tableNo, dir[0], dir[1]);
+      // Arrows move; Shift + arrows resize (Right/Left change the width, Down/Up the height).
+      if (e.shiftKey) edit.resizeBy(tableNo, dir[0], dir[1]);
+      else edit.nudge(tableNo, dir[0], dir[1]);
     },
   };
 
@@ -178,13 +238,17 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
     />
   );
 
+  // Chairs go on the two longer sides: top and bottom, or left and right when the table is taller than wide.
+  const vertical = variant === 'plan' && grid.height > grid.width;
+  const chairSide = vertical ? 'v' : 'h';
+  const resizingThis = Boolean(edit && edit.resize && edit.resize.tableNo === tableNo);
   const Tag = edit ? 'div' : 'button';
   const tagProps = edit
     ? {
         role: 'group',
         tabIndex: 0,
         'aria-roledescription': 'draggable table',
-        'aria-label': `${label}. Drag to move it, or use the arrow keys.`,
+        'aria-label': `${label}, ${grid.width} by ${grid.height}. Drag to move it, or use the arrow keys. Hold Shift to resize.`,
         ...editHandlers,
       }
     : {
@@ -199,28 +263,43 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
     <Tag
       ref={ref}
       style={placement}
-      className={`tl-tile tl-s-${status} ${dimmed ? 'tl-dim' : ''} ${edit ? 'tl-edit' : ''}`}
+      className={`tl-tile tl-s-${status} ${dimmed ? 'tl-dim' : ''} ${edit ? 'tl-edit' : ''} ${variant === 'plan' ? 'tl-plan' : ''} ${vertical ? 'tl-tile--v' : ''}`}
+      data-resizing={resizingThis ? '1' : undefined}
       {...tagProps}
     >
       {variant === 'plan' ? (
         <>
-          <Chairs count={topCount} firstIndex={0} occupied={seated} />
+          <Chairs count={topCount} firstIndex={0} occupied={seated} side={chairSide} />
           <div className="tl-top">
             <div className="flex items-baseline gap-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-shush-muted">Table</span>
+              <span className="tl-word text-[10px] font-semibold uppercase tracking-wider text-shush-muted">Table</span>
               <span className="text-2xl font-bold leading-none text-shush-ink">{tableNo}</span>
             </div>
-            <div className="flex items-center justify-between gap-1">
+            <div className="tl-row flex items-center justify-between gap-1">
               <span className="tl-pill">
                 <StatusPill status={status} />
               </span>
-              <span className="flex-none text-[11px] font-medium tabular-nums text-shush-inkSoft">
+              <span className="tl-count flex-none text-[11px] font-medium tabular-nums text-shush-inkSoft">
                 {seated}/{seats}
               </span>
             </div>
-            {meter}
+            {meter && <div className="tl-meter">{meter}</div>}
           </div>
-          <Chairs count={seats - topCount} firstIndex={topCount} occupied={seated} />
+          <Chairs count={seats - topCount} firstIndex={topCount} occupied={seated} side={chairSide} />
+          {edit && (
+            <>
+              {HANDLES.map(([axis, cls, cursor]) => (
+                <div key={axis} className={`tl-handle ${cls}`} style={{ cursor }} aria-hidden="true" {...handleProps(axis)}>
+                  <span className="tl-grip" />
+                </div>
+              ))}
+              {resizingThis && (
+                <div className="tl-badge" aria-hidden="true">
+                  {edit.resize.seats} {edit.resize.seats === 1 ? 'seat' : 'seats'}
+                </div>
+              )}
+            </>
+          )}
         </>
       ) : (
         <div className="space-y-2 p-3">

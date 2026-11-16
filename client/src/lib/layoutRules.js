@@ -3,6 +3,9 @@
 
 export const GRID_COLUMNS = 12;
 export const MAX_ROWS = 100;
+export const MAX_SEATS = 20;
+// What the editor lets you draw. The database allows up to 12 each; the server stays the last word.
+export const UI_LIMITS = { maxWidth: 10, maxHeight: 4 };
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
@@ -49,8 +52,35 @@ export function cellFromPoint(x, y, metrics) {
 }
 
 /**
- * Only the tables whose position or size changed, ready for api.saveLayout.
- * server and draft are objects keyed by table number: { [tableNo]: { col, row, width, height } }.
+ * Seats after a resize. Chairs sit on the two longer sides, so every cell added to (or removed from) the
+ * long side adds (or removes) 2 chairs; changing only the short side changes nothing.
+ * Returns the new seat count, or null when the resize is refused: fewer than max(1, occupied) or more than 20 seats.
+ */
+export function seatsAfterResize({ oldW, oldH, newW, newH, seats, occupied = 0 }) {
+  const next = seats + 2 * (Math.max(newW, newH) - Math.max(oldW, oldH));
+  if (next < Math.max(1, occupied) || next > MAX_SEATS) return null;
+  return next;
+}
+
+/**
+ * Checks a size for a table. origin is the placement (with seats) the resize started from, others are the
+ * other tables' placements. valid is false when the size is outside the editor limits, leaves the grid,
+ * touches another table, or breaks the seat rules. seats is the resulting seat count (null if refused).
+ */
+export function resizeOutcome({ origin, width, height, others, occupied = 0, rows = MAX_ROWS }) {
+  const seats = seatsAfterResize({
+    oldW: origin.width, oldH: origin.height, newW: width, newH: height, seats: origin.seats, occupied,
+  });
+  const sizeOk = width >= 1 && width <= UI_LIMITS.maxWidth && height >= 1 && height <= UI_LIMITS.maxHeight;
+  const placement = { col: origin.col, row: origin.row, width, height };
+  const valid = sizeOk && seats !== null && isFree(placement, others, { columns: GRID_COLUMNS, rows });
+  return { valid, seats };
+}
+
+/**
+ * Only the tables that changed, ready for api.saveLayout.
+ * server and draft are objects keyed by table number: { [tableNo]: { col, row, width, height, seats } }.
+ * seats is sent only for tables whose seat count changed, so a plain move never overwrites it.
  */
 export function diffPlacements(server, draft) {
   const changes = [];
@@ -58,9 +88,12 @@ export function diffPlacements(server, draft) {
     const before = server[key];
     const after = draft[key];
     if (!before) continue;
-    if (before.col !== after.col || before.row !== after.row || before.width !== after.width || before.height !== after.height) {
-      changes.push({ tableNo: Number(key), col: after.col, row: after.row, width: after.width, height: after.height });
-    }
+    const moved = before.col !== after.col || before.row !== after.row || before.width !== after.width || before.height !== after.height;
+    const reseated = before.seats !== after.seats;
+    if (!moved && !reseated) continue;
+    const change = { tableNo: Number(key), col: after.col, row: after.row, width: after.width, height: after.height };
+    if (reseated) change.seats = after.seats;
+    changes.push(change);
   }
   return changes.sort((a, b) => a.tableNo - b.tableNo);
 }

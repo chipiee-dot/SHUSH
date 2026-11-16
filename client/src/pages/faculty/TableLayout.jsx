@@ -348,11 +348,16 @@ export default function TableLayout() {
     if (el) tileRefs.current.set(no, el);
     else tileRefs.current.delete(no);
   };
+  // While editing, each tile is drawn from the draft: its position, size and seat count (chairs follow the size).
+  const draftTable = (t) => {
+    const p = editor.placementOf(t.tableNo);
+    return { ...t, grid: { col: p.col, row: p.row, width: p.width, height: p.height }, seats: p.seats };
+  };
   const renderTile = (t, variant) => (
     <TableTile
       key={t.tableNo}
       ref={setTileRef(t.tableNo)}
-      table={editing ? { ...t, grid: editor.draft[t.tableNo] } : t}
+      table={editing ? draftTable(t) : t}
       variant={variant}
       selected={t.tableNo === selectedNo}
       dimmed={!editing && activeFilter !== null && t.status !== activeFilter}
@@ -418,7 +423,7 @@ export default function TableLayout() {
                   <div className="mb-4 space-y-3 rounded-xl border border-shush-line bg-shush-creamDeep p-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="min-w-0 flex-1 text-sm text-shush-inkSoft">
-                        Drag a table to move it, or focus one and use the arrow keys. Nothing changes for anyone else until you save.
+                        Drag a table to move it and drag its edges to resize it. With a table focused, arrow keys move it and Shift + arrow keys resize it. Chairs follow the size. Nothing changes for anyone else until you save.
                       </p>
                       <div className="flex flex-wrap items-center gap-2">
                         <button type="button" onClick={editor.undo} disabled={!editor.canUndo || saving} className={SECONDARY_BTN}>
@@ -481,13 +486,13 @@ export default function TableLayout() {
                             <div key={`${c}-${r}`} className="tl-cell" aria-hidden="true" style={{ gridColumn: c + 1, gridRow: r + 1 }} />
                           ))
                         ).flat()}
-                      {editing && editor.drag && (
+                      {editing && editor.ghost && (
                         <div
-                          className={`tl-ghost ${editor.drag.valid ? '' : 'tl-ghost--bad'}`}
+                          className={`tl-ghost ${editor.ghost.valid ? '' : 'tl-ghost--bad'}`}
                           aria-hidden="true"
                           style={{
-                            gridColumn: `${editor.drag.col + 1} / span ${editor.drag.width}`,
-                            gridRow: `${editor.drag.row + 1} / span ${editor.drag.height}`,
+                            gridColumn: `${editor.ghost.col + 1} / span ${editor.ghost.width}`,
+                            gridRow: `${editor.ghost.row + 1} / span ${editor.ghost.height}`,
                           }}
                         />
                       )}

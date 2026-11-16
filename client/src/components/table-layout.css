@@ -171,6 +171,82 @@
 .tl-edit.tl-s-LOUD::after { opacity: 0.5; }
 .tl-edit.tl-s-ALERT::after { opacity: 0.6; transform: none; }
 
+/* ---- Tall tables: chairs on the left and right edges ---- */
+.tl-tile--v { flex-direction: row; }
+.tl-tile--v .tl-top { margin: 4px 0; }
+.tl-chairs--v {
+  flex-direction: column;
+  width: 14px;
+  height: auto;
+  padding: 14px 0;
+}
+.tl-chairs--v .tl-chair {
+  flex: 1 1 0;
+  width: 7px;
+  height: auto;
+  min-width: 0;
+  max-width: none;
+  min-height: 6px;
+  max-height: 24px;
+}
+
+/* ---- Small tiles: show less as the tile gets narrower ---- */
+.tl-plan { container-type: inline-size; }
+@container (max-width: 96px) {
+  .tl-pill, .tl-meter { display: none; }
+}
+@container (max-width: 64px) {
+  .tl-word, .tl-row, .tl-count { display: none; }
+}
+
+/* ---- Resize handles (edit mode) ---- */
+/* The grip you see is small; the box around it is 24px so it is easy to hit with a finger. */
+.tl-handle {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.15s ease;
+}
+.tl-handle--e { top: 14px; bottom: 14px; right: -12px; width: 24px; }
+.tl-handle--s { left: 14px; right: 14px; bottom: -12px; height: 24px; }
+.tl-handle--se { right: -12px; bottom: -12px; width: 24px; height: 24px; z-index: 4; }
+.tl-grip {
+  display: block;
+  border: 2px solid var(--shush-white);
+  border-radius: 999px;
+  background: var(--shush-orange600);
+  box-shadow: 0 1px 4px rgba(42, 26, 18, 0.35);
+}
+.tl-handle--e .tl-grip { width: 8px; height: 100%; max-height: 28px; min-height: 12px; }
+.tl-handle--s .tl-grip { height: 8px; width: 100%; max-width: 28px; min-width: 12px; }
+.tl-handle--se .tl-grip { width: 14px; height: 14px; }
+.tl-edit:hover .tl-handle,
+.tl-edit:focus-within .tl-handle,
+.tl-edit[data-lifting] .tl-handle,
+.tl-edit[data-resizing] .tl-handle { opacity: 1; }
+
+/* "8 seats" while resizing */
+.tl-badge {
+  position: absolute;
+  z-index: 5;
+  top: -14px;
+  right: 6px;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--shush-white);
+  background: var(--shush-orange700);
+  box-shadow: 0 2px 6px rgba(42, 26, 18, 0.3);
+  pointer-events: none;
+}
+/* A blocked size sits above the tile so the red edge can be seen. */
+.tl-ghost--bad { position: relative; z-index: 10; }
+
 /* ---- Reduced motion: static end states ---- */
 @media (prefers-reduced-motion: reduce) {
   .tl-tile, .tl-tile:hover { transform: none; transition: none; }
@@ -179,4 +255,5 @@
   .tl-s-MAINTENANCE .tl-top::before { animation: none; }
   .tl-canvas::before { display: none; }
   .tl-drawer, .tl-modal { animation: none; }
+  .tl-handle { transition: none; }
 }

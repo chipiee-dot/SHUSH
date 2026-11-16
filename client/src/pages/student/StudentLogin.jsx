@@ -6,6 +6,7 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import Logo from '../../components/Logo.jsx';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
+import useFacultyShortcut from '../../hooks/useFacultyShortcut.js';
 import { formatTime } from '../../lib/format.js';
 import { STUDENT_NO_RE, formatStudentNumberInput } from '../../lib/studentNumber.js';
 
@@ -17,6 +18,8 @@ const FOCUS_LINK =
 
 export default function StudentLogin() {
   const { setStudent, logout } = useStudentAuth();
+  // Ctrl+Shift+F opens the faculty sign-in. Deliberately not shown anywhere on the page.
+  useFacultyShortcut();
   const navigate = useNavigate();
   const location = useLocation();
   // The landing page can hand over a student number: look it up straight away.

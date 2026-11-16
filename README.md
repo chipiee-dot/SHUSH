@@ -105,7 +105,7 @@ Run the server tests with `npm test --prefix server`.
 
 ### Student check-in
 
-- Start page at `/` offers only **Student check-in**. Faculty reach their sign-in with **Ctrl+Shift+F** on the start page.
+- Start page at `/` offers only **Student check-in**. Faculty reach their sign-in with **Ctrl+Shift+F** on the start page or the student sign-in page.
 - Sign up at `/student/signup`: student number (`21-0001`, the dash is added automatically), last name, first name, optional middle initial, and section such as `BSIT-3D`, `BSCS-1D` or `BSEE-2D`.
 - Sign in at `/student/login`: enter the student number, confirm the name shown in the pop-up, and sign in.
 - At `/student/table`: tap a table with a free seat and confirm it in the pop-up. After confirming, the student returns to sign-in. Signing in again ends the session. A session also ends automatically after 2 hours. The **Sign out** button only signs the student out of this device; a seat stays active until the session ends.

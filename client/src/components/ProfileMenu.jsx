@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import ConfirmDialog from './ConfirmDialog.jsx';
 import useClickOutside from '../hooks/useClickOutside.js';
 
 export default function ProfileMenu() {
@@ -8,9 +9,11 @@ export default function ProfileMenu() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const ref = useRef(null);
   const close = useCallback(() => setOpen(false), []);
-  useClickOutside(ref, open, close);
+  // Clicks inside the confirmation pop-up must not close the menu underneath it.
+  useClickOutside(ref, open && !confirming, close);
 
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
   const roleLabel = user?.role === 'Admin' ? 'Administrator' : 'Faculty';
@@ -71,14 +74,27 @@ export default function ProfileMenu() {
           </div>
           <button
             type="button"
-            onClick={handleSignOut}
+            onClick={() => setConfirming(true)}
             disabled={signingOut}
             className="w-full px-4 py-3 text-left text-sm font-medium text-shush-orange700 transition hover:bg-shush-cream focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-shush-orange disabled:opacity-60"
           >
-            {signingOut ? 'Signing out…' : 'Sign out'}
+            Sign out
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirming}
+        title="Sign out?"
+        confirmLabel="Sign out"
+        cancelLabel="Stay signed in"
+        busyLabel="Signing out…"
+        onConfirm={handleSignOut}
+        onCancel={() => setConfirming(false)}
+        busy={signingOut}
+      >
+        You will be signed out of the SHUSH faculty console on this device.
+      </ConfirmDialog>
     </div>
   );
 }

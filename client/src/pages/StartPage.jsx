@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AuthLayout, { AuthHero } from '../components/AuthLayout.jsx';
 import libraryPhoto from '../assets/library-snapshot.jpg';
+import useFacultyShortcut from '../hooks/useFacultyShortcut.js';
 import './StartPage.css';
 
 const SLIDES = [
@@ -17,19 +17,8 @@ const STEPS = [
 ];
 
 export default function StartPage() {
-  const navigate = useNavigate();
-
   // Ctrl+Shift+F opens the faculty sign-in. Deliberately not shown anywhere on the page.
-  useEffect(() => {
-    function onKeyDown(e) {
-      if (e.repeat || !e.ctrlKey || !e.shiftKey || e.altKey || e.metaKey) return;
-      if (e.key.toLowerCase() !== 'f') return;
-      e.preventDefault();
-      navigate('/login');
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [navigate]);
+  useFacultyShortcut();
 
   return (
     <AuthLayout

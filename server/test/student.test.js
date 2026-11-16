@@ -129,6 +129,11 @@ test('tables show free seats, and a session is started and ended', async () => {
   assert.deepEqual(list.body.tables.map((t) => t.open), [true, true]);
   assert.deepEqual(list.body.tables.map((t) => t.free), [4, 2]);
   assert.equal(list.body.tables[0].device, undefined, 'device data is not shared with students');
+  assert.deepEqual(list.body.tables[0].grid, { col: 0, row: 0, width: 2, height: 2 }, 'the floor-plan position is included');
+  assert.deepEqual(list.body.tables[1].grid, { col: 2, row: 0, width: 2, height: 2 });
+  for (const key of ['device', 'status', 'level', 'threshold', 'occupancy', 'noise']) {
+    assert.equal(list.body.tables[0][key], undefined, `${key} is not shared with students`);
+  }
 
   const start = await call('POST', '/api/student/session', { cookie: student(), body: { tableNo: 1 } });
   assert.equal(start.status, 201);

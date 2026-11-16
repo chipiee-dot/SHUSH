@@ -6,6 +6,7 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import CloudBackground from '../../components/CloudBackground.jsx';
 import ConfirmTableDialog from '../../components/ConfirmTableDialog.jsx';
 import SeatRing from '../../components/SeatRing.jsx';
+import StudentFloorPlan from '../../components/StudentFloorPlan.jsx';
 import StudentTableTile, { StudentTableSkeleton, YourTable } from '../../components/StudentTableTile.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { formatTime } from '../../lib/format.js';
@@ -13,6 +14,28 @@ import '../../components/student-table.css';
 import '../../components/motion.css';
 
 const REFRESH_MS = 20000;
+const VIEW_KEY = 'shush.studentTableView';
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setMatches(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [query]);
+  return matches;
+}
+
+function readView() {
+  try {
+    const v = sessionStorage.getItem(VIEW_KEY);
+    return v === 'cards' || v === 'plan' ? v : null;
+  } catch {
+    return null;
+  }
+}
 
 const CARD = 'rounded-3xl border border-shush-line bg-shush-white/90 p-6 shadow-[0_10px_30px_-18px_rgba(242,95,19,0.35)] backdrop-blur sm:p-8';
 const RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
@@ -129,6 +152,9 @@ export default function StudentTable() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [onlyOpen, setOnlyOpen] = useState(false);
+  const [chosenView, setChosenView] = useState(readView); // null until the student picks one
+  const canShowPlan = useMediaQuery('(min-width: 768px)');
+  const planByDefault = useMediaQuery('(min-width: 1024px)');
 
   const loadTables = useCallback(async () => {
     try {
@@ -174,6 +200,19 @@ export default function StudentTable() {
   const seatsTotal = bookable ? bookable.reduce((sum, t) => sum + Math.max(0, Math.floor(Number(t.seats) || 0)), 0) : null;
   const tablesOpen = bookable ? bookable.filter((t) => t.open).length : null;
   const openCount = sorted ? sorted.filter((t) => t.open).length : null;
+
+  // Floor plan needs 768px+ and a saved position for every table. Cards are the default below 1024px.
+  const hasPlan = canShowPlan && Boolean(sorted?.length) && sorted.every((t) => t.grid);
+  const mode = hasPlan && (chosenView ?? (planByDefault ? 'plan' : 'cards')) === 'plan' ? 'plan' : 'cards';
+
+  function chooseView(v) {
+    setChosenView(v);
+    try {
+      sessionStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* the choice just is not remembered */
+    }
+  }
 
   function handlePick(no) {
     setChosenNo(no);
@@ -321,18 +360,40 @@ export default function StudentTable() {
                 </li>
               ))}
             </ul>
-            <button
-              type="button"
-              aria-pressed={onlyOpen}
-              onClick={() => setOnlyOpen((v) => !v)}
-              className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${RING} ${
-                onlyOpen
-                  ? 'border-shush-orange bg-shush-goldSoft text-shush-ink'
-                  : 'border-shush-lineStrong bg-shush-white text-shush-inkSoft hover:bg-shush-creamDeep'
-              }`}
-            >
-              Open tables only{openCount !== null ? ` · ${openCount}` : ''}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {hasPlan && (
+                <div className="inline-flex rounded-full border border-shush-lineStrong bg-shush-white p-0.5" role="group" aria-label="Table view">
+                  {[
+                    ['cards', 'Cards'],
+                    ['plan', 'Floor plan'],
+                  ].map(([key, text]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={mode === key}
+                      onClick={() => chooseView(key)}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${RING} ${
+                        mode === key ? 'bg-shush-orange600 text-white' : 'text-shush-inkSoft hover:bg-shush-creamDeep'
+                      }`}
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                aria-pressed={onlyOpen}
+                onClick={() => setOnlyOpen((v) => !v)}
+                className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${RING} ${
+                  onlyOpen
+                    ? 'border-shush-orange bg-shush-goldSoft text-shush-ink'
+                    : 'border-shush-lineStrong bg-shush-white text-shush-inkSoft hover:bg-shush-creamDeep'
+                }`}
+              >
+                Open tables only{openCount !== null ? ` · ${openCount}` : ''}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -349,7 +410,9 @@ export default function StudentTable() {
         </div>
       )}
 
-      {(!sorted || (visible && visible.length > 0)) && (
+      {mode === 'plan' && <StudentFloorPlan tables={sorted} onPick={handlePick} onlyOpen={onlyOpen} />}
+
+      {mode === 'cards' && (!sorted || (visible && visible.length > 0)) && (
         <div
           key={onlyOpen ? 'open' : 'all'}
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5"

@@ -50,15 +50,20 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  * One table for the student picker. Looks like the faculty tile (tabletop with faint studs, chairs along the
  * top and bottom edges) but shows only seats, never noise or device information.
  * Taken chairs are filled orange, free chairs are outlined. A <button>; full and maintenance are disabled.
+ * variant 'plan' (with `placement` {col,row,width,height}) puts the tile on the floor-plan grid; `dimmed` fades it.
  * `index` staggers the entrance (45 ms per tile, at most 450 ms). The entrance runs on a wrapper, so it never
  * overrides the button's own hover tilt and press transforms. It plays once, when the tile first appears.
  */
-export default function StudentTableTile({ table, onPick, index = 0 }) {
+export default function StudentTableTile({ table, onPick, index = 0, variant = 'cards', placement, dimmed = false }) {
   const state = tableState(table);
   const seats = Math.max(0, Math.floor(table.seats || 0));
   const taken = clamp(seats - (table.free || 0), 0, seats);
   const topCount = Math.ceil(seats / 2);
   const disabled = state === 'full' || state === 'maintenance';
+  // Floor-plan variant: the tile fills its grid cell. Chairs go on the two longer sides (left and right when taller than wide).
+  const plan = variant === 'plan' && Boolean(placement);
+  const vertical = plan && placement.height > placement.width;
+  const side = vertical ? 'v' : 'h';
 
   const label =
     state === 'maintenance'
@@ -68,7 +73,20 @@ export default function StudentTableTile({ table, onPick, index = 0 }) {
       : `Table ${table.tableNo}, ${table.free} of ${seats} seats free${state === 'last' ? ', last seat' : ''}`;
 
   return (
-    <div className="shush-rise" style={{ animationDelay: `${Math.min(index * 45, 450)}ms` }}>
+    <div
+      className="shush-rise"
+      style={{
+        animationDelay: `${Math.min(index * 45, 450)}ms`,
+        ...(plan
+          ? {
+              gridColumn: `${placement.col + 1} / span ${placement.width}`,
+              gridRow: `${placement.row + 1} / span ${placement.height}`,
+              minWidth: 0,
+              height: '100%',
+            }
+          : {}),
+      }}
+    >
       <button
         type="button"
         disabled={disabled}
@@ -76,10 +94,10 @@ export default function StudentTableTile({ table, onPick, index = 0 }) {
         aria-haspopup="dialog"
         data-state={state}
         onClick={() => onPick(table.tableNo)}
-        className={`tl-tile st-tile m-spotlight m-press ${STATE_CLASS[state]}`}
+        className={`tl-tile st-tile m-spotlight m-press ${STATE_CLASS[state]} ${plan ? 'st-tile--plan' : ''} ${vertical ? 'tl-tile--v' : ''} ${dimmed ? 'tl-dim' : ''}`}
         {...tiltHandlers()}
       >
-        <Chairs count={topCount} firstIndex={0} occupied={taken} />
+        <Chairs count={topCount} firstIndex={0} occupied={taken} side={side} />
         <div className="tl-top m-studs">
           <span className="st-label">Table</span>
           <span className="st-no">{table.tableNo}</span>
@@ -88,7 +106,7 @@ export default function StudentTableTile({ table, onPick, index = 0 }) {
           {state === 'full' && <span className="st-note">Full</span>}
           {state === 'maintenance' && <span className="st-note">Under maintenance</span>}
         </div>
-        <Chairs count={Math.max(0, seats - topCount)} firstIndex={topCount} occupied={taken} />
+        <Chairs count={Math.max(0, seats - topCount)} firstIndex={topCount} occupied={taken} side={side} />
       </button>
     </div>
   );

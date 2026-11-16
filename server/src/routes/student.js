@@ -175,6 +175,7 @@ export function createStudentRouter(db, config) {
           free,
           underMaintenance,
           open: !underMaintenance && free >= 1,
+          grid: t.grid, // saved floor-plan position, for the student floor-plan view
         };
       });
       res.json({ maxSessionHours: MAX_SESSION_HOURS, tables });

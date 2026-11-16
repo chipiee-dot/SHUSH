@@ -45,6 +45,20 @@
 /* Under maintenance keeps its striped look, without studs. */
 .st-tile[data-state='maintenance'] .tl-top { background-image: none; }
 
+/* ---- Floor-plan variant: the tile fills its cell on the 12-column canvas ---- */
+.st-tile--plan { height: 100%; container-type: inline-size; }
+.st-tile--plan.tl-tile--v .tl-top { margin: 4px 0; }
+.st-tile[data-state].tl-dim { opacity: 0.35; }
+.st-plan-canvas { min-width: 700px; }
+/* Small tiles show less: under ~96px only the number, under ~64px a smaller number. */
+@container (max-width: 96px) {
+  .st-label, .st-note, .st-chip { display: none; }
+  .st-no { font-size: 1.5rem; }
+}
+@container (max-width: 64px) {
+  .st-no { font-size: 1.1rem; }
+}
+
 /* ---- Legend dots (same looks as the tiles) ---- */
 .st-dot {
   display: inline-block;

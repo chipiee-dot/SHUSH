@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import Alert from '../../components/Alert.jsx';
+import { useErrorToast, useToast } from '../../components/Toast.jsx';
 import Card from '../../components/Card.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import { DonutChart } from '../../components/charts.jsx';
@@ -18,7 +18,6 @@ import { STATUS_META, formatTime } from '../../lib/format.js';
 import '../../components/table-layout.css';
 
 const NO_TABLES = [];
-const NOTICE_MS = 4000;
 const GRID_CELLS = Array.from({ length: 12 }, (_, i) => i);
 
 const REFRESH_MS = 5000;
@@ -103,7 +102,7 @@ function SummaryStrip({ seatedTotal, seatTotal, counts, filter, onFilter }) {
   );
 }
 
-function AddTableModal({ busy, error, form, onChange, onSubmit, onClose }) {
+function AddTableModal({ busy, form, onChange, onSubmit, onClose }) {
   const dialogRef = useRef(null);
   const firstRef = useRef(null);
 
@@ -152,7 +151,6 @@ function AddTableModal({ busy, error, form, onChange, onSubmit, onClose }) {
         <p className="mt-0.5 text-xs text-shush-inkSoft">The table is placed automatically on the floor plan.</p>
 
         <form onSubmit={onSubmit} className="mt-4 space-y-4">
-          <Alert>{error}</Alert>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium text-shush-inkSoft">
               Table number <span className="text-shush-danger">*</span>
@@ -203,18 +201,17 @@ function AddTableModal({ busy, error, form, onChange, onSubmit, onClose }) {
 
 export default function TableLayout() {
   const { user } = useAuth();
+  const toast = useToast();
   const { data, error, loading, updatedAt, reload } = usePolling(api.layout, REFRESH_MS);
+  useErrorToast(error);
   const isSmall = useMediaQuery('(max-width: 767px)');
   const [view, setView] = useState(() => (window.matchMedia('(max-width: 767px)').matches ? 'list' : 'plan'));
   const [selectedNo, setSelectedNo] = useState(null);
   const [filter, setFilter] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [addError, setAddError] = useState('');
   const [addBusy, setAddBusy] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [notice, setNotice] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
 
@@ -252,17 +249,8 @@ export default function TableLayout() {
     return () => window.removeEventListener('beforeunload', warn);
   }, [editor.dirty]);
 
-  // "Layout saved" goes away by itself.
-  useEffect(() => {
-    if (!notice) return undefined;
-    const id = setTimeout(() => setNotice(''), NOTICE_MS);
-    return () => clearTimeout(id);
-  }, [notice]);
-
   function startEditing() {
     setSelectedNo(null); // the details drawer closes while editing
-    setSaveError('');
-    setNotice('');
     editor.start();
   }
 
@@ -273,14 +261,13 @@ export default function TableLayout() {
 
   async function handleSaveLayout() {
     setSaving(true);
-    setSaveError('');
     try {
       await api.saveLayout(editor.changes);
       editor.stop();
       reload();
-      setNotice('Layout saved');
+      toast.success('Layout saved.');
     } catch (err) {
-      setSaveError(err.message); // stays in the toolbar, edit mode stays open
+      toast.error(err.message); // edit mode stays open so nothing is lost
     } finally {
       setSaving(false);
     }
@@ -288,13 +275,11 @@ export default function TableLayout() {
 
   function openAdd() {
     openerRef.current = document.activeElement;
-    setAddError('');
     setShowAdd(true);
   }
 
   function closeAdd() {
     setShowAdd(false);
-    setAddError('');
     setForm(EMPTY_FORM);
     const opener = openerRef.current;
     requestAnimationFrame(() => {
@@ -304,14 +289,14 @@ export default function TableLayout() {
 
   async function handleAddTable(e) {
     e.preventDefault();
-    setAddError('');
     setAddBusy(true);
     try {
       await api.addTable({ tableNo: form.tableNo, seats: form.seats });
+      toast.success(`Table ${form.tableNo} added.`);
       closeAdd();
-      // The new table appears on the next poll.
+      reload();
     } catch (err) {
-      setAddError(err.message);
+      toast.error(err.message);
     } finally {
       setAddBusy(false);
     }
@@ -331,7 +316,11 @@ export default function TableLayout() {
     return loading ? (
       <p className="text-sm text-shush-inkSoft">Loading floor plan…</p>
     ) : (
-      <Alert>{error || 'Could not load the table layout.'}</Alert>
+      <EmptyState
+        title="Floor plan unavailable"
+        text="Check your connection, then try again."
+        action={<button type="button" onClick={reload} className={SECONDARY_BTN}>Try again</button>}
+      />
     );
   }
 
@@ -391,12 +380,6 @@ export default function TableLayout() {
         )}
       </PageHeader>
 
-      {error && <Alert>{error}</Alert>}
-      {notice && (
-        <div className="shush-rise">
-          <Alert type="success">{notice}</Alert>
-        </div>
-      )}
       <p className="sr-only" role="status" aria-live="polite">
         {editing ? editor.message : ''}
       </p>
@@ -444,7 +427,6 @@ export default function TableLayout() {
                         </button>
                       </div>
                     </div>
-                    <Alert>{saveError}</Alert>
                   </div>
                 )}
 
@@ -561,7 +543,6 @@ export default function TableLayout() {
       {showAdd && (
         <AddTableModal
           busy={addBusy}
-          error={addError}
           form={form}
           onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
           onSubmit={handleAddTable}

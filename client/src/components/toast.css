@@ -1,0 +1,104 @@
+/* Toasts: pop up on the right, leave by themselves after 5 seconds (TOAST_MS in Toast.jsx). */
+
+.shush-toasts {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 1000; /* above the confirm pop-up and the faculty rail */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.625rem;
+  width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none; /* only the toasts themselves catch clicks */
+}
+
+.shush-toast {
+  --toast-accent: var(--shush-orange);
+  --toast-tint: var(--shush-gold-soft);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  overflow: hidden;
+  padding: 0.75rem 0.5rem 0.75rem 0.75rem;
+  background: var(--shush-white);
+  border: 1px solid var(--shush-line);
+  border-left: 4px solid var(--toast-accent);
+  border-radius: 0.875rem;
+  box-shadow: 0 18px 40px -18px rgba(42, 26, 18, 0.4), 0 4px 10px -4px rgba(242, 95, 19, 0.2);
+  color: var(--shush-ink);
+  pointer-events: auto;
+  animation: shush-toast-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.shush-toast--success { --toast-accent: var(--shush-amber); --toast-tint: var(--shush-success-soft); --toast-icon: var(--shush-success); }
+.shush-toast--error   { --toast-accent: var(--shush-danger); --toast-tint: var(--shush-danger-soft); --toast-icon: var(--shush-danger); }
+.shush-toast--info    { --toast-accent: var(--shush-orange); --toast-tint: var(--shush-gold-soft);   --toast-icon: var(--shush-orange-700); }
+
+.shush-toast.is-leaving {
+  animation: shush-toast-out 0.22s ease-in both;
+}
+
+.shush-toast__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: var(--toast-tint);
+  color: var(--toast-icon);
+}
+.shush-toast__icon svg { width: 1rem; height: 1rem; }
+
+.shush-toast__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.shush-toast__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  color: var(--shush-muted);
+  transition: background-color 0.15s, color 0.15s;
+}
+.shush-toast__close:hover { background: var(--shush-cream-deep); color: var(--shush-ink); }
+.shush-toast__close:focus-visible { outline: 2px solid var(--shush-orange); outline-offset: 1px; }
+.shush-toast__close svg { width: 0.875rem; height: 0.875rem; }
+
+/* Countdown bar: empties over the same 5 seconds the toast stays on screen. */
+.shush-toast__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--toast-accent);
+  opacity: 0.55;
+  transform-origin: left;
+  animation: shush-toast-bar 5s linear forwards;
+}
+
+@keyframes shush-toast-in {
+  from { opacity: 0; transform: translateX(110%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes shush-toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(110%); }
+}
+@keyframes shush-toast-bar {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}

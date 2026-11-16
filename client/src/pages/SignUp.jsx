@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import Alert from '../components/Alert.jsx';
+import { useToast } from '../components/Toast.jsx';
 import AuthLayout, { AuthHero } from '../components/AuthLayout.jsx';
 import FacultyIdInput from '../components/FacultyIdInput.jsx';
 import Logo from '../components/Logo.jsx';
@@ -33,27 +33,26 @@ const EMPTY_FORM = {
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
-  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
 
     if (!isCompleteFacultyId(form.facultyId.trim())) {
-      setError('Faculty ID must look like FAC-2024-1679.');
+      toast.error('Faculty ID must look like FAC-2024-1679.');
       return;
     }
 
     if (form.password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      toast.error('Password must be at least 8 characters.');
       return;
     }
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.');
+      toast.error('Passwords do not match.');
       return;
     }
 
@@ -62,7 +61,7 @@ export default function SignUp() {
       await api.signUp(form);
       navigate('/login', { state: { registered: true, facultyId: form.facultyId.trim() } });
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
       setSubmitting(false);
     }
   }
@@ -91,8 +90,6 @@ export default function SignUp() {
       </header>
 
       <form className="mt-6 space-y-4 lg:mt-8 lg:space-y-5" onSubmit={handleSubmit} noValidate>
-        <Alert>{error}</Alert>
-
         <div className="space-y-1.5">
           <label className={LABEL} htmlFor="faculty-id">Faculty ID</label>
           <FacultyIdInput

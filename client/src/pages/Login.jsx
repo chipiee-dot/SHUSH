@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import Alert from '../components/Alert.jsx';
+import { useToast } from '../components/Toast.jsx';
 import AuthLayout, { AuthHero } from '../components/AuthLayout.jsx';
 import FacultyIdInput from '../components/FacultyIdInput.jsx';
 import Logo from '../components/Logo.jsx';
@@ -19,6 +19,7 @@ const FOCUS_LINK =
 
 export default function Login() {
   const { login } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const justRegistered = location.state?.registered === true;
@@ -27,19 +28,22 @@ export default function Login() {
   const [facultyId, setFacultyId] = useState(() => toFacultyId(location.state?.facultyId ?? ''));
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
-  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Coming from sign-up: confirm the account was created.
+  useEffect(() => {
+    if (justRegistered) toast.success('Account created. Please sign in.');
+  }, [justRegistered, toast]);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
 
     if (!isCompleteFacultyId(facultyId)) {
-      setError('Enter your full Faculty ID: FAC-0000-0000.');
+      toast.error('Enter your full Faculty ID: FAC-0000-0000.');
       return;
     }
     if (!password) {
-      setError('Enter your password.');
+      toast.error('Enter your password.');
       return;
     }
 
@@ -48,7 +52,7 @@ export default function Login() {
       await login({ facultyId, password, remember });
       navigate('/console', { replace: true });
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
       setSubmitting(false);
     }
   }
@@ -76,11 +80,6 @@ export default function Login() {
       </header>
 
       <form className="mt-6 space-y-4 lg:mt-8 lg:space-y-5" onSubmit={handleSubmit} noValidate>
-        {justRegistered && !error && (
-          <Alert type="success">Account created. Sign in with your Faculty ID and password.</Alert>
-        )}
-        <Alert>{error}</Alert>
-
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold tracking-wide text-shush-ink lg:text-sm 2xl:text-base" htmlFor="faculty-id">
             Faculty ID

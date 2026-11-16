@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
+import { useErrorToast } from '../../components/Toast.jsx';
 import Card from '../../components/Card.jsx';
 import CountUp from '../../components/CountUp.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -205,6 +205,7 @@ export default function Rewards() {
     REFRESH_MS,
     [period],
   );
+  useErrorToast(error);
 
   return (
     <div className="space-y-6">
@@ -220,8 +221,6 @@ export default function Rewards() {
       >
         <PeriodToggle period={period} onChange={setPeriod} />
       </PageHeader>
-
-      {error && <Alert>{error}</Alert>}
 
       {!data ? (
         loading && <p className="text-sm text-shush-muted">Loading rewards…</p>

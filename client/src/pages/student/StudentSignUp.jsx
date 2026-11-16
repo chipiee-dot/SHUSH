@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
+import { useToast } from '../../components/Toast.jsx';
 import { SECTION_RE, STUDENT_NO_RE, formatSectionInput, formatStudentNumberInput } from '../../lib/studentNumber.js';
 import Logo from '../../components/Logo.jsx';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
@@ -20,9 +20,9 @@ const INPUT =
 const EMPTY = { studentNo: '', lastName: '', firstName: '', middleInitial: '', section: '' };
 
 export default function StudentSignUp() {
+  const toast = useToast();
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [done, setDone] = useState(false);
 
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
@@ -39,18 +39,18 @@ export default function StudentSignUp() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
     const problem = validate();
     if (problem) {
-      setError(problem);
+      toast.error(problem);
       return;
     }
     setBusy(true);
     try {
       await api.studentSignUp({ ...form, section: form.section.trim().toUpperCase() });
       setDone(true);
+      toast.success('Registered. You can sign in now.');
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setBusy(false);
     }
@@ -95,10 +95,6 @@ export default function StudentSignUp() {
       </header>
 
       <form onSubmit={handleSubmit} className="mt-6 grid gap-5 sm:grid-cols-2 lg:mt-8 lg:gap-6" noValidate>
-        <div className="sm:col-span-2">
-          <Alert>{error}</Alert>
-        </div>
-
         <div className="sm:col-span-2">
           <label htmlFor="su-student-no" className={`block text-center ${LABEL}`}>Student number</label>
           <div className={`mt-2 ${BOXES_FIT}`}>

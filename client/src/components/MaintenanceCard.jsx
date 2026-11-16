@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import { formatTime } from '../lib/format.js';
-import Alert from './Alert.jsx';
+import { useToast } from './Toast.jsx';
 import Card from './Card.jsx';
 
 const DURATIONS = [
@@ -17,13 +17,12 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
   const [minutes, setMinutes] = useState(30);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
+  const toast = useToast();
 
   async function handleStart(event) {
     event.preventDefault();
-    setMessage(null);
     if (reason.trim().length < 3) {
-      setMessage({ type: 'error', text: 'Enter a reason of at least 3 characters.' });
+      toast.error('Enter a reason of at least 3 characters.');
       return;
     }
     setBusy(true);
@@ -33,24 +32,23 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
         durationMinutes: minutes,
         reason: reason.trim(),
       });
-      setMessage({ type: 'success', text: result.message });
+      toast.success(result.message || 'Maintenance started.');
       setReason('');
       onChanged();
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      toast.error(err.message);
     } finally {
       setBusy(false);
     }
   }
 
   async function handleEnd(id) {
-    setMessage(null);
     try {
       const result = await api.endMaintenance(id);
-      setMessage({ type: 'success', text: result.message });
+      toast.success(result.message || 'Maintenance ended.');
       onChanged();
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      toast.error(err.message);
     }
   }
 
@@ -122,9 +120,7 @@ export default function MaintenanceCard({ tables, active, onChanged }) {
         </label>
 
         <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2">
-          <div className="min-w-0 flex-1">
-            <Alert type={message?.type ?? 'error'}>{message?.text}</Alert>
-          </div>
+          <div className="min-w-0 flex-1" aria-hidden="true" />
           <button
             type="submit"
             disabled={busy}

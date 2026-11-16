@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
+import ConfirmTableDialog from '../../components/ConfirmTableDialog.jsx';
 import StudentTableTile, { StudentTableSkeleton, YourTable } from '../../components/StudentTableTile.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { formatTime } from '../../lib/format.js';
@@ -25,6 +26,7 @@ export default function StudentTable() {
   const navigate = useNavigate();
   const [tables, setTables] = useState(null); // null while the first list loads
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [maxHours, setMaxHours] = useState(null); // from the server, never hard-coded here
   const [chosenNo, setChosenNo] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -36,6 +38,7 @@ export default function StudentTable() {
     try {
       const data = await api.studentTables();
       setTables(data.tables);
+      setMaxHours(data.maxSessionHours ?? null);
       setUpdatedAt(new Date());
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
@@ -234,24 +237,15 @@ export default function StudentTable() {
         </div>
       )}
 
-      <ConfirmDialog
+      <ConfirmTableDialog
         open={confirming && Boolean(chosen)}
-        title="Confirm your table"
-        confirmLabel="Confirm and sit down"
-        cancelLabel="Change"
+        table={chosen}
+        student={student}
+        maxSessionHours={maxHours}
+        busy={busy}
         onConfirm={handleStart}
         onCancel={() => setConfirming(false)}
-        busy={busy}
-      >
-        {chosen && (
-          <div className="rounded-xl border border-shush-line bg-shush-white px-4 py-3">
-            <div className="text-lg font-semibold text-shush-ink">Table {chosen.tableNo}</div>
-            <div className="text-sm text-shush-inkSoft">
-              {chosen.free} of {chosen.seats} seats free
-            </div>
-          </div>
-        )}
-      </ConfirmDialog>
+      />
     </div>
   );
 }

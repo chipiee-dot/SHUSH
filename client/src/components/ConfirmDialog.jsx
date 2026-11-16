@@ -15,6 +15,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   busy = false,
+  busyLabel = 'Please wait…',
   tone = 'default',
 }) {
   const uid = useId();
@@ -128,7 +129,7 @@ export default function ConfirmDialog({
                 : 'bg-shush-orange hover:bg-shush-orange600'
             }`}
           >
-            {busy ? 'Please wait…' : confirmLabel}
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>

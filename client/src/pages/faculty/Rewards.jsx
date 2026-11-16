@@ -5,6 +5,7 @@ import Card from '../../components/Card.jsx';
 import CountUp from '../../components/CountUp.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import { NAV_ICONS } from '../../components/navIcons.jsx';
 import usePolling from '../../hooks/usePolling.js';
 import { formatDateTime } from '../../lib/format.js';
 
@@ -209,6 +210,7 @@ export default function Rewards() {
     <div className="space-y-6">
       <PageHeader
         title="Rewards"
+        icon={NAV_ICONS.rewards}
         sample={data?.hasSampleData}
         subtitle={
           updatedAt

@@ -9,6 +9,7 @@ import { DonutChart } from '../../components/charts.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import GlowButton from '../../components/GlowButton.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import { NAV_ICONS } from '../../components/navIcons.jsx';
 import TableDrawer from '../../components/TableDrawer.jsx';
 import TableTile from '../../components/TableTile.jsx';
 import useLayoutEditor from '../../hooks/useLayoutEditor.js';
@@ -370,7 +371,7 @@ export default function TableLayout() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Table layout" sample={sample} subtitle={`Live · updated ${formatTime(updatedAt)}`}>
+      <PageHeader title="Table layout" icon={NAV_ICONS.layout} sample={sample} subtitle={`Live · updated ${formatTime(updatedAt)}`}>
         {!editing && (
           <div className="flex flex-wrap items-center gap-3">
             {tables.length > 0 &&

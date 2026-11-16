@@ -1,5 +1,6 @@
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
+import { NAV_ICONS } from '../../components/navIcons.jsx';
 import Card from '../../components/Card.jsx';
 import { BarChart, DonutChart, MeterBar } from '../../components/charts.jsx';
 import CloudBackground from '../../components/CloudBackground.jsx';
@@ -148,7 +149,10 @@ export default function Dashboard() {
         <CloudBackground variant="card" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-shush-orange700">Dashboard</p>
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-shush-orange700">
+              <span className="grid place-items-center [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">{NAV_ICONS.dashboard}</span>
+              Dashboard
+            </p>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">
                 {greeting()}{firstName ? `, ${firstName}` : ''}

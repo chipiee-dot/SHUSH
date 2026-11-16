@@ -4,6 +4,7 @@ import Alert from '../../components/Alert.jsx';
 import Card from '../../components/Card.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import { NAV_ICONS } from '../../components/navIcons.jsx';
 import SampleBadge from '../../components/SampleBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import useClickOutside from '../../hooks/useClickOutside.js';
@@ -229,6 +230,7 @@ export default function History() {
     <div className="space-y-6">
       <PageHeader
         title="History"
+        icon={NAV_ICONS.history}
         subtitle="Alerts, maintenance and sessions. Export the filtered list as an Excel report or a CSV."
       >
         <div ref={menuRef} className="relative">

@@ -9,7 +9,6 @@ const ROW_HEIGHT = '6.5rem'; // same as the faculty floor plan
  * The floor plan the faculty arranged, for students. Each table sits at its saved grid position and size.
  * Empty rows above the first table are trimmed. Tables are in table-number order in the DOM (so Tab order is
  * sensible) and CSS grid does the positioning. "Open tables only" dims tables that are not open instead of hiding them.
- * The plan scrolls up and down (and sideways on narrow screens) inside its own box, so tall layouts never run off the screen.
  * `tables` need a `grid` ({ col, row, width, height }); the page only shows this view when every table has one.
  */
 export default function StudentFloorPlan({ tables, onPick, onlyOpen = false }) {
@@ -28,7 +27,7 @@ export default function StudentFloorPlan({ tables, onPick, onlyOpen = false }) {
   }
 
   return (
-    <div className="st-scroll -mx-4 -my-5 overflow-x-auto px-4 py-5">
+    <div className="-mx-4 -my-5 overflow-x-auto px-4 py-5">
       <div
         ref={canvasRef}
         onPointerMove={onMove}

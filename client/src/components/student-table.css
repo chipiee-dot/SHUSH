@@ -1,5 +1,6 @@
-/* Student table page: table-shaped tiles, legend dots, skeleton shimmer, seated view.
-   Builds on .tl-tile, .tl-chairs, .tl-chair, .tl-top and the tl-s-* status classes in table-layout.css.
+/* Student table page: hero card, seat ring, table-shaped tiles, legend dots, skeleton shimmer, seated view.
+   Builds on .tl-tile, .tl-chairs, .tl-chair, .tl-top and the tl-s-* status classes in table-layout.css,
+   and on the shared effects in motion.css (.m-spotlight, .m-studs, .m-press, .m-eq).
    Colors come only from the --shush-* tokens in index.css. */
 
 /* ---- Tile ---- */
@@ -25,6 +26,12 @@
   line-height: 1.3;
   background: var(--shush-amber);
   color: var(--shush-ink);
+  animation: st-chip-pulse 2.6s ease-in-out infinite;
+}
+/* The chip says "Last seat" in words; the pulse only adds a hint. Transform and opacity only. */
+@keyframes st-chip-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.07); opacity: 0.85; }
 }
 
 /* Full and under maintenance cannot be picked: no lift, no tilt. */
@@ -34,7 +41,9 @@
   transform: none;
 }
 .st-tile[data-state='full'] { opacity: 0.6; }
-.st-tile[data-state='full'] .tl-top { background: var(--shush-cream-deep); }
+.st-tile[data-state='full'] .tl-top { background-color: var(--shush-cream-deep); }
+/* Under maintenance keeps its striped look, without studs. */
+.st-tile[data-state='maintenance'] .tl-top { background-image: none; }
 
 /* ---- Legend dots (same looks as the tiles) ---- */
 .st-dot {
@@ -63,6 +72,14 @@
   border-radius: 1rem;
   background: var(--shush-cream-deep);
 }
+.st-skel .m-eq {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 1.5rem;
+  margin: -0.75rem 0 0 -0.9rem;
+  opacity: 0.5;
+}
 .st-skel::after {
   content: '';
   position: absolute;
@@ -72,6 +89,62 @@
   animation: st-shimmer 1.4s ease-in-out infinite;
 }
 @keyframes st-shimmer { to { transform: translateX(100%); } }
+
+/* ---- Hero card: seat ring, greeting highlight, live pill ---- */
+.st-ring-track { fill: none; stroke: var(--shush-gold-soft); stroke-width: 10; }
+.st-ring-arc {
+  fill: none;
+  stroke: var(--shush-orange);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.2s ease;
+}
+
+/* Adapted from BrewedOps Motion Library: Marker highlight (a gold stroke draws behind the first name once) */
+.st-marker { position: relative; isolation: isolate; white-space: nowrap; }
+.st-marker::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -0.12em;
+  right: -0.12em;
+  bottom: 0.05em;
+  height: 0.5em;
+  border-radius: 0.25em;
+  background: var(--shush-gold);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: st-mark 0.7s 0.3s cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+}
+@keyframes st-mark { to { transform: scaleX(1); } }
+
+/* The 16px ring beside "updated 9:30 AM" empties over one refresh. Small SVG ring: stroke-dashoffset is allowed. */
+.st-drain-track { fill: none; stroke: var(--shush-gold-soft); stroke-width: 2; }
+.st-drain-arc {
+  fill: none;
+  stroke: var(--shush-orange);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 37.7;
+  stroke-dashoffset: 0;
+  animation: st-drain 20s linear forwards;
+}
+@keyframes st-drain { to { stroke-dashoffset: 37.7; } }
+
+/* ---- "All tables are taken" panel ---- */
+.st-panel { position: relative; overflow: hidden; }
+.st-panel::before {
+  content: '';
+  position: absolute;
+  left: -6rem;
+  top: -12rem;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(247, 181, 71, 0.3) 0%, transparent 62%);
+}
+.st-panel > * { position: relative; }
 
 /* ---- Seated view: your table seen from above ---- */
 .st-mine {
@@ -99,6 +172,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .st-skel::after { animation: none; transform: none; opacity: 0; }
+  .st-chip { animation: none; }
+  .st-ring-arc { transition: none; }
+  .st-marker::before { animation: none; transform: scaleX(1); }
+  .st-drain-arc { animation: none; }
 }
 
 /* ---- "Confirm your table" pop-up ---- */

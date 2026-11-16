@@ -1,8 +1,10 @@
 import { Chairs } from './TableTile.jsx';
 import './table-layout.css';
 import './student-table.css';
+import './motion.css';
 
-/* Mouse-only tilt of at most 4 degrees, same feel as the faculty tiles. Off for touch and reduced motion. */
+/* Mouse-only tilt of at most 4 degrees, same feel as the faculty tiles, and the cursor position for the
+   gold spotlight border (--mx and --my). Off for touch and reduced motion. */
 function tiltHandlers() {
   const canTilt = () =>
     window.matchMedia('(hover: hover)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -15,10 +17,14 @@ function tiltHandlers() {
       const y = (e.clientY - r.top) / r.height - 0.5;
       el.style.setProperty('--ry', `${(x * 8).toFixed(2)}deg`);
       el.style.setProperty('--rx', `${(-y * 8).toFixed(2)}deg`);
+      el.style.setProperty('--mx', `${(e.clientX - r.left).toFixed(1)}px`);
+      el.style.setProperty('--my', `${(e.clientY - r.top).toFixed(1)}px`);
     },
     onPointerLeave(e) {
       e.currentTarget.style.removeProperty('--rx');
       e.currentTarget.style.removeProperty('--ry');
+      e.currentTarget.style.removeProperty('--mx');
+      e.currentTarget.style.removeProperty('--my');
     },
   };
 }
@@ -41,11 +47,13 @@ const STATE_CLASS = {
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
 /**
- * One table for the student picker. Looks like the faculty tile (tabletop, chairs along the top and
- * bottom edges) but shows only seats, never noise or device information.
+ * One table for the student picker. Looks like the faculty tile (tabletop with faint studs, chairs along the
+ * top and bottom edges) but shows only seats, never noise or device information.
  * Taken chairs are filled orange, free chairs are outlined. A <button>; full and maintenance are disabled.
+ * `index` staggers the entrance (45 ms per tile, at most 450 ms). The entrance runs on a wrapper, so it never
+ * overrides the button's own hover tilt and press transforms. It plays once, when the tile first appears.
  */
-export default function StudentTableTile({ table, onPick }) {
+export default function StudentTableTile({ table, onPick, index = 0 }) {
   const state = tableState(table);
   const seats = Math.max(0, Math.floor(table.seats || 0));
   const taken = clamp(seats - (table.free || 0), 0, seats);
@@ -60,36 +68,51 @@ export default function StudentTableTile({ table, onPick }) {
       : `Table ${table.tableNo}, ${table.free} of ${seats} seats free${state === 'last' ? ', last seat' : ''}`;
 
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      aria-label={label}
-      aria-haspopup="dialog"
-      data-state={state}
-      onClick={() => onPick(table.tableNo)}
-      className={`tl-tile st-tile ${STATE_CLASS[state]}`}
-      {...tiltHandlers()}
-    >
-      <Chairs count={topCount} firstIndex={0} occupied={taken} />
-      <div className="tl-top">
-        <span className="st-label">Table</span>
-        <span className="st-no">{table.tableNo}</span>
-        {state === 'last' && <span className="st-chip">Last seat</span>}
-        {state === 'open' && <span className="st-note">{table.free} seats free</span>}
-        {state === 'full' && <span className="st-note">Full</span>}
-        {state === 'maintenance' && <span className="st-note">Under maintenance</span>}
-      </div>
-      <Chairs count={Math.max(0, seats - topCount)} firstIndex={topCount} occupied={taken} />
-    </button>
+    <div className="shush-rise" style={{ animationDelay: `${Math.min(index * 45, 450)}ms` }}>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={label}
+        aria-haspopup="dialog"
+        data-state={state}
+        onClick={() => onPick(table.tableNo)}
+        className={`tl-tile st-tile m-spotlight m-press ${STATE_CLASS[state]}`}
+        {...tiltHandlers()}
+      >
+        <Chairs count={topCount} firstIndex={0} occupied={taken} />
+        <div className="tl-top m-studs">
+          <span className="st-label">Table</span>
+          <span className="st-no">{table.tableNo}</span>
+          {state === 'last' && <span className="st-chip">Last seat</span>}
+          {state === 'open' && <span className="st-note">{table.free} seats free</span>}
+          {state === 'full' && <span className="st-note">Full</span>}
+          {state === 'maintenance' && <span className="st-note">Under maintenance</span>}
+        </div>
+        <Chairs count={Math.max(0, seats - topCount)} firstIndex={topCount} occupied={taken} />
+      </button>
+    </div>
   );
 }
 
-/** Placeholder while the first table list loads. */
+/* Adapted from BrewedOps Motion Library: Equalizer bars (four bars with the heights of the SHUSH logo) */
+function Equalizer() {
+  return (
+    <span className="m-eq" aria-hidden="true">
+      {[0.46, 0.77, 1, 0.46].map((h, i) => (
+        <span key={i} style={{ '--h': h }} />
+      ))}
+    </span>
+  );
+}
+
+/** Placeholder while the first table list loads: shimmering tiles with a small equalizer. */
 export function StudentTableSkeleton({ count = 10 }) {
   return (
     <div role="status" aria-label="Loading tables" className="contents">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="st-skel" aria-hidden="true" />
+        <div key={i} className="st-skel" aria-hidden="true">
+          <Equalizer />
+        </div>
       ))}
       <span className="sr-only">Loading tables…</span>
     </div>

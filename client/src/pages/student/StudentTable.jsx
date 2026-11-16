@@ -3,7 +3,9 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
+import CloudBackground from '../../components/CloudBackground.jsx';
 import ConfirmTableDialog from '../../components/ConfirmTableDialog.jsx';
+import SeatRing from '../../components/SeatRing.jsx';
 import StudentTableTile, { StudentTableSkeleton, YourTable } from '../../components/StudentTableTile.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
 import { formatTime } from '../../lib/format.js';
@@ -20,6 +22,40 @@ const LEGEND = [
   ['st-dot st-dot--full', 'Full'],
   ['st-dot st-dot--maint', 'Under maintenance'],
 ];
+
+/* The 16px ring that empties over one refresh. Its key is the last update time, so it restarts on every refresh. */
+function RefreshRing({ updatedAt }) {
+  return (
+    <svg
+      key={updatedAt ? updatedAt.getTime() : 'waiting'}
+      viewBox="0 0 16 16"
+      className="h-4 w-4 flex-none -rotate-90"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="8" cy="8" r="6" className="st-drain-track" />
+      <circle cx="8" cy="8" r="6" className="st-drain-arc" style={{ animationDuration: `${REFRESH_MS}ms` }} />
+    </svg>
+  );
+}
+
+/* "Live · updated 9:30 AM" with a softly pulsing dot. The seconds are told by the ring, the words say it too. */
+function LivePill({ updatedAt }) {
+  return (
+    <p
+      className="inline-flex items-center gap-2 rounded-full border border-shush-line bg-shush-white/80 px-3 py-1 text-xs font-medium text-shush-inkSoft"
+      title="Seats refresh every 20 seconds"
+    >
+      <span className="relative flex h-2 w-2 flex-none" aria-hidden="true">
+        <span className="shush-pulse-ring absolute inset-0 rounded-full bg-shush-orange" />
+        <span className="relative h-2 w-2 rounded-full bg-shush-orange" />
+      </span>
+      <span>{updatedAt ? `Live · updated ${formatTime(updatedAt)}` : 'Live · loading seats'}</span>
+      {updatedAt && <RefreshRing updatedAt={updatedAt} />}
+      <span className="sr-only">Seats refresh every 20 seconds.</span>
+    </p>
+  );
+}
 
 export default function StudentTable() {
   const { student, session, checking, refresh, logout } = useStudentAuth();
@@ -71,6 +107,13 @@ export default function StudentTable() {
   const chosen = sorted?.find((t) => t.tableNo === chosenNo) ?? null;
   const anyOpen = Boolean(sorted?.some((t) => t.open));
   const visible = sorted ? (onlyOpen ? sorted.filter((t) => t.open) : sorted) : null;
+
+  // The ring counts tables that are not under maintenance. `open` comes from the server.
+  const bookable = sorted ? sorted.filter((t) => !t.underMaintenance) : null;
+  const seatsFree = bookable ? bookable.reduce((sum, t) => sum + Math.max(0, Number(t.free) || 0), 0) : null;
+  const seatsTotal = bookable ? bookable.reduce((sum, t) => sum + Math.max(0, Math.floor(Number(t.seats) || 0)), 0) : null;
+  const tablesOpen = bookable ? bookable.filter((t) => t.open).length : null;
+  const openCount = sorted ? sorted.filter((t) => t.open).length : null;
 
   function handlePick(no) {
     setChosenNo(no);
@@ -164,7 +207,7 @@ export default function StudentTable() {
               <button
                 type="button"
                 onClick={() => setEnding(true)}
-                className={`mt-6 rounded-xl bg-shush-orange px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 ${RING}`}
+                className={`mt-6 rounded-xl bg-shush-orange600 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 ${RING}`}
               >
                 End session
               </button>
@@ -189,34 +232,44 @@ export default function StudentTable() {
 
   return (
     <div className="space-y-6">
-      <div className={CARD}>
-        <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">Hi, {firstName}</h1>
-        <p className="mt-1 text-sm text-shush-inkSoft">{student.section} · pick a table.</p>
-        <p className="mt-1 text-xs text-shush-muted">
-          Seats update every 20 seconds{updatedAt ? ` · updated ${formatTime(updatedAt)}` : ''}
-        </p>
+      <div className={`${CARD} relative overflow-hidden`}>
+        <CloudBackground variant="card" />
+        <div className="relative z-10">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">
+                Hi, <span className="st-marker">{firstName}</span>
+              </h1>
+              <p className="mt-1 text-sm text-shush-inkSoft">{student.section} · pick a table.</p>
+              <div className="mt-3">
+                <LivePill updatedAt={updatedAt} />
+              </div>
+            </div>
+            <SeatRing free={seatsFree} total={seatsTotal} openTables={tablesOpen} totalTables={bookable ? bookable.length : null} />
+          </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-shush-inkSoft" aria-label="What the tiles mean">
-            {LEGEND.map(([dot, label]) => (
-              <li key={label} className="flex items-center gap-2">
-                <span className={dot} aria-hidden="true" />
-                {label}
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            aria-pressed={onlyOpen}
-            onClick={() => setOnlyOpen((v) => !v)}
-            className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${RING} ${
-              onlyOpen
-                ? 'border-shush-orange bg-shush-goldSoft text-shush-ink'
-                : 'border-shush-lineStrong bg-shush-white text-shush-inkSoft hover:bg-shush-creamDeep'
-            }`}
-          >
-            Open tables only
-          </button>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-shush-inkSoft" aria-label="What the tiles mean">
+              {LEGEND.map(([dot, label]) => (
+                <li key={label} className="flex items-center gap-2">
+                  <span className={dot} aria-hidden="true" />
+                  {label}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              aria-pressed={onlyOpen}
+              onClick={() => setOnlyOpen((v) => !v)}
+              className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${RING} ${
+                onlyOpen
+                  ? 'border-shush-orange bg-shush-goldSoft text-shush-ink'
+                  : 'border-shush-lineStrong bg-shush-white text-shush-inkSoft hover:bg-shush-creamDeep'
+              }`}
+            >
+              Open tables only{openCount !== null ? ` · ${openCount}` : ''}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -226,14 +279,22 @@ export default function StudentTable() {
         <p className="text-sm text-shush-inkSoft">No tables are set up yet.</p>
       )}
       {sorted && sorted.length > 0 && !anyOpen && (
-        <p className="rounded-2xl border border-shush-line bg-shush-white/90 px-5 py-4 text-sm font-medium text-shush-ink">
-          All tables are taken right now. This page refreshes every 20 seconds.
-        </p>
+        <div className="st-panel flex items-center gap-3 rounded-2xl border border-shush-line bg-shush-white/90 px-5 py-4 text-sm font-medium text-shush-ink">
+          <RefreshRing updatedAt={updatedAt} />
+          <p>All tables are taken right now. This page refreshes every 20 seconds.</p>
+        </div>
       )}
 
       {(!sorted || (visible && visible.length > 0)) && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-          {visible ? visible.map((t) => <StudentTableTile key={t.tableNo} table={t} onPick={handlePick} />) : <StudentTableSkeleton />}
+        <div
+          key={onlyOpen ? 'open' : 'all'}
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5"
+        >
+          {visible ? (
+            visible.map((t, i) => <StudentTableTile key={t.tableNo} table={t} index={i} onPick={handlePick} />)
+          ) : (
+            <StudentTableSkeleton />
+          )}
         </div>
       )}
 

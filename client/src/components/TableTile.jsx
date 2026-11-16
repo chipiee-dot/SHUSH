@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useEffect, useRef } from 'react';
 import StatusPill from './StatusPill.jsx';
 import { MeterBar } from './charts.jsx';
 import { STATUS_META, formatNumber } from '../lib/format.js';
@@ -53,16 +53,110 @@ function tiltHandlers() {
   };
 }
 
+const DRAG_THRESHOLD = 4; // pixels before a press becomes a drag, so a plain click is not a drag
+const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /**
  * One table. variant 'plan' is placed on the 12-column grid; 'list' is a full-width card for small screens.
  * dimmed fades the tile when a status filter is on (it stays in place so the layout does not jump).
+ * edit (admin floor-plan editing, plan variant only): the editor from useLayoutEditor. The tile then becomes a
+ * draggable group: pointer drag with snap, and arrow keys to move one cell. Dragging moves it with transform only.
  */
-const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSelect, variant = 'plan' }, ref) {
+const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSelect, edit, variant = 'plan' }, ref) {
   const { tableNo, seats, status, occupancy, device, grid } = table;
   const meta = STATUS_META[status] ?? STATUS_META.OFFLINE;
   const seated = occupancy.seated;
   const topCount = Math.ceil(seats / 2);
   const { level, threshold, max } = meterScale(device);
+
+  const dragRef = useRef(null);
+  // If the tile goes away mid-drag (Cancel, Save), stop listening for Esc.
+  useEffect(
+    () => () => {
+      if (dragRef.current?.onKey) window.removeEventListener('keydown', dragRef.current.onKey);
+    },
+    []
+  );
+
+  // Springs the tile to where it lands (or back to where it started), then updates the draft.
+  function settle(d, commit) {
+    window.removeEventListener('keydown', d.onKey);
+    dragRef.current = null;
+    let result = null;
+    if (commit) result = edit.endDrag(tableNo);
+    else edit.cancelDrag();
+    const ok = Boolean(result?.valid);
+    const el = d.el;
+    const finish = () => {
+      el.style.transition = '';
+      el.style.transform = '';
+      el.style.zIndex = '';
+      delete el.dataset.lifting;
+      if (ok) edit.commitMove(tableNo, result.col, result.row);
+    };
+    if (prefersReducedMotion()) {
+      finish();
+      return;
+    }
+    el.style.transition = 'transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2)';
+    el.style.transform = ok ? `translate(${result.snapDx}px, ${result.snapDy}px)` : 'translate(0px, 0px)';
+    setTimeout(finish, 190);
+  }
+
+  const editHandlers = edit && {
+    onPointerDown(e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dragRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, started: false, el: e.currentTarget };
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    },
+    onPointerMove(e) {
+      const d = dragRef.current;
+      if (!d || d.id !== e.pointerId) return;
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (!d.started) {
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        if (!edit.startDrag(tableNo)) {
+          dragRef.current = null;
+          return;
+        }
+        d.started = true;
+        d.el.dataset.lifting = '1';
+        d.el.style.transition = 'none';
+        d.el.style.zIndex = '20';
+        // Esc puts the tile back where it started.
+        d.onKey = (ev) => {
+          if (ev.key !== 'Escape') return;
+          ev.preventDefault();
+          settle(d, false);
+        };
+        window.addEventListener('keydown', d.onKey);
+      }
+      const tilt = prefersReducedMotion() ? 0 : 1.2;
+      d.el.style.transform = `translate(${dx}px, ${dy}px) scale(1.03) rotate(${tilt}deg)`;
+      edit.dragTo(tableNo, dx, dy);
+    },
+    onPointerUp(e) {
+      const d = dragRef.current;
+      if (!d || d.id !== e.pointerId) return;
+      if (d.started) settle(d, true);
+      else dragRef.current = null;
+    },
+    onPointerCancel(e) {
+      const d = dragRef.current;
+      if (!d || d.id !== e.pointerId) return;
+      if (d.started) settle(d, false);
+      else dragRef.current = null;
+    },
+    onKeyDown(e) {
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || dragRef.current?.started) return;
+      const dir = ARROWS[e.key];
+      if (!dir) return;
+      e.preventDefault();
+      edit.nudge(tableNo, dir[0], dir[1]);
+    },
+  };
 
   const label = `Table ${tableNo}, ${meta.label}, ${seated} of ${seats} seated${
     device ? `, noise ${formatNumber(level)} of ${formatNumber(threshold)}` : ', no device'
@@ -84,16 +178,29 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
     />
   );
 
+  const Tag = edit ? 'div' : 'button';
+  const tagProps = edit
+    ? {
+        role: 'group',
+        tabIndex: 0,
+        'aria-roledescription': 'draggable table',
+        'aria-label': `${label}. Drag to move it, or use the arrow keys.`,
+        ...editHandlers,
+      }
+    : {
+        type: 'button',
+        onClick: () => onSelect(tableNo),
+        'aria-pressed': selected,
+        'aria-label': label,
+        ...(variant === 'plan' ? tiltHandlers() : {}),
+      };
+
   return (
-    <button
+    <Tag
       ref={ref}
-      type="button"
-      onClick={() => onSelect(tableNo)}
-      aria-pressed={selected}
-      aria-label={label}
       style={placement}
-      className={`tl-tile tl-s-${status} ${dimmed ? 'tl-dim' : ''}`}
-      {...(variant === 'plan' ? tiltHandlers() : {})}
+      className={`tl-tile tl-s-${status} ${dimmed ? 'tl-dim' : ''} ${edit ? 'tl-edit' : ''}`}
+      {...tagProps}
     >
       {variant === 'plan' ? (
         <>
@@ -128,7 +235,7 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
           {meter}
         </div>
       )}
-    </button>
+    </Tag>
   );
 });
 

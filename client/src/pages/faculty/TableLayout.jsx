@@ -4,15 +4,21 @@ import { api } from '../../api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Alert from '../../components/Alert.jsx';
 import Card from '../../components/Card.jsx';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import { DonutChart } from '../../components/charts.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import GlowButton from '../../components/GlowButton.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import TableDrawer from '../../components/TableDrawer.jsx';
 import TableTile from '../../components/TableTile.jsx';
+import useLayoutEditor from '../../hooks/useLayoutEditor.js';
 import usePolling from '../../hooks/usePolling.js';
 import { STATUS_META, formatTime } from '../../lib/format.js';
 import '../../components/table-layout.css';
+
+const NO_TABLES = [];
+const NOTICE_MS = 4000;
+const GRID_CELLS = Array.from({ length: 12 }, (_, i) => i);
 
 const REFRESH_MS = 5000;
 const ROW_HEIGHT = '6.5rem';
@@ -20,7 +26,9 @@ const STATUS_ORDER = ['QUIET', 'LOUD', 'ALERT', 'MAINTENANCE', 'OFFLINE', 'NO_DE
 const EMPTY_FORM = { tableNo: '', seats: '4' };
 
 const PRIMARY_BTN =
-  'rounded-xl bg-shush-orange px-4 py-2.5 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2';
+  'rounded-xl bg-shush-orange600 px-4 py-2.5 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange700 active:bg-shush-orange700 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2';
+const SECONDARY_BTN =
+  'rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2.5 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
 const INPUT =
   'mt-1 block w-full rounded-xl border-shush-lineStrong bg-shush-white text-sm text-shush-ink focus:border-shush-orange focus:ring-shush-orange';
 
@@ -194,7 +202,7 @@ function AddTableModal({ busy, error, form, onChange, onSubmit, onClose }) {
 
 export default function TableLayout() {
   const { user } = useAuth();
-  const { data, error, loading, updatedAt } = usePolling(api.layout, REFRESH_MS);
+  const { data, error, loading, updatedAt, reload } = usePolling(api.layout, REFRESH_MS);
   const isSmall = useMediaQuery('(max-width: 767px)');
   const [view, setView] = useState(() => (window.matchMedia('(max-width: 767px)').matches ? 'list' : 'plan'));
   const [selectedNo, setSelectedNo] = useState(null);
@@ -203,9 +211,14 @@ export default function TableLayout() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [addError, setAddError] = useState('');
   const [addBusy, setAddBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const tileRefs = useRef(new Map());
   const canvasRef = useRef(null);
+  const editor = useLayoutEditor({ tables: data?.tables ?? NO_TABLES, canvasRef });
   const openerRef = useRef(null);
 
   const isAdmin = user?.role === 'Admin';
@@ -225,6 +238,51 @@ export default function TableLayout() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [selectedNo, showAdd, closeDrawer]);
+
+  // Warn before the tab is closed with unsaved layout changes. (In-app navigation is covered by Cancel's confirmation.)
+  useEffect(() => {
+    if (!editor.dirty) return undefined;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [editor.dirty]);
+
+  // "Layout saved" goes away by itself.
+  useEffect(() => {
+    if (!notice) return undefined;
+    const id = setTimeout(() => setNotice(''), NOTICE_MS);
+    return () => clearTimeout(id);
+  }, [notice]);
+
+  function startEditing() {
+    setSelectedNo(null); // the details drawer closes while editing
+    setSaveError('');
+    setNotice('');
+    editor.start();
+  }
+
+  function handleCancelEdit() {
+    if (editor.dirty) setConfirmCancel(true);
+    else editor.stop();
+  }
+
+  async function handleSaveLayout() {
+    setSaving(true);
+    setSaveError('');
+    try {
+      await api.saveLayout(editor.changes);
+      editor.stop();
+      reload();
+      setNotice('Layout saved');
+    } catch (err) {
+      setSaveError(err.message); // stays in the toolbar, edit mode stays open
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function openAdd() {
     openerRef.current = document.activeElement;
@@ -282,7 +340,8 @@ export default function TableLayout() {
   const counts = Object.fromEntries(STATUS_ORDER.map((k) => [k, tables.filter((t) => t.status === k).length]));
   // A filter whose status no longer exists (after a refresh) is ignored rather than dimming everything.
   const activeFilter = filter && counts[filter] > 0 ? filter : null;
-  const showList = isSmall && view === 'list';
+  const editing = editor.editing;
+  const showList = isSmall && view === 'list' && !editing;
 
   const onSelect = (no) => setSelectedNo((cur) => (cur === no ? null : no));
   const setTileRef = (no) => (el) => {
@@ -293,25 +352,45 @@ export default function TableLayout() {
     <TableTile
       key={t.tableNo}
       ref={setTileRef(t.tableNo)}
-      table={t}
+      table={editing ? { ...t, grid: editor.draft[t.tableNo] } : t}
       variant={variant}
       selected={t.tableNo === selectedNo}
-      dimmed={activeFilter !== null && t.status !== activeFilter}
+      dimmed={!editing && activeFilter !== null && t.status !== activeFilter}
       onSelect={onSelect}
+      edit={editing && variant === 'plan' ? editor : undefined}
     />
   );
+  const planTables = editing ? editor.visibleTables : tables;
 
   return (
     <div className="space-y-6">
       <PageHeader title="Table layout" sample={sample} subtitle={`Live · updated ${formatTime(updatedAt)}`}>
-        {isAdmin && (
-          <GlowButton onClick={openAdd} className={PRIMARY_BTN}>
-            Add table
-          </GlowButton>
+        {isAdmin && !editing && (
+          <div className="flex flex-wrap items-center gap-3">
+            {tables.length > 0 &&
+              (isSmall ? (
+                <p className="text-xs text-shush-inkSoft">Editing the floor plan needs a larger screen.</p>
+              ) : (
+                <button type="button" onClick={startEditing} className={SECONDARY_BTN}>
+                  Edit layout
+                </button>
+              ))}
+            <GlowButton onClick={openAdd} className={PRIMARY_BTN}>
+              Add table
+            </GlowButton>
+          </div>
         )}
       </PageHeader>
 
       {error && <Alert>{error}</Alert>}
+      {notice && (
+        <div className="shush-rise">
+          <Alert type="success">{notice}</Alert>
+        </div>
+      )}
+      <p className="sr-only" role="status" aria-live="polite">
+        {editing ? editor.message : ''}
+      </p>
 
       <SummaryStrip
         seatedTotal={seatedTotal}
@@ -335,6 +414,31 @@ export default function TableLayout() {
               />
             ) : (
               <>
+                {editing && (
+                  <div className="mb-4 space-y-3 rounded-xl border border-shush-line bg-shush-creamDeep p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="min-w-0 flex-1 text-sm text-shush-inkSoft">
+                        Drag a table to move it, or focus one and use the arrow keys. Nothing changes for anyone else until you save.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={editor.undo} disabled={!editor.canUndo || saving} className={SECONDARY_BTN}>
+                          Undo
+                        </button>
+                        <button type="button" onClick={editor.reset} disabled={!editor.dirty || saving} className={SECONDARY_BTN}>
+                          Reset
+                        </button>
+                        <button type="button" onClick={handleCancelEdit} disabled={saving} className={SECONDARY_BTN}>
+                          Cancel
+                        </button>
+                        <button type="button" onClick={handleSaveLayout} disabled={!editor.dirty || saving} className={PRIMARY_BTN}>
+                          {saving ? 'Saving…' : 'Save layout'}
+                        </button>
+                      </div>
+                    </div>
+                    <Alert>{saveError}</Alert>
+                  </div>
+                )}
+
                 <div className="mb-4 flex items-center justify-between gap-3 md:hidden">
                   <span className="text-xs font-semibold uppercase tracking-wider text-shush-muted">View</span>
                   <div className="inline-flex rounded-xl border border-shush-lineStrong p-0.5" role="group" aria-label="Table view">
@@ -348,7 +452,7 @@ export default function TableLayout() {
                         aria-pressed={view === key}
                         onClick={() => setView(key)}
                         className={`rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange ${
-                          view === key ? 'bg-shush-orange text-white' : 'text-shush-inkSoft hover:bg-shush-creamDeep'
+                          view === key ? 'bg-shush-orange600 text-white' : 'text-shush-inkSoft hover:bg-shush-creamDeep'
                         }`}
                       >
                         {text}
@@ -371,14 +475,30 @@ export default function TableLayout() {
                       role="group"
                       aria-label="Floor plan"
                     >
-                      {tables.map((t) => renderTile(t, 'plan'))}
+                      {editing &&
+                        Array.from({ length: editor.rowCount }, (_, r) =>
+                          GRID_CELLS.map((c) => (
+                            <div key={`${c}-${r}`} className="tl-cell" aria-hidden="true" style={{ gridColumn: c + 1, gridRow: r + 1 }} />
+                          ))
+                        ).flat()}
+                      {editing && editor.drag && (
+                        <div
+                          className={`tl-ghost ${editor.drag.valid ? '' : 'tl-ghost--bad'}`}
+                          aria-hidden="true"
+                          style={{
+                            gridColumn: `${editor.drag.col + 1} / span ${editor.drag.width}`,
+                            gridRow: `${editor.drag.row + 1} / span ${editor.drag.height}`,
+                          }}
+                        />
+                      )}
+                      {planTables.map((t) => renderTile(t, 'plan'))}
                     </div>
                   </div>
                 )}
               </>
             )}
             <p className="mt-4 text-xs text-shush-inkSoft">
-              Select a table to see its details. Filled chairs are students currently seated.
+              {editing ? 'Editing the floor plan. Filled chairs are students currently seated.' : 'Select a table to see its details. Filled chairs are students currently seated.'}
               {isAdmin && (
                 <>
                   {' '}
@@ -400,6 +520,20 @@ export default function TableLayout() {
 
       {/* Keeps the last tiles reachable above the bottom sheet on small screens. */}
       {selected && <div className="h-[55vh] lg:hidden" aria-hidden="true" />}
+
+      <ConfirmDialog
+        open={confirmCancel}
+        title="Discard your layout changes?"
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setConfirmCancel(false);
+          editor.stop();
+        }}
+        onCancel={() => setConfirmCancel(false)}
+      >
+        You moved tables on the floor plan but have not saved. If you discard, the saved layout stays as it is.
+      </ConfirmDialog>
 
       {showAdd && (
         <AddTableModal

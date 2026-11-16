@@ -71,6 +71,7 @@ export const api = {
   addTable: (fields) => request('/settings/tables', { method: 'POST', body: fields }),
   setTableSeats: (tableNo, seats) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { seats } }),
+  saveLayout: (tables) => request('/settings/layout', { method: 'PUT', body: { tables } }),
   clearSampleData: () => request('/settings/sample-data/clear', { method: 'POST' }),
   devices: () => request('/settings/devices'),
   saveThreshold: (deviceCode, threshold) =>

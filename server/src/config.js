@@ -41,6 +41,9 @@ export const config = {
   // Times are stored in UTC. 480 = Philippines (UTC+8).
   utcOffsetMinutes: num(env.LIBRARY_UTC_OFFSET_MINUTES, 480),
 
+  // Shared secret the devices send in the x-device-key header. Empty = the device API is switched off.
+  deviceApiKey: env.DEVICE_API_KEY || '',
+
   // A device that has not reported for this long is shown as offline.
   deviceOfflineAfterMs: num(env.DEVICE_OFFLINE_SECONDS, 120) * 1000,
 

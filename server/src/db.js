@@ -122,6 +122,18 @@ export function createDb(dbConfig) {
     );
   }
 
+  // HARDWARE HOOK: one noise reading from a device. Runs usp_Device_Reading (the logic goes there).
+  // Returns { success, message, threshold, status } or null.
+  async function recordDeviceReading({ deviceCode, level, receivedAt }) {
+    return oneOf(
+      await run('usp_Device_Reading', [
+        ['DeviceCode', sql.NVarChar(20), deviceCode],
+        ['Level', sql.Int, level],
+        ['ReceivedAt', sql.DateTime2(0), receivedAt],
+      ])
+    );
+  }
+
   async function getRewardSessions() {
     return rowsOf(await run('usp_Rewards_Sessions'));
   }
@@ -241,6 +253,7 @@ export function createDb(dbConfig) {
     startMaintenance,
     endMaintenance,
     setDeviceThreshold,
+    recordDeviceReading,
     getRewardSessions,
     getHistory,
     closeStaleSessions,

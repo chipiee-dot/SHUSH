@@ -530,6 +530,35 @@ BEGIN
 END
 GO
 
+-- 18b) HARDWARE HOOK: one noise reading from a device -------------------------
+-- Called by POST /api/device/readings (server/src/routes/device.js).
+-- *** NOT IMPLEMENTED YET. The hardware/backend team writes the body below. ***
+-- Returns: Success, Message, Threshold, Status
+CREATE OR ALTER PROCEDURE dbo.usp_Device_Reading
+    @DeviceCode NVARCHAR(20),
+    @Level      INT,
+    @ReceivedAt DATETIME2(0)   -- UTC
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- TODO 1: find the device (dbo.Device by DeviceCode). If missing, return Success = 0 and a message
+    --         containing "does not exist" (the route turns that into a 404).
+    -- TODO 2: work out the status from @Level and the device's Threshold: QUIET, LOUD or ALERT.
+    --         (MAINTENANCE is decided by dbo.MaintenanceWindow; the server already handles that on display.)
+    -- TODO 3: UPDATE dbo.Device SET LastLevel = @Level, LastStatus = <status>, LastSeenAt = @ReceivedAt.
+    -- TODO 4: ALERT RULE: noise above the threshold for 5 continuous seconds -> INSERT one row into dbo.Alert
+    --         (DeviceId, TableId, SessionId = an open session at that table or NULL, Level, Threshold, TriggeredAt).
+    --         Needs a way to remember when the noise first went over (a column on dbo.Device, or compare with recent readings).
+    -- TODO 5: return Success = 1 with the device's current Threshold and Status, so the device can sync its threshold.
+
+    SELECT CAST(0 AS BIT) AS Success,
+           N'Device readings are not implemented yet.' AS Message,
+           CAST(NULL AS INT) AS Threshold,
+           CAST(NULL AS NVARCHAR(12)) AS Status;
+END
+GO
+
 -- 19) REWARDS: completed sessions with each member, all time ------------------
 -- The server works out the leaderboards from these rows (server/src/services/rewards.js).
 CREATE OR ALTER PROCEDURE dbo.usp_Rewards_Sessions

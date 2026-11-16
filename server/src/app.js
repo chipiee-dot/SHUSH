@@ -4,6 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { createAuthRouter } from './routes/auth.js';
+import { createDeviceRouter } from './routes/device.js';
 import { createFacultyRouter } from './routes/faculty.js';
 import { createSettingsRouter } from './routes/settings.js';
 import { createStudentRouter } from './routes/student.js';
@@ -50,6 +51,7 @@ export function createApp({ db, config }) {
 
   app.use('/api/auth', createAuthRouter(db, config));
   app.use('/api/student', createStudentRouter(db, config));
+  app.use('/api/device', createDeviceRouter(db, config)); // hardware entry point, see HARDWARE-INTEGRATION.md
   app.use('/api/settings', createSettingsRouter(db, config));
   app.use('/api', createFacultyRouter(db, config));
   app.use('/api', (req, res) => res.status(404).json({ message: 'Not found.' }));

@@ -1,32 +1,17 @@
-node_modules/
-dist/
-.env
-.vs/
-*.log
-
-
 # Dependencies
 node_modules/
-**/node_modules/
 
-# Environment variables and secrets
+# Environment variables (Passwords!)
 .env
-.env.*
-!.env.example
 
-# Build output
+# Build outputs
 dist/
 build/
-coverage/
 
-# Logs
-*.log
-npm-debug.log*
+# Visual Studio junk
+.vs/
+*.vsidx
 
-# Local editor and OS files
-.vscode/
+# OS files
 .DS_Store
 Thumbs.db
-
-# Windows shortcuts
-*.lnk

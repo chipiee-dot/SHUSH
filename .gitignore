@@ -1,17 +1,4 @@
-# Dependencies
 node_modules/
-
-# Environment variables (Passwords!)
 .env
-
-# Build outputs
-dist/
-build/
-
-# Visual Studio junk
 .vs/
 *.vsidx
-
-# OS files
-.DS_Store
-Thumbs.db

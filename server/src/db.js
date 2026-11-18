@@ -1,18 +1,11 @@
 import sql from 'mssql';
 
-// Turns SQL Server's PascalCase column names into camelCase for the API.
 const camelize = (row) =>
     Object.fromEntries(Object.entries(row).map(([key, value]) => [key[0].toLowerCase() + key.slice(1), value]));
 
-/**
- * Thin data layer: each function calls one stored procedure from database/SHUSH.sql.
- * Procedures that return several result sets are read with recordsets[n].
- */
 export function createDb(dbConfig) {
-    // FORCE TCP/IP connection. This ignores any \SQLEXPRESS in the .env
-    // and connects directly to the port to prevent ETIMEOUT errors.
     const config = {
-        server: '127.0.0.1',
+        server: 'localhost',
         port: 1433,
         database: dbConfig.database,
         user: dbConfig.user,
@@ -23,6 +16,7 @@ export function createDb(dbConfig) {
             encrypt: true,
             trustServerCertificate: true,
             enableArithAbort: true,
+            serverName: 'localhost',
         },
     };
 
@@ -31,7 +25,6 @@ export function createDb(dbConfig) {
     function getPool() {
         if (!poolPromise) {
             const pool = new sql.ConnectionPool(config);
-            // If the connection drops later, forget the pool so the next request reconnects.
             pool.on('error', (err) => {
                 console.error('[db] pool error:', err.message);
                 poolPromise = null;
@@ -44,7 +37,6 @@ export function createDb(dbConfig) {
         return poolPromise;
     }
 
-    // Runs one procedure. inputs: [name, sqlType, value] triples.
     async function run(procedure, inputs = []) {
         const pool = await getPool();
         const request = pool.request();
@@ -62,8 +54,6 @@ export function createDb(dbConfig) {
         const pool = await getPool();
         await pool.request().query('SELECT 1 AS ok');
     }
-
-    // ---- Sign up / log in (raw PascalCase rows, read by routes/auth.js) -------
 
     async function signUp(data) {
         const sets = await run('usp_SignUp', [
@@ -85,8 +75,6 @@ export function createDb(dbConfig) {
         ]);
         return sets[0]?.[0];
     }
-
-    // ---- Faculty console -------------------------------------------------------
 
     async function getLayout() {
         return rowsOf(await run('usp_Layout_Get'));
@@ -148,8 +136,6 @@ export function createDb(dbConfig) {
         );
     }
 
-    // HARDWARE HOOK: one noise reading from a device. Runs usp_Device_Reading (the logic goes there).
-    // Returns { success, message, threshold, status } or null.
     async function recordDeviceReading({ deviceCode, level, receivedAt }) {
         return oneOf(
             await run('usp_Device_Reading', [
@@ -175,8 +161,6 @@ export function createDb(dbConfig) {
             ])
         );
     }
-
-    // ---- Students and sessions ------------------------------------------------
 
     async function closeStaleSessions(now, maxHours) {
         await run('usp_Session_CloseStale', [
@@ -224,8 +208,6 @@ export function createDb(dbConfig) {
         );
     }
 
-    // ---- Table management (administrators) -----------------------------------
-
     async function addTable(t) {
         return oneOf(
             await run('usp_Table_Add', [
@@ -248,7 +230,6 @@ export function createDb(dbConfig) {
         );
     }
 
-    // newTableNo and seatCount are both optional (null = leave as is). Runs usp_Table_Update.
     async function updateTable({ tableNo, newTableNo, seatCount }) {
         return oneOf(
             await run('usp_Table_Update', [
@@ -259,7 +240,6 @@ export function createDb(dbConfig) {
         );
     }
 
-    // changes: [{ tableNo, col, row, width, height, seats? }], changed tables only.
     async function saveLayout(changes) {
         return oneOf(await run('usp_Layout_Save', [['Json', sql.NVarChar(sql.MAX), JSON.stringify(changes)]]));
     }

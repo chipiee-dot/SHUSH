@@ -35,21 +35,16 @@ export const config = {
     trustProxy: bool(env.TRUST_PROXY, false),
     clientDist: path.resolve(here, '../../client/dist'),
 
-    // The library's clock, used for "today", "this week" and "this month".
-    // Times are stored in UTC. 480 = Philippines (UTC+8).
     utcOffsetMinutes: num(env.LIBRARY_UTC_OFFSET_MINUTES, 480),
 
-    // Shared secret the devices send in the x-device-key header. Empty = the device API is switched off.
     deviceApiKey: env.DEVICE_API_KEY || '',
 
-    // A device that has not reported for this long is shown as offline.
     deviceOfflineAfterMs: num(env.DEVICE_OFFLINE_SECONDS, 120) * 1000,
 
     db: {
-        // TCP/IP mode: host + port only. 
-        // .split('\\')[0] forcefully removes \SQLEXPRESS if it gets pasted in by mistake.
-        server: (env.DB_SERVER || '127.0.0.1').split('\\')[0],
-        port: Number(env.DB_PORT) || 1433,
+        // FORCE 'localhost' so Node.js allows the TLS connection
+        server: 'localhost',
+        port: 1433,
         database: env.DB_DATABASE || 'SHUSH',
         user: env.DB_USER,
         password: env.DB_PASSWORD,
@@ -60,6 +55,7 @@ export const config = {
             encrypt: bool(env.DB_ENCRYPT, true),
             trustServerCertificate: bool(env.DB_TRUST_SERVER_CERT, true),
             enableArithAbort: true,
+            serverName: 'localhost', // Prevents the TLS IP error
         },
     },
 };

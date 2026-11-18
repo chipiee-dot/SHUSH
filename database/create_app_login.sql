@@ -52,6 +52,12 @@ GRANT EXECUTE ON dbo.usp_Session_End           TO shush_app;
 GRANT EXECUTE ON dbo.usp_Session_CloseStale    TO shush_app;
 GRANT EXECUTE ON dbo.usp_Table_Add             TO shush_app;
 GRANT EXECUTE ON dbo.usp_Table_SetSeats        TO shush_app;
+GRANT EXECUTE ON dbo.usp_Table_Update          TO shush_app;   -- change a table's number
+GRANT EXECUTE ON dbo.usp_Device_Assign         TO shush_app;   -- connect / change a table's device code
 GRANT EXECUTE ON dbo.usp_Layout_Save           TO shush_app;
 GRANT EXECUTE ON dbo.usp_SampleData_Clear      TO shush_app;
+GO
+
+-- Hardware: device readings (POST /api/device/readings)
+GRANT EXECUTE ON dbo.usp_Device_Reading        TO shush_app;
 GO

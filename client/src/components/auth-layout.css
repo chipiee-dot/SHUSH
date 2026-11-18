@@ -8,10 +8,24 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100dvh;
   overflow-x: clip;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--shush-orange) transparent;
   color: var(--shush-ink);
+}
+
+/* Match the student-table scrollbar; it appears only when this page overflows. */
+.auth-page::-webkit-scrollbar { width: 10px; }
+.auth-page::-webkit-scrollbar-track { background: transparent; }
+.auth-page::-webkit-scrollbar-thumb {
+  background: var(--shush-orange);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 /* ---------- Hero panel ---------- */

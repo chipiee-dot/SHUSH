@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import Logo from '../../components/Logo.jsx';
-import SuccessCheck from '../../components/SuccessCheck.jsx';
+import { useToast } from '../../components/Toast.jsx';
 import '../../components/motion.css';
 import StudentNumberInput from '../../components/StudentNumberInput.jsx';
 import { useStudentAuth } from '../../context/StudentAuthContext.jsx';
@@ -24,28 +23,25 @@ export default function StudentLogin() {
   useFacultyShortcut();
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
   // The landing page can hand over a student number: look it up straight away.
   const prefill = location.state?.studentNo ?? '';
   const [raw, setRaw] = useState(STUDENT_NO_RE.test(prefill) ? prefill : '');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [found, setFound] = useState(null); // { student, session }
-  const [notice, setNotice] = useState(location.state?.notice ?? null);
 
   const seated = Boolean(found?.session);
 
   async function lookup(studentNo) {
-    setError('');
-    setNotice(null);
     if (!STUDENT_NO_RE.test(studentNo)) {
-      setError('Enter your student number, like 21-0001.');
+      toast.error('Enter your student number, like 21-0001.');
       return;
     }
     setBusy(true);
     try {
       setFound(await api.studentLookup(studentNo));
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setBusy(false);
     }
@@ -64,7 +60,6 @@ export default function StudentLogin() {
 
   async function handleConfirm() {
     setBusy(true);
-    setError('');
     try {
       const data = await api.studentLogin(found.student.studentNo);
       if (data.session) {
@@ -73,16 +68,13 @@ export default function StudentLogin() {
         await logout();
         setFound(null);
         setRaw('');
-        setNotice({
-          type: 'success',
-          text: `You have been logged out of your session at Table ${data.session.tableNo}. Thank you for visiting.`,
-        });
+        toast.success(`Session at Table ${data.session.tableNo} ended. Thanks for visiting!`);
       } else {
         setStudent(data.student);
         navigate('/student/table', { replace: true });
       }
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
       setFound(null);
     } finally {
       setBusy(false);
@@ -103,15 +95,6 @@ export default function StudentLogin() {
       </header>
 
       <form onSubmit={handleContinue} className="mt-6 space-y-4 lg:mt-8 lg:space-y-5" noValidate>
-        {notice && notice.type === 'success' ? (
-          <div role="status" className="shush-rise flex items-start gap-3 rounded-xl border border-shush-success/30 bg-shush-successSoft px-4 py-3 text-sm text-shush-success">
-            <SuccessCheck className="mt-0.5 h-5 w-5" />
-            <span>{notice.text}</span>
-          </div>
-        ) : (
-          notice && <Alert type={notice.type}>{notice.text}</Alert>
-        )}
-        <Alert>{error}</Alert>
         <div>
           <label htmlFor="student-no" className="block text-center text-xs font-semibold uppercase tracking-wider text-shush-inkSoft lg:text-sm 2xl:text-base">
             Student number

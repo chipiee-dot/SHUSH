@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   GRID_COLUMNS,
   MAX_ROWS,
+  TABLE_HEIGHT,
   UI_LIMITS,
   cellFromPoint,
   clampPlacement,
@@ -196,13 +197,14 @@ export default function useLayoutEditor({ tables, canvasRef }) {
     [measureCanvas]
   );
 
-  // axis: 'e' (right edge), 's' (bottom edge) or 'se' (corner). dx, dy: pixels moved since the drag started.
+  // axis: 'e' (right edge). Only the width can change: the height is always TABLE_HEIGHT, so dy is ignored.
+  // dx, dy: pixels moved since the drag started.
   const resizeTo = useCallback((tableNo, axis, dx, dy) => {
     const r = resizeRef.current;
     if (!r || r.tableNo !== tableNo) return;
     const { origin, stepX, stepY } = r;
     const width = axis.includes('e') ? origin.width + Math.round(dx / stepX) : origin.width;
-    const height = axis.includes('s') ? origin.height + Math.round(dy / stepY) : origin.height;
+    const height = TABLE_HEIGHT;
     const out = resizeOutcome({ origin, width, height, others: othersOf(draftRef.current, tableNo), occupied: occupiedRef.current[tableNo] ?? 0 });
     if (out.valid) r.last = { width, height, seats: out.seats };
     // The ghost shows the size being asked for, kept inside the grid so it never adds columns.
@@ -236,13 +238,17 @@ export default function useLayoutEditor({ tables, canvasRef }) {
     [pushUndo]
   );
 
-  // Shift+arrow: one cell wider/narrower or taller/shorter, same limits as the handles.
+  // Shift+Left/Right: one cell narrower/wider, same limits as the handle. Shift+Up/Down does nothing: height is fixed.
   const resizeBy = useCallback(
     (tableNo, dWidth, dHeight) => {
       const current = draftRef.current[tableNo];
       if (!current) return;
+      if (dWidth === 0) {
+        if (dHeight !== 0) setMessage(`Table ${tableNo} is always ${TABLE_HEIGHT} rows tall. Only its width can change.`);
+        return;
+      }
       const width = current.width + dWidth;
-      const height = current.height + dHeight;
+      const height = TABLE_HEIGHT;
       const out = resizeOutcome({ origin: current, width, height, others: othersOf(draftRef.current, tableNo), occupied: occupiedRef.current[tableNo] ?? 0 });
       if (!out.valid) {
         setMessage(`Table ${tableNo} cannot be resized to ${width} by ${height}.`);

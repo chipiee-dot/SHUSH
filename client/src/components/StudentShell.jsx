@@ -61,7 +61,8 @@ export default function StudentShell() {
   const signedIn = !checking && student;
 
   return (
-    <div className="shush-cloud relative min-h-screen font-sans antialiased selection:bg-shush-gold selection:text-shush-ink">
+    <div className="st-page-scroll">
+    <div className="shush-cloud relative min-h-full font-sans antialiased selection:bg-shush-gold selection:text-shush-ink">
       <CloudBackground variant="page" />
 
       <header className="sticky top-0 z-30 border-b border-shush-line bg-shush-white/80 backdrop-blur">
@@ -130,6 +131,7 @@ export default function StudentShell() {
           ? `You will be signed out on this device, but your seat at Table ${session.tableNo} stays active. Sign in with your student number again to end your session. It also ends automatically after 2 hours.`
           : 'You will be signed out of SHUSH on this device.'}
       </ConfirmDialog>
+    </div>
     </div>
   );
 }

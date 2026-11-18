@@ -530,6 +530,82 @@ BEGIN
 END
 GO
 
+-- 18a) DEVICE SETTINGS: connect a device to a table (or change the table's device code)
+-- A table has at most one device and a device belongs to one table. If the table already has a device,
+-- its code is changed and the old readings are cleared (alerts already recorded are kept).
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Device_Assign
+    @TableNo    INT,
+    @DeviceCode NVARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @DeviceCode = LTRIM(RTRIM(@DeviceCode));
+    IF @DeviceCode IS NULL OR LEN(@DeviceCode) < 1 OR LEN(@DeviceCode) > 20
+       OR @DeviceCode LIKE N'%[^A-Za-z0-9-]%'
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Device code must be 1 to 20 letters, numbers or dashes.' AS Message; RETURN;
+    END
+
+    DECLARE @TableId INT;
+    SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId <> @TableId)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to another table.') AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId)
+    BEGIN
+        IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId AND DeviceCode = @DeviceCode)
+        BEGIN
+            SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to Table ', @TableNo, N'.') AS Message; RETURN;
+        END
+        UPDATE dbo.Device
+           SET DeviceCode = @DeviceCode, LastLevel = NULL, LastStatus = NULL, LastSeenAt = NULL, IsSample = 0
+         WHERE TableId = @TableId;
+    END
+    ELSE
+        INSERT INTO dbo.Device (DeviceCode, TableId, IsSample) VALUES (@DeviceCode, @TableId, 0);
+
+    SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is now connected to Table ', @TableNo, N'.') AS Message;
+END
+GO
+
+-- 18b) HARDWARE HOOK: one noise reading from a device -------------------------
+-- Called by POST /api/device/readings (server/src/routes/device.js).
+-- *** NOT IMPLEMENTED YET. The hardware/backend team writes the body below. ***
+-- Returns: Success, Message, Threshold, Status
+CREATE OR ALTER PROCEDURE dbo.usp_Device_Reading
+    @DeviceCode NVARCHAR(20),
+    @Level      INT,
+    @ReceivedAt DATETIME2(0)   -- UTC
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- TODO 1: find the device (dbo.Device by DeviceCode). If missing, return Success = 0 and a message
+    --         containing "does not exist" (the route turns that into a 404).
+    -- TODO 2: work out the status from @Level and the device's Threshold: QUIET, LOUD or ALERT.
+    --         (MAINTENANCE is decided by dbo.MaintenanceWindow; the server already handles that on display.)
+    -- TODO 3: UPDATE dbo.Device SET LastLevel = @Level, LastStatus = <status>, LastSeenAt = @ReceivedAt.
+    -- TODO 4: ALERT RULE: noise above the threshold for 5 continuous seconds -> INSERT one row into dbo.Alert
+    --         (DeviceId, TableId, SessionId = an open session at that table or NULL, Level, Threshold, TriggeredAt).
+    --         Needs a way to remember when the noise first went over (a column on dbo.Device, or compare with recent readings).
+    -- TODO 5: return Success = 1 with the device's current Threshold and Status, so the device can sync its threshold.
+
+    SELECT CAST(0 AS BIT) AS Success,
+           N'Device readings are not implemented yet.' AS Message,
+           CAST(NULL AS INT) AS Threshold,
+           CAST(NULL AS NVARCHAR(12)) AS Status;
+END
+GO
+
 -- 19) REWARDS: completed sessions with each member, all time ------------------
 -- The server works out the leaderboards from these rows (server/src/services/rewards.js).
 CREATE OR ALTER PROCEDURE dbo.usp_Rewards_Sessions
@@ -900,6 +976,70 @@ BEGIN
 END
 GO
 
+-- 28b) TABLES: change the table number and/or the seat count in one step ------
+-- @NewTableNo NULL = keep the number. @SeatCount NULL = keep the seats.
+-- The number must be free, and seats cannot go below the number of people seated right now.
+-- Sessions, devices and maintenance point at the table's Id, so renumbering keeps all of them.
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Table_Update
+    @TableNo    INT,
+    @NewTableNo INT = NULL,
+    @SeatCount  INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @NewTableNo IS NOT NULL AND (@NewTableNo < 1 OR @NewTableNo > 999)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Table number must be between 1 and 999.' AS Message; RETURN;
+    END
+    IF @SeatCount IS NOT NULL AND (@SeatCount < 1 OR @SeatCount > 20)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Seats must be between 1 and 20.' AS Message; RETURN;
+    END
+
+    DECLARE @TableId INT, @Occupied INT;
+    SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
+    END
+
+    IF @NewTableNo IS NOT NULL AND @NewTableNo <> @TableNo
+       AND EXISTS (SELECT 1 FROM dbo.LibraryTable WHERE TableNo = @NewTableNo)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @NewTableNo, N' already exists.') AS Message; RETURN;
+    END
+
+    IF @SeatCount IS NOT NULL
+    BEGIN
+        SELECT @Occupied = COUNT(*) FROM dbo.LibrarySession WHERE TableId = @TableId AND EndedAt IS NULL;
+        IF @SeatCount < @Occupied
+        BEGIN
+            SELECT CAST(0 AS BIT) AS Success,
+                   CONCAT(N'Table ', @TableNo, N' has ', @Occupied, N' students seated, so it cannot have fewer than ', @Occupied, N' seats.') AS Message;
+            RETURN;
+        END
+    END
+
+    UPDATE dbo.LibraryTable
+       SET TableNo   = COALESCE(@NewTableNo, TableNo),
+           SeatCount = COALESCE(@SeatCount, SeatCount)
+     WHERE Id = @TableId;
+
+    SELECT CAST(1 AS BIT) AS Success,
+           CONCAT(N'Table ', @TableNo,
+                  CASE WHEN @NewTableNo IS NOT NULL AND @NewTableNo <> @TableNo
+                       THEN CONCAT(N' is now Table ', @NewTableNo) ELSE N'' END,
+                  CASE WHEN @SeatCount IS NOT NULL
+                       THEN CONCAT(CASE WHEN @NewTableNo IS NOT NULL AND @NewTableNo <> @TableNo THEN N', ' ELSE N' ' END,
+                                   N'has ', @SeatCount, N' seats')
+                       ELSE N'' END,
+                  N'.') AS Message;
+END
+GO
+
 -- 29) SAMPLE DATA: remove everything flagged IsSample --------------------------
 -- Real students, sessions and tables are never touched.
 CREATE OR ALTER PROCEDURE dbo.usp_SampleData_Clear
@@ -1008,6 +1148,14 @@ BEGIN
     IF @BadNo IS NOT NULL
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @BadNo, N' would be outside the floor plan grid.') AS Message; RETURN;
+    END
+
+    -- 2b) every table is exactly 2 rows tall (only the width can change)
+    SET @BadNo = NULL;
+    SELECT TOP (1) @BadNo = TableNo FROM #Change WHERE Height <> 2 ORDER BY TableNo;
+    IF @BadNo IS NOT NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @BadNo, N' must be 2 rows tall. Only the width can change.') AS Message; RETURN;
     END
 
     -- 3) seats: 1-20, and not below the students seated right now

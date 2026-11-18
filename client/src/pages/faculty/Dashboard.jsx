@@ -1,5 +1,6 @@
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
+import { useErrorToast } from '../../components/Toast.jsx';
+import { NAV_ICONS } from '../../components/navIcons.jsx';
 import Card from '../../components/Card.jsx';
 import { BarChart, DonutChart, MeterBar } from '../../components/charts.jsx';
 import CloudBackground from '../../components/CloudBackground.jsx';
@@ -97,12 +98,25 @@ function Legend({ items }) {
 export default function Dashboard() {
   const { user } = useAuth();
   const { data, error, loading, reload, updatedAt } = usePolling(fetchAll, REFRESH_MS);
+  useErrorToast(error);
 
   if (!data) {
     return loading ? (
       <p className="text-sm text-shush-muted">Loading dashboard…</p>
     ) : (
-      <Alert>{error || 'Could not load the dashboard.'}</Alert>
+      <EmptyState
+        title="Dashboard unavailable"
+        text="Check your connection, then try again."
+        action={
+          <button
+            type="button"
+            onClick={reload}
+            className="rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+          >
+            Try again
+          </button>
+        }
+      />
     );
   }
 
@@ -148,7 +162,10 @@ export default function Dashboard() {
         <CloudBackground variant="card" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-shush-orange700">Dashboard</p>
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-shush-orange700">
+              <span className="grid place-items-center [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">{NAV_ICONS.dashboard}</span>
+              Dashboard
+            </p>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">
                 {greeting()}{firstName ? `, ${firstName}` : ''}
@@ -169,8 +186,6 @@ export default function Dashboard() {
           </div>
         </div>
       </Card>
-
-      {error && <Alert>{error}</Alert>}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat

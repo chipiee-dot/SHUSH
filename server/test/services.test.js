@@ -126,6 +126,12 @@ test('layout: a row past 99 is a 400', () => {
   assert.deepEqual(validateLayoutChanges([move(3, 0, 98)], plan), { ok: true });
 });
 
+test('layout: a table must stay 2 rows tall', () => {
+  assert.equal(validateLayoutChanges([move(3, 0, 6, { height: 3 })], plan).status, 400);
+  assert.equal(validateLayoutChanges([move(3, 0, 6, { height: 1 })], plan).status, 400);
+  assert.deepEqual(validateLayoutChanges([move(3, 0, 6, { width: 3 })], plan), { ok: true }); // wider is fine
+});
+
 test('layout: seats above 20 are a 400', () => {
   assert.equal(validateLayoutChanges([move(3, 0, 6, { seats: 21 })], plan).status, 400);
 });

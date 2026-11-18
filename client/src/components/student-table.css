@@ -50,6 +50,23 @@
 .st-tile--plan.tl-tile--v .tl-top { margin: 4px 0; }
 .st-tile[data-state].tl-dim { opacity: 0.35; }
 .st-plan-canvas { min-width: 700px; }
+/* The whole student page scrolls up and down, so nothing is ever cut off at the bottom of the screen. */
+.st-page-scroll {
+  height: 100vh;
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: var(--shush-orange) transparent;
+}
+.st-page-scroll::-webkit-scrollbar { width: 10px; }
+.st-page-scroll::-webkit-scrollbar-track { background: transparent; }
+.st-page-scroll::-webkit-scrollbar-thumb {
+  background: var(--shush-orange);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
 /* Small tiles show less: under ~96px only the number, under ~64px a smaller number. */
 @container (max-width: 96px) {
   .st-label, .st-note, .st-chip { display: none; }

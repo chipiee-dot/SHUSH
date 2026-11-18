@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
+import { useToast } from '../../components/Toast.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import CloudBackground from '../../components/CloudBackground.jsx';
 import ConfirmTableDialog from '../../components/ConfirmTableDialog.jsx';
@@ -143,6 +143,8 @@ function SessionClock({ startedAt, maxHours }) {
 export default function StudentTable() {
   const { student, session, checking, refresh, logout } = useStudentAuth();
   const navigate = useNavigate();
+  const toast = useToast();
+  const failedRef = useRef(false); // so a list that keeps failing shows one toast, not one per refresh
   const [tables, setTables] = useState(null); // null while the first list loads
   const [updatedAt, setUpdatedAt] = useState(null);
   const [maxHours, setMaxHours] = useState(null); // from the server, never hard-coded here
@@ -150,7 +152,7 @@ export default function StudentTable() {
   const [confirming, setConfirming] = useState(false);
   const [ending, setEnding] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [chosenView, setChosenView] = useState(readView); // null until the student picks one
   const canShowPlan = useMediaQuery('(min-width: 768px)');
@@ -162,11 +164,15 @@ export default function StudentTable() {
       setTables(data.tables);
       setMaxHours(data.maxSessionHours ?? null);
       setUpdatedAt(new Date());
+      failedRef.current = false;
+      setLoadFailed(false);
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      if (!failedRef.current) toast.error(err.message);
+      failedRef.current = true;
+      setLoadFailed(true);
       setTables((current) => current ?? []);
     }
-  }, []);
+  }, [toast]);
 
   const seated = Boolean(session);
 
@@ -221,27 +227,19 @@ export default function StudentTable() {
 
   async function handleStart() {
     setBusy(true);
-    setMessage(null);
     try {
       await api.studentStartSession(chosenNo);
       setConfirming(false);
       // Back to sign-in. The session stays open until the student signs in again or 2 hours pass.
-      navigate('/student/login', {
-        replace: true,
-        state: {
-          notice: {
-            type: 'success',
-            text: `You are seated at Table ${chosenNo}. To end your session, sign in with your student number again.`,
-          },
-        },
-      });
+      toast.success(`Seated at Table ${chosenNo}. Sign in again to end your session.`);
+      navigate('/student/login', { replace: true });
       await logout();
     } catch (err) {
       setConfirming(false);
       if (/already have a table/i.test(err.message)) {
         await refresh();
       } else {
-        setMessage({ type: 'error', text: err.message });
+        toast.error(err.message);
         loadTables();
       }
     } finally {
@@ -251,18 +249,15 @@ export default function StudentTable() {
 
   async function handleEnd() {
     setBusy(true);
-    setMessage(null);
     try {
       await api.studentEndSession();
       setEnding(false);
-      navigate('/student/login', {
-        replace: true,
-        state: { notice: { type: 'success', text: 'You have been logged out of your session. Thank you for visiting.' } },
-      });
+      toast.success('Session ended. Thanks for visiting!');
+      navigate('/student/login', { replace: true });
       await logout();
     } catch (err) {
       setEnding(false);
-      setMessage({ type: 'error', text: err.message });
+      toast.error(err.message);
     } finally {
       setBusy(false);
     }
@@ -275,10 +270,6 @@ export default function StudentTable() {
         <div className={CARD}>
           <h1 className="text-3xl font-semibold tracking-tight text-shush-ink">You are seated, {firstName}</h1>
           <p className="mt-1 text-sm text-shush-inkSoft">Enjoy your time at the library. End your session when you leave.</p>
-
-          <div className="mt-6">
-            <Alert type={message?.type ?? 'success'}>{message?.text}</Alert>
-          </div>
 
           <div className="mt-6 grid items-center gap-8 md:grid-cols-[18rem_1fr]">
             <div className="st-seat-stage">
@@ -398,9 +389,7 @@ export default function StudentTable() {
         </div>
       </div>
 
-      <Alert type={message?.type ?? 'error'}>{message?.text}</Alert>
-
-      {sorted && sorted.length === 0 && !message && (
+      {sorted && sorted.length === 0 && !loadFailed && (
         <p className="text-sm text-shush-inkSoft">No tables are set up yet.</p>
       )}
       {sorted && sorted.length > 0 && !anyOpen && (

@@ -56,12 +56,8 @@ function tiltHandlers() {
 
 const DRAG_THRESHOLD = 4; // pixels before a press becomes a drag, so a plain click is not a drag
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-// Resize handles: the right edge, the bottom edge and the corner.
-const HANDLES = [
-  ['e', 'tl-handle--e', 'ew-resize'],
-  ['s', 'tl-handle--s', 'ns-resize'],
-  ['se', 'tl-handle--se', 'nwse-resize'],
-];
+// Resize handle: the right edge only. Tables are always 2 rows tall, so there is no bottom or corner handle.
+const HANDLES = [['e', 'tl-handle--e', 'ew-resize']];
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
@@ -69,7 +65,7 @@ const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: r
  * dimmed fades the tile when a status filter is on (it stays in place so the layout does not jump).
  * edit (admin floor-plan editing, plan variant only): the editor from useLayoutEditor. The tile then becomes a
  * draggable group: pointer drag with snap, and arrow keys to move one cell. Dragging moves it with transform only.
- * In edit mode it also has resize handles (right edge, bottom edge, corner) and Shift+arrow keys to resize.
+ * In edit mode it also has a resize handle on the right edge and Shift+Left/Right keys to change the width (the height is fixed at 2).
  * Tables taller than wide put their chairs on the left and right edges.
  */
 const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSelect, edit, variant = 'plan' }, ref) {
@@ -78,6 +74,8 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
   const seated = occupancy.seated;
   const topCount = Math.ceil(seats / 2);
   const { level, threshold, max } = meterScale(device);
+  // The status only flips after 5 seconds above the threshold; the meter can show it immediately.
+  const overThreshold = Boolean(device && device.threshold != null && level > threshold);
 
   const dragRef = useRef(null);
   // If the tile goes away mid-drag (Cancel, Save), stop listening for Esc.
@@ -212,7 +210,7 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
       const dir = ARROWS[e.key];
       if (!dir) return;
       e.preventDefault();
-      // Arrows move; Shift + arrows resize (Right/Left change the width, Down/Up the height).
+      // Arrows move; Shift + Left/Right change the width. The height never changes.
       if (e.shiftKey) edit.resizeBy(tableNo, dir[0], dir[1]);
       else edit.nudge(tableNo, dir[0], dir[1]);
     },
@@ -232,8 +230,8 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
       value={level}
       max={max}
       markerAt={device.threshold == null ? undefined : threshold}
-      colorVar={meterColor(status)}
-      label={`Table ${tableNo} noise level against its threshold`}
+      colorVar={overThreshold ? '--shush-danger' : meterColor(status)}
+      label={`Table ${tableNo} noise level against its threshold${overThreshold ? ', above threshold' : ''}`}
       className="!py-0.5"
     />
   );
@@ -248,7 +246,7 @@ const TableTile = forwardRef(function TableTile({ table, selected, dimmed, onSel
         role: 'group',
         tabIndex: 0,
         'aria-roledescription': 'draggable table',
-        'aria-label': `${label}, ${grid.width} by ${grid.height}. Drag to move it, or use the arrow keys. Hold Shift to resize.`,
+        'aria-label': `${label}, ${grid.width} by ${grid.height}. Drag to move it, or use the arrow keys. Hold Shift with Left or Right to change its width.`,
         ...editHandlers,
       }
     : {

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
+import { useErrorToast, useToast } from '../../components/Toast.jsx';
 import Card from '../../components/Card.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import { NAV_ICONS } from '../../components/navIcons.jsx';
 import SampleBadge from '../../components/SampleBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import useClickOutside from '../../hooks/useClickOutside.js';
@@ -119,7 +120,7 @@ export default function History() {
   const [tableNo, setTableNo] = useState('all');
   const [range, setRange] = useState('week');
   const [custom, setCustom] = useState({ from: '', to: '' });
-  const [exportError, setExportError] = useState('');
+  const toast = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [exporting, setExporting] = useState(''); // 'xlsx' or 'csv' while the file is being prepared
   const menuRef = useRef(null);
@@ -135,6 +136,7 @@ export default function History() {
     0,
     [fetchKey]
   );
+  useErrorToast(error);
   const layout = usePolling(api.layout, 60000);
   const tables = useMemo(
     () => [...(layout.data?.tables ?? [])].sort((a, b) => a.tableNo - b.tableNo),
@@ -167,7 +169,6 @@ export default function History() {
 
   function change(setter) {
     return (value) => {
-      setExportError('');
       setter(value);
     };
   }
@@ -196,9 +197,8 @@ export default function History() {
   async function exportReport(type) {
     setMenuOpen(false);
     menuButtonRef.current?.focus();
-    setExportError('');
     if (visible.length === 0) {
-      setExportError('There is nothing to export for these filters.');
+      toast.error('Nothing to export for these filters.');
       return;
     }
     setExporting(type);
@@ -216,8 +216,9 @@ export default function History() {
       } else {
         downloadCsvFile(visible, exportFileName(kind, 'csv'));
       }
-    } catch (err) {
-      setExportError(err?.message ? `Could not prepare the export. ${err.message}` : 'Could not prepare the export.');
+      toast.success('Report downloaded.');
+    } catch {
+      toast.error('Could not prepare the export.');
     } finally {
       setExporting('');
     }
@@ -229,6 +230,7 @@ export default function History() {
     <div className="space-y-6">
       <PageHeader
         title="History"
+        icon={NAV_ICONS.history}
         subtitle="Alerts, maintenance and sessions. Export the filtered list as an Excel report or a CSV."
       >
         <div ref={menuRef} className="relative">
@@ -365,8 +367,6 @@ export default function History() {
           <p className="mt-3 text-xs text-shush-muted">Pick a start and an end date. Dates use the library's time zone.</p>
         )}
       </Card>
-
-      {(error || exportError) && <Alert>{exportError || error}</Alert>}
 
       {/* No overflow clipping here: sticky day headers need the page to be their scroll container. */}
       <Card className={`!p-0 transition-opacity ${refreshing ? 'opacity-60' : ''}`}>

@@ -70,7 +70,9 @@ test('resizeOutcome: limits, neighbours and seat rules', () => {
   const near = [p(3, 0)];
   assert.deepEqual(resizeOutcome({ origin, width: 3, height: 2, others: near }), { valid: true, seats: 6 });
   assert.equal(resizeOutcome({ origin, width: 4, height: 2, others: near }).valid, false); // hits the neighbour
-  assert.equal(resizeOutcome({ origin, width: 2, height: 5, others: [] }).valid, false); // taller than 4
+  assert.equal(resizeOutcome({ origin, width: 2, height: 5, others: [] }).valid, false); // taller than 2
+  assert.equal(resizeOutcome({ origin, width: 2, height: 3, others: [] }).valid, false); // height is fixed at 2
+  assert.equal(resizeOutcome({ origin, width: 3, height: 1, others: [] }).valid, false); // ...and not shorter either
   assert.equal(resizeOutcome({ origin, width: 11, height: 2, others: [] }).valid, false); // wider than 10
   assert.equal(resizeOutcome({ origin: { ...origin, col: 10 }, width: 3, height: 2, others: [] }).valid, false); // off the grid
   assert.equal(resizeOutcome({ origin, width: 1, height: 1, others: [], occupied: 3 }).valid, false); // seated students

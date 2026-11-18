@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { api } from '../../api.js';
-import Alert from '../../components/Alert.jsx';
+import { useErrorToast } from '../../components/Toast.jsx';
 import Card from '../../components/Card.jsx';
 import CountUp from '../../components/CountUp.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import { NAV_ICONS } from '../../components/navIcons.jsx';
 import usePolling from '../../hooks/usePolling.js';
 import { formatDateTime } from '../../lib/format.js';
 
@@ -204,11 +205,13 @@ export default function Rewards() {
     REFRESH_MS,
     [period],
   );
+  useErrorToast(error);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Rewards"
+        icon={NAV_ICONS.rewards}
         sample={data?.hasSampleData}
         subtitle={
           updatedAt
@@ -218,8 +221,6 @@ export default function Rewards() {
       >
         <PeriodToggle period={period} onChange={setPeriod} />
       </PageHeader>
-
-      {error && <Alert>{error}</Alert>}
 
       {!data ? (
         loading && <p className="text-sm text-shush-muted">Loading rewards…</p>

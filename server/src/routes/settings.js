@@ -55,7 +55,7 @@ export function createSettingsRouter(db, config) {
     })
   );
 
-  // ---- Tables: list, add, change seats ------------------------------------
+  // ---- Tables: list, add, change seats or table number ---------------------
 
   router.get(
     '/tables',
@@ -69,6 +69,7 @@ export function createSettingsRouter(db, config) {
           occupied: row.occupied ?? 0,
           grid: { col: row.gridCol, row: row.gridRow, width: row.gridWidth, height: row.gridHeight },
           hasDevice: Boolean(row.deviceCode),
+          deviceCode: row.deviceCode ?? null,
           isSample: Boolean(row.tableIsSample),
         })),
       });
@@ -131,15 +132,50 @@ export function createSettingsRouter(db, config) {
     adminOnly,
     wrap(async (req, res) => {
       const tableNo = toInt(req.params.tableNo);
-      const seatCount = toInt(req.body?.seats);
       if (tableNo === null) return res.status(400).json({ message: 'Unknown table.' });
-      if (seatCount === null || seatCount < 1 || seatCount > 20) {
+
+      // Body: { seats } (seats only) or { newTableNo, seats? } (rename the table, optionally with new seats).
+      const given = (v) => v !== undefined && v !== null && v !== '';
+      const renaming = given(req.body?.newTableNo);
+      const seatCount = toInt(req.body?.seats);
+      if ((!renaming || given(req.body?.seats)) && (seatCount === null || seatCount < 1 || seatCount > 20)) {
         return res.status(400).json({ message: 'Seats must be between 1 and 20.' });
       }
-      const result = await db.setTableSeats({ tableNo, seatCount });
+      let newTableNo = null;
+      if (renaming) {
+        newTableNo = toInt(req.body.newTableNo);
+        if (newTableNo === null || newTableNo < 1 || newTableNo > 999) {
+          return res.status(400).json({ message: 'Table number must be between 1 and 999.' });
+        }
+      }
+
+      const result = renaming
+        ? await db.updateTable({ tableNo, newTableNo, seatCount })
+        : await db.setTableSeats({ tableNo, seatCount });
       if (!result?.success) {
         const notFound = /does not exist/i.test(result?.message ?? '');
         return res.status(notFound ? 404 : 400).json({ message: result?.message ?? 'Could not save.' });
+      }
+      return res.json({ message: result.message });
+    })
+  );
+
+  // Connect a device to a table, or change the table's device code. Body: { deviceCode }.
+  router.put(
+    '/tables/:tableNo/device',
+    adminOnly,
+    wrap(async (req, res) => {
+      const tableNo = toInt(req.params.tableNo);
+      if (tableNo === null) return res.status(400).json({ message: 'Unknown table.' });
+      const deviceCode = String(req.body?.deviceCode ?? '').trim();
+      if (!/^[A-Za-z0-9-]{1,20}$/.test(deviceCode)) {
+        return res.status(400).json({ message: 'Device code must be 1 to 20 letters, numbers or dashes.' });
+      }
+      const result = await db.assignDevice({ tableNo, deviceCode });
+      if (!result?.success) {
+        const message = result?.message ?? 'Could not connect the device.';
+        const status = /does not exist/i.test(message) ? 404 : /already connected/i.test(message) ? 409 : 400;
+        return res.status(status).json({ message });
       }
       return res.json({ message: result.message });
     })

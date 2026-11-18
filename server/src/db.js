@@ -122,6 +122,27 @@ export function createDb(dbConfig) {
     );
   }
 
+  async function assignDevice({ tableNo, deviceCode }) {
+    return oneOf(
+      await run('usp_Device_Assign', [
+        ['TableNo', sql.Int, tableNo],
+        ['DeviceCode', sql.NVarChar(20), deviceCode],
+      ])
+    );
+  }
+
+  // HARDWARE HOOK: one noise reading from a device. Runs usp_Device_Reading (the logic goes there).
+  // Returns { success, message, threshold, status } or null.
+  async function recordDeviceReading({ deviceCode, level, receivedAt }) {
+    return oneOf(
+      await run('usp_Device_Reading', [
+        ['DeviceCode', sql.NVarChar(20), deviceCode],
+        ['Level', sql.Int, level],
+        ['ReceivedAt', sql.DateTime2(0), receivedAt],
+      ])
+    );
+  }
+
   async function getRewardSessions() {
     return rowsOf(await run('usp_Rewards_Sessions'));
   }
@@ -210,6 +231,17 @@ export function createDb(dbConfig) {
     );
   }
 
+  // newTableNo and seatCount are both optional (null = leave as is). Runs usp_Table_Update.
+  async function updateTable({ tableNo, newTableNo, seatCount }) {
+    return oneOf(
+      await run('usp_Table_Update', [
+        ['TableNo', sql.Int, tableNo],
+        ['NewTableNo', sql.Int, newTableNo],
+        ['SeatCount', sql.Int, seatCount],
+      ])
+    );
+  }
+
   // changes: [{ tableNo, col, row, width, height, seats? }], changed tables only.
   async function saveLayout(changes) {
     return oneOf(await run('usp_Layout_Save', [['Json', sql.NVarChar(sql.MAX), JSON.stringify(changes)]]));
@@ -230,6 +262,8 @@ export function createDb(dbConfig) {
     startMaintenance,
     endMaintenance,
     setDeviceThreshold,
+    assignDevice,
+    recordDeviceReading,
     getRewardSessions,
     getHistory,
     closeStaleSessions,
@@ -240,6 +274,7 @@ export function createDb(dbConfig) {
     endSession,
     addTable,
     setTableSeats,
+    updateTable,
     saveLayout,
     clearSampleData,
   };

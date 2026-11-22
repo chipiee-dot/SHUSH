@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Console() {
@@ -18,12 +19,7 @@ export default function Console() {
       <main className="w-full max-w-3xl bg-shush-white border border-shush-line rounded-[2.5rem] shadow-2xl p-8 sm:p-12">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <svg aria-hidden="true" className="h-8 w-8 text-shush-orange" fill="currentColor" viewBox="0 0 32 32">
-              <rect height="12" rx="1.75" width="3.5" x="4" y="10" />
-              <rect height="20" rx="1.75" width="3.5" x="10.5" y="6" />
-              <rect height="26" rx="1.75" width="3.5" x="17" y="3" />
-              <rect height="12" rx="1.75" width="3.5" x="23.5" y="10" />
-            </svg>
+            <Logo className="h-8 w-8 text-shush-orange" />
             <span className="text-xl font-bold tracking-wider text-shush-ink">SHUSH</span>
           </div>
           <button

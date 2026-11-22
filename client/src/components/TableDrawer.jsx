@@ -10,7 +10,7 @@ import { STATUS_META, formatNumber, formatTime, timeAgo } from '../lib/format.js
  * Focus moves to the heading when it first opens. Closing (button or Esc) is handled by the parent,
  * which also returns focus to the tile.
  */
-export default function TableDrawer({ table, isAdmin, onClose }) {
+export default function TableDrawer({ table, onClose }) {
   const headingRef = useRef(null);
 
   // Runs on open only: the drawer stays mounted when polling refreshes or another tile is picked.
@@ -108,26 +108,22 @@ export default function TableDrawer({ table, isAdmin, onClose }) {
         </p>
       )}
 
-      {(table.occupancy.seated > 0 || isAdmin) && (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {table.occupancy.seated > 0 && (
-            <Link
-              to={`/console/students?table=${table.tableNo}`}
-              className="inline-block rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-semibold text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
-            >
-              View seated students
-            </Link>
-          )}
-          {isAdmin && (
-            <Link
-              to={`/console/settings?table=${table.tableNo}`}
-              className="inline-block rounded-xl bg-shush-orange px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
-            >
-              Edit table
-            </Link>
-          )}
-        </div>
-      )}
+      <div className="mt-5 flex flex-wrap gap-2">
+        {table.occupancy.seated > 0 && (
+          <Link
+            to={`/console/students?table=${table.tableNo}`}
+            className="inline-block rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-semibold text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+          >
+            View seated students
+          </Link>
+        )}
+        <Link
+          to={`/console/settings?table=${table.tableNo}`}
+          className="inline-block rounded-xl bg-shush-orange px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
+        >
+          Edit table
+        </Link>
+      </div>
     </aside>
   );
 }

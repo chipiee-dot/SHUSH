@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
 import Logo from './Logo.jsx';
 import NotificationsMenu from './NotificationsMenu.jsx';
 import ProfileMenu from './ProfileMenu.jsx';
@@ -36,7 +35,6 @@ const LINKS = [
   {
     to: '/console/settings',
     label: 'Settings',
-    adminOnly: true,
     icon: NAV_ICONS.settings,
   },
 ];
@@ -49,10 +47,8 @@ function getPageName(pathname) {
 }
 
 export default function FacultyShell() {
-  const { user } = useAuth();
   const location = useLocation();
-  const isAdmin = user?.role === 'Admin';
-  const links = LINKS.filter((link) => !link.adminOnly || isAdmin);
+  const links = LINKS;
   const pageName = getPageName(location.pathname);
 
   // The page scrolls inside the shell, not the browser window.

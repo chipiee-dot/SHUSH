@@ -71,8 +71,8 @@ export const api = {
     request('/student/session', { method: 'POST', body: { tableNo } }),
   studentEndSession: () => request('/student/session/end', { method: 'POST' }),
 
-  // Settings (administrators only)
-  adminTables: () => request('/settings/tables'),
+  // Settings (faculty)
+  facultyTables: () => request('/settings/tables'),
   addTable: (fields) => request('/settings/tables', { method: 'POST', body: fields }),
   setTableSeats: (tableNo, seats) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { seats } }),

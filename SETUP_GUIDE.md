@@ -342,7 +342,7 @@ This runs (via `concurrently`):
 - `POST /api/student/checkin` - Start a session at a table
 - `POST /api/student/checkout` - End the current session
 
-### Settings (Admin Only)
+### Settings (Faculty)
 - `GET /api/settings/devices` - Device list with thresholds
 - `PUT /api/settings/devices/:id` - Update device alert thresholds
 - `POST /api/settings/tables` - Add a new table

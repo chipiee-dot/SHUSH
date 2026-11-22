@@ -11,7 +11,7 @@ import { isCompleteFacultyId } from '../lib/facultyId.js';
 
 const SLIDES = [
   { title: 'One account, whole console', text: 'Dashboard, Table layout, Rewards and History share one Faculty ID.' },
-  { title: 'Admins stay in control', text: 'Administrators can add tables and adjust device settings.' },
+  { title: 'Faculty stay in control', text: 'Faculty can add tables and adjust device settings.' },
   { title: 'Students stay simple', text: 'Students check in with just their student number.' },
 ];
 

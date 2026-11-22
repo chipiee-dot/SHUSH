@@ -139,7 +139,7 @@
 .tl-modal { animation: tl-modal-in 0.2s ease-out both; }
 @keyframes tl-modal-in { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
 
-/* ---- Edit mode (admins rearrange the floor plan) ---- */
+/* ---- Edit mode (faculty rearrange the floor plan) ---- */
 /* Cell guides: the 12-column grid made visible. They never take clicks. */
 .tl-cell {
   pointer-events: none;

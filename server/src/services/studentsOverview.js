@@ -1,5 +1,5 @@
 // Aggregates logged-in student sessions, completed visits, and the registered
-// student directory for the Faculty/Admin console Students page.
+// student directory for the Faculty console Students page.
 
 function formatFallbackName(row) {
   if (row?.fullName) return row.fullName;

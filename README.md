@@ -29,7 +29,7 @@ SHUSH/
 1. Run `database/SHUSH.sql` (creates the `SHUSH` database, tables and procedures). Safe to run again.
 2. Edit the password in `database/create_app_login.sql`, then run it. This creates the `shush_app` login and grants it the procedures. Safe to run again.
 3. Optional, for demos: run `database/sample_data.sql`. It adds 8 tables, 6 sample devices and about 30 days of sample sessions. Everything is labelled "Sample data".
-4. To make someone an administrator (needed for Settings), run the `UPDATE` line at the top of the Faculty section in `SHUSH.sql` with their Faculty ID.
+4. Faculty have one role: every faculty account can use every page, including Settings. Existing databases lose the old `Role` column when `SHUSH.sql` runs.
 5. SQL Server must allow **SQL Server Authentication** (Server properties → Security → *SQL Server and Windows Authentication mode*; restart the service) and **TCP/IP** (SQL Server Configuration Manager → Network Configuration → TCP/IP → Enabled; restart).
    The Node driver cannot use Windows Authentication.
 
@@ -91,15 +91,15 @@ npm start          # serves the API and the built site on http://localhost:3001
 
 | Page | Route | Who |
 | --- | --- | --- |
-| Dashboard: summary, device status, recent alerts, maintenance mode | `/console/dashboard` | Faculty and admins |
-| Table layout: floor plan, seats, live status. **Edit layout** to move and resize tables | `/console/layout` | Faculty and admins |
-| Rewards: most frequent, quietest, quiet streak (this week or month) | `/console/rewards` | Faculty and admins |
-| History: alerts, maintenance and sessions, with Excel and CSV export | `/console/history` | Faculty and admins |
-| Settings: device alert thresholds | `/console/settings` | Administrators only |
+| Dashboard: summary, device status, recent alerts, maintenance mode | `/console/dashboard` | Faculty |
+| Table layout: floor plan, seats, live status. **Edit layout** to move and resize tables | `/console/layout` | Faculty |
+| Rewards: most frequent, quietest, quiet streak (this week or month) | `/console/rewards` | Faculty |
+| History: alerts, maintenance and sessions, with Excel and CSV export | `/console/history` | Faculty |
+| Settings: device alert thresholds | `/console/settings` | Faculty |
 
 The top bar has notifications (recent alerts and maintenance ending soon) and the profile menu with sign out.
 
-API routes: `GET /api/dashboard`, `GET /api/layout`, `GET|POST /api/maintenance`, `POST /api/maintenance/:id/end`, `GET /api/notifications`, `GET /api/rewards?period=week|month`, `GET /api/history`, `PUT /api/settings/layout` (any signed-in faculty, saves moved and resized tables), and for administrators `GET|PUT /api/settings/devices`.
+API routes: `GET /api/dashboard`, `GET /api/layout`, `GET|POST /api/maintenance`, `POST /api/maintenance/:id/end`, `GET /api/notifications`, `GET /api/rewards?period=week|month`, `GET /api/history`, and the Settings routes under `/api/settings/...` (device thresholds, tables, layout, working hours), all for any signed-in faculty.
 
 Run the server tests with `npm test --prefix server`.
 
@@ -136,9 +136,9 @@ On **History**, **Export** offers two files for the rows currently shown (same f
 
 File names: `shush-history-<type>-<YYYY-MM-DD>.xlsx` / `.csv`.
 
-### Table management (administrators)
+### Table management
 
-On **Settings**, administrators can add a table by its number and seat count. Column and row are optional; if left empty, the table is placed in the next free space (it can be moved afterwards with **Edit layout**). They can also change a table's seats (never below the number currently seated), and remove the sample data once real data is in use.
+On **Settings**, faculty can add a table by its number and seat count. Column and row are optional; if left empty, the table is placed in the next free space (it can be moved afterwards with **Edit layout**). They can also change a table's seats (never below the number currently seated), and remove the sample data once real data is in use.
 
 ## Not built yet
 

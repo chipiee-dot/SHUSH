@@ -16,7 +16,6 @@ export default function ProfileMenu() {
   useClickOutside(ref, open && !confirming, close);
 
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
-  const roleLabel = user?.role === 'Admin' ? 'Administrator' : 'Faculty';
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -68,7 +67,7 @@ export default function ProfileMenu() {
             </div>
             <div className="mt-0.5 break-all text-xs text-shush-muted">{user?.email}</div>
             <div className="mt-2 flex items-center gap-2 text-xs">
-              <span className="rounded-full bg-shush-goldSoft px-2 py-0.5 font-medium text-shush-orange700">{roleLabel}</span>
+              <span className="rounded-full bg-shush-goldSoft px-2 py-0.5 font-medium text-shush-orange700">Faculty</span>
               <span className="text-shush-muted">{user?.facultyId}</span>
             </div>
           </div>

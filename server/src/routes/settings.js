@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth, requireRole } from '../middleware/requireAuth.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 import { sendDatabaseError, toInt, wrap } from './helpers.js';
 import { findFreeSpot } from '../services/tablePlacement.js';
 import { validateLayoutChanges } from '../services/layoutRules.js';
@@ -8,14 +8,14 @@ import { getRuntimeWorkingHours, setRuntimeWorkingHours } from '../services/nois
 const MAX_THRESHOLD = 4095; // ESP32 ADC is 12-bit
 const MAX_DEVICE_CODE = 20;
 
-// Device settings are for administrators only. The server checks this on every request.
+// Settings are for signed-in faculty. The server checks the sign-in on every request.
 export function createSettingsRouter(db, config) {
   const router = Router();
-  const adminOnly = [requireAuth(config), requireRole('Admin')];
+  const facultyOnly = [requireAuth(config)];
 
   router.get(
     '/devices',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const rows = await db.getLayout();
       const devices = rows
@@ -34,7 +34,7 @@ export function createSettingsRouter(db, config) {
 
   router.put(
     '/devices/:deviceCode',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const deviceCode = String(req.params.deviceCode ?? '');
       if (!deviceCode || deviceCode.length > MAX_DEVICE_CODE) {
@@ -60,7 +60,7 @@ export function createSettingsRouter(db, config) {
 
   router.get(
     '/tables',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const rows = await db.getLayout();
       res.json({
@@ -80,7 +80,7 @@ export function createSettingsRouter(db, config) {
   // Add a table. Give a column and row to place it, or leave both empty to place it automatically.
   router.post(
     '/tables',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const body = req.body ?? {};
       const tableNo = toInt(body.tableNo);
@@ -130,7 +130,7 @@ export function createSettingsRouter(db, config) {
 
   router.put(
     '/tables/:tableNo',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const tableNo = toInt(req.params.tableNo);
       if (tableNo === null) return res.status(400).json({ message: 'Unknown table.' });
@@ -164,7 +164,7 @@ export function createSettingsRouter(db, config) {
   // Connect a device to a table, or change the table's device code. Body: { deviceCode }.
   router.put(
     '/tables/:tableNo/device',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const tableNo = toInt(req.params.tableNo);
       if (tableNo === null) return res.status(400).json({ message: 'Unknown table.' });
@@ -205,7 +205,7 @@ export function createSettingsRouter(db, config) {
   // Removes everything marked as sample data. Real records are kept.
   router.post(
     '/sample-data/clear',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const result = await db.clearSampleData();
       if (!result?.success) return res.status(400).json({ message: result?.message ?? 'Could not remove sample data.' });
@@ -216,7 +216,7 @@ export function createSettingsRouter(db, config) {
   // ---- Working hours configuration ----------------------------------------
   router.get(
     '/working-hours',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const dbHours = db.getWorkingHours ? await db.getWorkingHours().catch(() => null) : null;
       const workingHours =
@@ -233,7 +233,7 @@ export function createSettingsRouter(db, config) {
 
   router.put(
     '/working-hours',
-    adminOnly,
+    facultyOnly,
     wrap(async (req, res) => {
       const body = req.body ?? {};
       const startHour = toInt(body.startHour);

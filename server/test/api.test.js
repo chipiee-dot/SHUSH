@@ -77,10 +77,7 @@ const fakeDb = {
 
 let server;
 let base;
-const cookieFor = (role) =>
-  `shush_session=${jwt.sign({ id: 1, facultyId: 'FAC-2024-0001', firstName: 'Jane', lastName: 'Doe', email: 'j@x.com', role }, SECRET)}`;
-const FACULTY = cookieFor('Faculty');
-const ADMIN = cookieFor('Admin');
+const FACULTY = `shush_session=${jwt.sign({ id: 1, facultyId: 'FAC-2024-0001', firstName: 'Jane', lastName: 'Doe', email: 'j@x.com' }, SECRET)}`;
 
 async function call(method, path, { cookie, body } = {}) {
   const res = await fetch(base + path, {
@@ -142,21 +139,21 @@ test('ending a window that is not active returns 404', async () => {
   assert.equal(status, 404);
 });
 
-test('settings are admin only', async () => {
-  assert.equal((await call('GET', '/api/settings/devices', { cookie: FACULTY })).status, 403);
-  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { cookie: FACULTY, body: { threshold: 1500 } })).status, 403);
+test('settings need a faculty sign-in', async () => {
   assert.equal((await call('GET', '/api/settings/devices')).status, 401);
+  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { body: { threshold: 1500 } })).status, 401);
+  assert.equal((await call('GET', '/api/settings/devices', { cookie: FACULTY })).status, 200);
 });
 
-test('admin can read and change a device threshold, with validation', async () => {
-  const list = await call('GET', '/api/settings/devices', { cookie: ADMIN });
+test('faculty can read and change a device threshold, with validation', async () => {
+  const list = await call('GET', '/api/settings/devices', { cookie: FACULTY });
   assert.equal(list.status, 200);
   assert.equal(list.body.devices[0].deviceCode, 'SHUSH-T01');
 
-  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { cookie: ADMIN, body: { threshold: 5000 } })).status, 400);
-  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { cookie: ADMIN, body: { threshold: 1.5 } })).status, 400);
-  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { cookie: ADMIN, body: { threshold: 1500 } })).status, 200);
-  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T99', { cookie: ADMIN, body: { threshold: 1500 } })).status, 404);
+  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { cookie: FACULTY, body: { threshold: 5000 } })).status, 400);
+  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { cookie: FACULTY, body: { threshold: 1.5 } })).status, 400);
+  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T01', { cookie: FACULTY, body: { threshold: 1500 } })).status, 200);
+  assert.equal((await call('PUT', '/api/settings/devices/SHUSH-T99', { cookie: FACULTY, body: { threshold: 1500 } })).status, 404);
 });
 
 test('history validates filters and passes a whole-day range to the database', async () => {
@@ -196,22 +193,22 @@ test('noise analytics validates period and returns working-hour buckets', async 
   assert.equal(body.hours[9].label, '5 PM');
 });
 
-test('working hours settings require admin role and validate hour range', async () => {
-  assert.equal((await call('GET', '/api/settings/working-hours', { cookie: FACULTY })).status, 403);
-  assert.equal((await call('PUT', '/api/settings/working-hours', { cookie: FACULTY, body: { startHour: 7, endHour: 19, excludeWeekends: true } })).status, 403);
+test('working hours settings need a sign-in and validate the hour range', async () => {
+  assert.equal((await call('GET', '/api/settings/working-hours')).status, 401);
+  assert.equal((await call('PUT', '/api/settings/working-hours', { body: { startHour: 7, endHour: 19, excludeWeekends: true } })).status, 401);
 
-  const invalid = await call('PUT', '/api/settings/working-hours', { cookie: ADMIN, body: { startHour: 18, endHour: 8, excludeWeekends: false } });
+  const invalid = await call('PUT', '/api/settings/working-hours', { cookie: FACULTY, body: { startHour: 18, endHour: 8, excludeWeekends: false } });
   assert.equal(invalid.status, 400);
 
-  const saved = await call('PUT', '/api/settings/working-hours', { cookie: ADMIN, body: { startHour: 7, endHour: 19, excludeWeekends: true } });
+  const saved = await call('PUT', '/api/settings/working-hours', { cookie: FACULTY, body: { startHour: 7, endHour: 19, excludeWeekends: true } });
   assert.equal(saved.status, 200);
   assert.deepEqual(saved.body.workingHours, { startHour: 7, endHour: 19, excludeWeekends: true });
 
-  const fetched = await call('GET', '/api/settings/working-hours', { cookie: ADMIN });
+  const fetched = await call('GET', '/api/settings/working-hours', { cookie: FACULTY });
   assert.equal(fetched.status, 200);
   assert.deepEqual(fetched.body.workingHours, { startHour: 7, endHour: 19, excludeWeekends: true });
 
-  await call('PUT', '/api/settings/working-hours', { cookie: ADMIN, body: { startHour: 8, endHour: 17, excludeWeekends: false } });
+  await call('PUT', '/api/settings/working-hours', { cookie: FACULTY, body: { startHour: 8, endHour: 17, excludeWeekends: false } });
 });
 
 test('students endpoint lists active sessions and can end a student session', async () => {
@@ -234,19 +231,19 @@ test('saving the layout needs sign-in and is validated', async () => {
   assert.equal((await call('PUT', '/api/settings/layout', { body })).status, 401);
   assert.equal((await call('PUT', '/api/settings/layout', { cookie: FACULTY, body })).status, 200);
 
-  const ok = await call('PUT', '/api/settings/layout', { cookie: ADMIN, body });
+  const ok = await call('PUT', '/api/settings/layout', { cookie: FACULTY, body });
   assert.equal(ok.status, 200);
   assert.deepEqual(fakeDb.lastLayout, body.tables);
 
   // Table 2 onto Table 1 (columns 0-1, rows 0-1)
   const overlap = await call('PUT', '/api/settings/layout', {
-    cookie: ADMIN, body: { tables: [{ tableNo: 2, col: 0, row: 0, width: 2, height: 2 }] },
+    cookie: FACULTY, body: { tables: [{ tableNo: 2, col: 0, row: 0, width: 2, height: 2 }] },
   });
   assert.equal(overlap.status, 409);
 
   // Column 11 with width 2 runs off the 12-column grid
   const outside = await call('PUT', '/api/settings/layout', {
-    cookie: ADMIN, body: { tables: [{ tableNo: 2, col: 11, row: 0, width: 2, height: 2 }] },
+    cookie: FACULTY, body: { tables: [{ tableNo: 2, col: 11, row: 0, width: 2, height: 2 }] },
   });
   assert.equal(outside.status, 400);
 });

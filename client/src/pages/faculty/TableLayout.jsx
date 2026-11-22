@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
-import { useAuth } from '../../context/AuthContext.jsx';
 import { useErrorToast, useToast } from '../../components/Toast.jsx';
 import Card from '../../components/Card.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
@@ -200,7 +199,6 @@ function AddTableModal({ busy, form, onChange, onSubmit, onClose }) {
 }
 
 export default function TableLayout() {
-  const { user } = useAuth();
   const toast = useToast();
   const { data, error, loading, updatedAt, reload } = usePolling(api.layout, REFRESH_MS);
   useErrorToast(error);
@@ -221,8 +219,6 @@ export default function TableLayout() {
   const canvasRef = useRef(null);
   const editor = useLayoutEditor({ tables: data?.tables ?? NO_TABLES, canvasRef });
   const openerRef = useRef(null);
-
-  const isAdmin = user?.role === 'Admin';
 
   const closeDrawer = useCallback(() => {
     const no = selectedNo;
@@ -373,11 +369,9 @@ export default function TableLayout() {
                   Edit layout
                 </button>
               ))}
-            {isAdmin && (
-              <GlowButton onClick={openAdd} className={PRIMARY_BTN}>
-                Add table
-              </GlowButton>
-            )}
+            <GlowButton onClick={openAdd} className={PRIMARY_BTN}>
+              Add table
+            </GlowButton>
           </div>
         )}
       </PageHeader>
@@ -403,8 +397,8 @@ export default function TableLayout() {
             {tables.length === 0 ? (
               <EmptyState
                 title="No tables yet"
-                text={isAdmin ? 'Add the first table to start the floor plan.' : 'An admin needs to set up the tables first.'}
-                action={isAdmin && <GlowButton onClick={openAdd} className={PRIMARY_BTN}>Add table</GlowButton>}
+                text="Add the first table to start the floor plan."
+                action={<GlowButton onClick={openAdd} className={PRIMARY_BTN}>Add table</GlowButton>}
               />
             ) : (
               <>
@@ -492,23 +486,19 @@ export default function TableLayout() {
             )}
             <p className="mt-4 text-xs text-shush-inkSoft">
               {editing ? 'Editing the floor plan. Filled chairs are students currently seated.' : 'Select a table to see its details. Filled chairs are students currently seated.'}
-              {isAdmin && (
-                <>
-                  {' '}
-                  <Link
-                    to="/console/settings"
-                    className="rounded font-medium text-shush-orange700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-1"
-                  >
-                    Edit seat counts in Settings
-                  </Link>
-                  .
-                </>
-              )}
+              {' '}
+              <Link
+                to="/console/settings"
+                className="rounded font-medium text-shush-orange700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-1"
+              >
+                Edit seat counts in Settings
+              </Link>
+              .
             </p>
           </Card>
         </div>
 
-        {selected && <TableDrawer table={selected} isAdmin={isAdmin} onClose={closeDrawer} />}
+        {selected && <TableDrawer table={selected} onClose={closeDrawer} />}
       </div>
 
       {/* Keeps the last tiles reachable above the bottom sheet on small screens. */}

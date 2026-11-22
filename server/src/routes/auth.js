@@ -125,7 +125,6 @@ export function createAuthRouter(db, config) {
         firstName: row.FirstName,
         lastName: row.LastName,
         email: row.Email,
-        role: row.Role === 'Admin' ? 'Admin' : 'Faculty',
       };
 
       const token = jwt.sign(user, config.jwtSecret, {
@@ -157,8 +156,8 @@ export function createAuthRouter(db, config) {
 
   // ---- GET /api/auth/me -----------------------------------------------------
   router.get('/me', requireAuth(config), (req, res) => {
-    const { id, facultyId, firstName, lastName, email, role } = req.user;
-    res.json({ user: { id, facultyId, firstName, lastName, email, role: role ?? 'Faculty' } });
+    const { id, facultyId, firstName, lastName, email } = req.user;
+    res.json({ user: { id, facultyId, firstName, lastName, email } });
   });
 
   return router;

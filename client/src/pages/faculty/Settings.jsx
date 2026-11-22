@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
-import { useAuth } from '../../context/AuthContext.jsx';
 import Card from '../../components/Card.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -88,32 +87,14 @@ const CLOCK_ICON = icon(
   </>
 );
 
-// Only administrators see the settings. The server checks the same rule on every request.
+// Settings are open to every signed-in faculty member. The server requires a faculty sign-in on every request.
 export default function Settings() {
-  const { user } = useAuth();
-  if (user?.role !== 'Admin') {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Settings" icon={NAV_ICONS.settings} />
-        <Card>
-          <EmptyState
-            title="Administrators only"
-            text="Settings are available to administrators. If you should have access, ask an administrator to update your role."
-          />
-        </Card>
-      </div>
-    );
-  }
-  return <AdminSettings />;
-}
-
-function AdminSettings() {
   const [params] = useSearchParams();
   const focusNo = Number(params.get('table')) || null; // "Edit table" on the floor plan opens that table here
   const [editingNo, setEditingNo] = useState(focusNo); // one table is edited at a time
   const [showAttention, setShowAttention] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  const tablesQ = usePolling(api.adminTables, 0);
+  const tablesQ = usePolling(api.facultyTables, 0);
   const devicesQ = usePolling(api.devices, 0);
   useErrorToast(tablesQ.error);
   useErrorToast(devicesQ.error);
@@ -147,7 +128,7 @@ function AdminSettings() {
       <PageHeader
         title="Settings"
         icon={NAV_ICONS.settings}
-        subtitle="Tables, seats and device thresholds. Administrators only."
+        subtitle="Tables, seats and device thresholds."
       >
         <div className="flex flex-wrap items-center gap-2">
           <button

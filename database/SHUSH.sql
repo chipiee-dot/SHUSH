@@ -39,18 +39,26 @@ BEGIN
 END
 GO
 
--- 2b) ROLE: 'Faculty' (default) or 'Admin' (can change device settings)
-IF COL_LENGTH(N'dbo.Faculty', N'Role') IS NULL
+-- 2b) Faculty have one role, so the old Role column (Faculty / Admin) is removed.
+-- Existing databases only: its own batch, because SQL Server checks a whole batch before
+-- running it. Safe to run any number of times.
+IF COL_LENGTH(N'dbo.Faculty', N'Role') IS NOT NULL
 BEGIN
-    ALTER TABLE dbo.Faculty ADD Role NVARCHAR(10) NOT NULL
-        CONSTRAINT DF_Faculty_Role DEFAULT (N'Faculty');
-    ALTER TABLE dbo.Faculty ADD CONSTRAINT CK_Faculty_Role
-        CHECK (Role IN (N'Faculty', N'Admin'));
+    DECLARE @drop NVARCHAR(MAX) = N'';
+    DECLARE @colId INT = COLUMNPROPERTY(OBJECT_ID(N'dbo.Faculty'), N'Role', 'ColumnId');
+    SELECT @drop += N'ALTER TABLE dbo.Faculty DROP CONSTRAINT ' + QUOTENAME(name) + N'; '
+    FROM sys.check_constraints
+    -- CK_Faculty_Role was added with ALTER TABLE, so SQL Server lists it as a table-level check
+    -- (parent_column_id = 0); match it by its text as well.
+    WHERE parent_object_id = OBJECT_ID(N'dbo.Faculty')
+      AND (parent_column_id = @colId OR definition LIKE N'%[[]Role]%');
+    SELECT @drop += N'ALTER TABLE dbo.Faculty DROP CONSTRAINT ' + QUOTENAME(name) + N'; '
+    FROM sys.default_constraints
+    WHERE parent_object_id = OBJECT_ID(N'dbo.Faculty') AND parent_column_id = @colId;
+    SET @drop += N'ALTER TABLE dbo.Faculty DROP COLUMN Role;';
+    EXEC sys.sp_executesql @drop;
 END
 GO
-
--- To make someone an administrator, run (replace the Faculty ID):
---   UPDATE dbo.Faculty SET Role = N'Admin' WHERE FacultyId = N'FAC-2024-8901';
 
 -- 3) SIGN UP ------------------------------------------------------------------
 -- Returns one row: Success (1/0), Message
@@ -158,7 +166,7 @@ BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'Invalid Faculty ID or password.' AS Message,
                CAST(NULL AS INT) AS Id, CAST(NULL AS NVARCHAR(30)) AS FacultyId,
                CAST(NULL AS NVARCHAR(50)) AS FirstName, CAST(NULL AS NVARCHAR(50)) AS LastName,
-               CAST(NULL AS NVARCHAR(254)) AS Email, CAST(NULL AS NVARCHAR(10)) AS Role;
+               CAST(NULL AS NVARCHAR(254)) AS Email;
         RETURN;
     END
 
@@ -167,14 +175,14 @@ BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'This account has been deactivated.' AS Message,
                CAST(NULL AS INT) AS Id, CAST(NULL AS NVARCHAR(30)) AS FacultyId,
                CAST(NULL AS NVARCHAR(50)) AS FirstName, CAST(NULL AS NVARCHAR(50)) AS LastName,
-               CAST(NULL AS NVARCHAR(254)) AS Email, CAST(NULL AS NVARCHAR(10)) AS Role;
+               CAST(NULL AS NVARCHAR(254)) AS Email;
         RETURN;
     END
 
     UPDATE dbo.Faculty SET LastLoginAt = SYSUTCDATETIME() WHERE Id = @Id;
 
     SELECT CAST(1 AS BIT) AS Success, N'Login successful.' AS Message,
-           Id, FacultyId, FirstName, LastName, Email, Role
+           Id, FacultyId, FirstName, LastName, Email
     FROM dbo.Faculty
     WHERE Id = @Id;
 END
@@ -253,7 +261,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_DeviceHourlyReading_H
     CREATE INDEX IX_DeviceHourlyReading_HourUtc ON dbo.DeviceHourlyReading (HourUtc);
 GO
 
--- 6c) LIBRARY SETTINGS (single-row admin configuration) -------------------------
+-- 6c) LIBRARY SETTINGS (single-row configuration) -------------------------
 IF OBJECT_ID(N'dbo.LibrarySetting', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.LibrarySetting

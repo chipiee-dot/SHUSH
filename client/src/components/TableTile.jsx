@@ -63,7 +63,7 @@ const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: r
 /**
  * One table. variant 'plan' is placed on the 12-column grid; 'list' is a full-width card for small screens.
  * dimmed fades the tile when a status filter is on (it stays in place so the layout does not jump).
- * edit (admin floor-plan editing, plan variant only): the editor from useLayoutEditor. The tile then becomes a
+ * edit (floor-plan editing, plan variant only): the editor from useLayoutEditor. The tile then becomes a
  * draggable group: pointer drag with snap, and arrow keys to move one cell. Dragging moves it with transform only.
  * In edit mode it also has a resize handle on the right edge and Shift+Left/Right keys to change the width (the height is fixed at 2).
  * Tables taller than wide put their chairs on the left and right edges.

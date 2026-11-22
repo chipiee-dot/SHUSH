@@ -66,7 +66,7 @@ const fakeDb = {
   getRecentAlerts: async () => [],
 };
 
-const faculty = (role) => `shush_session=${jwt.sign({ id: 1, facultyId: 'FAC-2024-0001', firstName: 'Jane', lastName: 'Doe', email: 'j@x.com', role }, SECRET)}`;
+const faculty = () => `shush_session=${jwt.sign({ id: 1, facultyId: 'FAC-2024-0001', firstName: 'Jane', lastName: 'Doe', email: 'j@x.com' }, SECRET)}`;
 const student = () => `shush_student=${jwt.sign({ id: 1, studentNo: '21-0001', firstName: 'Juan', lastName: 'Dela Cruz', middleInitial: 'M', section: 'BSIT-3D', role: 'Student' }, SECRET)}`;
 
 let server, base;
@@ -118,7 +118,7 @@ test('login is two steps: lookup shows the name, then login sets a student cooki
 
 test('student routes need a student cookie, and faculty cookies do not work there', async () => {
   assert.equal((await call('GET', '/api/student/me')).status, 401);
-  assert.equal((await call('GET', '/api/student/me', { cookie: faculty('Admin') })).status, 401);
+  assert.equal((await call('GET', '/api/student/me', { cookie: faculty() })).status, 401);
   assert.equal((await call('GET', '/api/dashboard', { cookie: student() })).status, 401);
 });
 
@@ -168,26 +168,26 @@ test('a full table is refused with a clear message and shows as not open', async
   sessions = sessions.filter((s) => s.id !== 91 && s.id !== 92);
 });
 
-test('admins can add a table by number and change its seats; students and faculty cannot', async () => {
-  const add = await call('POST', '/api/settings/tables', { cookie: faculty('Admin'), body: { tableNo: 9, seats: 4 } });
+test('faculty can add a table by number and change its seats; students cannot', async () => {
+  const add = await call('POST', '/api/settings/tables', { cookie: faculty(), body: { tableNo: 9, seats: 4 } });
   assert.equal(add.status, 201);
   assert.ok(tables.find((t) => t.tableNo === 9), 'table 9 was added');
 
-  assert.equal((await call('POST', '/api/settings/tables', { cookie: faculty('Faculty'), body: { tableNo: 10, seats: 4 } })).status, 403);
+  assert.equal((await call('POST', '/api/settings/tables', { body: { tableNo: 10, seats: 4 } })).status, 401);
   assert.equal((await call('POST', '/api/settings/tables', { cookie: student(), body: { tableNo: 10, seats: 4 } })).status, 401);
 
-  assert.equal((await call('POST', '/api/settings/tables', { cookie: faculty('Admin'), body: { tableNo: 0, seats: 4 } })).status, 400);
-  assert.equal((await call('POST', '/api/settings/tables', { cookie: faculty('Admin'), body: { tableNo: 10, seats: 25 } })).status, 400);
-  assert.equal((await call('POST', '/api/settings/tables', { cookie: faculty('Admin'), body: { tableNo: 10, seats: 4, col: 3 } })).status, 400);
+  assert.equal((await call('POST', '/api/settings/tables', { cookie: faculty(), body: { tableNo: 0, seats: 4 } })).status, 400);
+  assert.equal((await call('POST', '/api/settings/tables', { cookie: faculty(), body: { tableNo: 10, seats: 25 } })).status, 400);
+  assert.equal((await call('POST', '/api/settings/tables', { cookie: faculty(), body: { tableNo: 10, seats: 4, col: 3 } })).status, 400);
 
-  const seats = await call('PUT', '/api/settings/tables/9', { cookie: faculty('Admin'), body: { seats: 6 } });
+  const seats = await call('PUT', '/api/settings/tables/9', { cookie: faculty(), body: { seats: 6 } });
   assert.equal(seats.status, 200);
   assert.equal(tables.find((t) => t.tableNo === 9).seatCount, 6);
 });
 
 test('seats cannot drop below the number already seated', async () => {
   [99, 100, 101].forEach((id, i) => sessions.push({ id, studentId: 7 + i, tableNo: 1, startedAt: new Date(), endedAt: null }));
-  const res = await call('PUT', '/api/settings/tables/1', { cookie: faculty('Admin'), body: { seats: 2 } });
+  const res = await call('PUT', '/api/settings/tables/1', { cookie: faculty(), body: { seats: 2 } });
   assert.equal(res.status, 400);
   assert.match(res.body.message, /3 students seated/);
   sessions = sessions.filter((s) => ![99, 100, 101].includes(s.id));

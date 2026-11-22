@@ -1,5 +1,5 @@
 // Finds a free 2x2 spot on the 12-column floor plan for a new table.
-// Used when an admin adds a table without typing a position.
+// Used when faculty add a table without typing a position.
 
 export const GRID_COLUMNS = 12;
 export const DEFAULT_SIZE = 2;

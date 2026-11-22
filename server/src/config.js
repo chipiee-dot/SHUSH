@@ -42,9 +42,8 @@ export const config = {
     deviceOfflineAfterMs: num(env.DEVICE_OFFLINE_SECONDS, 120) * 1000,
 
     db: {
-        // FORCE 'localhost' so Node.js allows the TLS connection
-        server: 'localhost',
-        port: 1433,
+        server: env.DB_SERVER || 'localhost',
+        ...(env.DB_PORT ? { port: Number(env.DB_PORT) } : env.DB_INSTANCE ? {} : { port: 1433 }),
         database: env.DB_DATABASE || 'SHUSH',
         user: env.DB_USER,
         password: env.DB_PASSWORD,
@@ -55,7 +54,8 @@ export const config = {
             encrypt: bool(env.DB_ENCRYPT, true),
             trustServerCertificate: bool(env.DB_TRUST_SERVER_CERT, true),
             enableArithAbort: true,
-            serverName: 'localhost', // Prevents the TLS IP error
+            serverName: env.DB_SERVER || 'localhost',
+            ...(!env.DB_PORT && env.DB_INSTANCE ? { instanceName: env.DB_INSTANCE } : {}),
         },
     },
 };

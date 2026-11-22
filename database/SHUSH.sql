@@ -227,6 +227,51 @@ BEGIN
 END
 GO
 
+IF COL_LENGTH(N'dbo.Device', N'LoudSince') IS NULL
+    ALTER TABLE dbo.Device ADD LoudSince DATETIME2(0) NULL;
+GO
+
+-- 6b) HOURLY ROLLED-UP SENSOR READINGS (ambient + occupied noise per table/hour)
+IF OBJECT_ID(N'dbo.DeviceHourlyReading', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.DeviceHourlyReading
+    (
+        TableId      INT          NOT NULL CONSTRAINT FK_DeviceHourlyReading_Table REFERENCES dbo.LibraryTable (Id),
+        DeviceId     INT          NOT NULL CONSTRAINT FK_DeviceHourlyReading_Device REFERENCES dbo.Device (Id),
+        HourUtc      DATETIME2(0) NOT NULL,
+        ReadingCount INT          NOT NULL,
+        LevelSum     BIGINT       NOT NULL,
+        MinLevel     INT          NOT NULL,
+        MaxLevel     INT          NOT NULL,
+        IsSample     BIT          NOT NULL CONSTRAINT DF_DeviceHourlyReading_Sample DEFAULT (0),
+        CONSTRAINT PK_DeviceHourlyReading PRIMARY KEY (TableId, HourUtc)
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_DeviceHourlyReading_HourUtc')
+    CREATE INDEX IX_DeviceHourlyReading_HourUtc ON dbo.DeviceHourlyReading (HourUtc);
+GO
+
+-- 6c) LIBRARY SETTINGS (single-row admin configuration) -------------------------
+IF OBJECT_ID(N'dbo.LibrarySetting', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.LibrarySetting
+    (
+        Id              INT          NOT NULL CONSTRAINT PK_LibrarySetting PRIMARY KEY CONSTRAINT CK_LibrarySetting_Singleton CHECK (Id = 1),
+        WorkStartHour   TINYINT      NOT NULL CONSTRAINT DF_LibrarySetting_WorkStart DEFAULT (8)  CONSTRAINT CK_LibrarySetting_Start CHECK (WorkStartHour BETWEEN 0 AND 22),
+        WorkEndHour     TINYINT      NOT NULL CONSTRAINT DF_LibrarySetting_WorkEnd   DEFAULT (17) CONSTRAINT CK_LibrarySetting_End   CHECK (WorkEndHour BETWEEN 1 AND 23),
+        ExcludeWeekends BIT          NOT NULL CONSTRAINT DF_LibrarySetting_Weekends  DEFAULT (0),
+        UpdatedAt       DATETIME2(0) NOT NULL CONSTRAINT DF_LibrarySetting_Updated   DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT CK_LibrarySetting_Range CHECK (WorkEndHour > WorkStartHour)
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM dbo.LibrarySetting WHERE Id = 1)
+    INSERT INTO dbo.LibrarySetting (Id, WorkStartHour, WorkEndHour, ExcludeWeekends) VALUES (1, 8, 17, 0);
+GO
+
 -- 7) STUDENTS (only what rewards need; the student side will extend this) -----
 IF OBJECT_ID(N'dbo.Student', N'U') IS NULL
 BEGIN
@@ -579,7 +624,9 @@ GO
 
 -- 18b) HARDWARE HOOK: one noise reading from a device -------------------------
 -- Called by POST /api/device/readings (server/src/routes/device.js).
--- *** NOT IMPLEMENTED YET. The hardware/backend team writes the body below. ***
+-- Records hourly ambient roll-ups (even when no student session is active),
+-- updates open sessions' running average, updates device status and raises
+-- an alert once noise stays above Threshold for 5 continuous seconds.
 -- Returns: Success, Message, Threshold, Status
 CREATE OR ALTER PROCEDURE dbo.usp_Device_Reading
     @DeviceCode NVARCHAR(20),
@@ -588,21 +635,170 @@ CREATE OR ALTER PROCEDURE dbo.usp_Device_Reading
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-    -- TODO 1: find the device (dbo.Device by DeviceCode). If missing, return Success = 0 and a message
-    --         containing "does not exist" (the route turns that into a 404).
-    -- TODO 2: work out the status from @Level and the device's Threshold: QUIET, LOUD or ALERT.
-    --         (MAINTENANCE is decided by dbo.MaintenanceWindow; the server already handles that on display.)
-    -- TODO 3: UPDATE dbo.Device SET LastLevel = @Level, LastStatus = <status>, LastSeenAt = @ReceivedAt.
-    -- TODO 4: ALERT RULE: noise above the threshold for 5 continuous seconds -> INSERT one row into dbo.Alert
-    --         (DeviceId, TableId, SessionId = an open session at that table or NULL, Level, Threshold, TriggeredAt).
-    --         Needs a way to remember when the noise first went over (a column on dbo.Device, or compare with recent readings).
-    -- TODO 5: return Success = 1 with the device's current Threshold and Status, so the device can sync its threshold.
+    DECLARE @DeviceId INT, @TableId INT, @Threshold INT, @LoudSince DATETIME2(0);
+    DECLARE @Status NVARCHAR(12), @HourUtc DATETIME2(0), @OpenSessionId BIGINT;
 
-    SELECT CAST(0 AS BIT) AS Success,
-           N'Device readings are not implemented yet.' AS Message,
-           CAST(NULL AS INT) AS Threshold,
-           CAST(NULL AS NVARCHAR(12)) AS Status;
+    SELECT @DeviceId = Id, @TableId = TableId, @Threshold = Threshold, @LoudSince = LoudSince
+    FROM dbo.Device
+    WHERE DeviceCode = @DeviceCode;
+
+    IF @DeviceId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               N'That device does not exist.' AS Message,
+               CAST(NULL AS INT) AS Threshold,
+               CAST(NULL AS NVARCHAR(12)) AS Status;
+        RETURN;
+    END
+
+    SET @HourUtc = DATEADD(HOUR, DATEDIFF(HOUR, 0, @ReceivedAt), 0);
+
+    BEGIN TRANSACTION;
+
+    UPDATE dbo.DeviceHourlyReading
+       SET DeviceId     = @DeviceId,
+           ReadingCount = ReadingCount + 1,
+           LevelSum     = LevelSum + @Level,
+           MinLevel     = CASE WHEN @Level < MinLevel THEN @Level ELSE MinLevel END,
+           MaxLevel     = CASE WHEN @Level > MaxLevel THEN @Level ELSE MaxLevel END,
+           IsSample     = 0
+     WHERE TableId = @TableId AND HourUtc = @HourUtc;
+
+    IF @@ROWCOUNT = 0
+        INSERT INTO dbo.DeviceHourlyReading (TableId, DeviceId, HourUtc, ReadingCount, LevelSum, MinLevel, MaxLevel, IsSample)
+        VALUES (@TableId, @DeviceId, @HourUtc, 1, @Level, @Level, @Level, 0);
+
+    UPDATE dbo.LibrarySession
+       SET AvgLevel = CASE WHEN AvgLevel IS NULL THEN @Level ELSE (AvgLevel + @Level) / 2 END
+     WHERE TableId = @TableId AND EndedAt IS NULL;
+
+    IF @Level > @Threshold
+    BEGIN
+        IF @LoudSince IS NULL
+        BEGIN
+            SET @LoudSince = @ReceivedAt;
+            SET @Status = N'LOUD';
+        END
+        ELSE IF DATEDIFF(SECOND, @LoudSince, @ReceivedAt) >= 5
+        BEGIN
+            SET @Status = N'ALERT';
+            IF NOT EXISTS (SELECT 1 FROM dbo.Alert WHERE DeviceId = @DeviceId AND TriggeredAt > DATEADD(SECOND, -5, @ReceivedAt))
+            BEGIN
+                SELECT TOP (1) @OpenSessionId = Id
+                FROM dbo.LibrarySession
+                WHERE TableId = @TableId AND EndedAt IS NULL
+                ORDER BY StartedAt DESC;
+
+                INSERT INTO dbo.Alert (DeviceId, TableId, SessionId, Level, Threshold, TriggeredAt, IsSample)
+                VALUES (@DeviceId, @TableId, @OpenSessionId, @Level, @Threshold, @ReceivedAt, 0);
+            END
+            UPDATE dbo.LibrarySession
+               SET HadAlert = 1
+             WHERE TableId = @TableId AND EndedAt IS NULL;
+        END
+        ELSE
+            SET @Status = N'LOUD';
+    END
+    ELSE
+    BEGIN
+        SET @LoudSince = NULL;
+        SET @Status = CASE WHEN @Level >= (@Threshold * 85) / 100 THEN N'LOUD' ELSE N'QUIET' END;
+    END
+
+    UPDATE dbo.Device
+       SET LastLevel = @Level,
+           LastStatus = @Status,
+           LastSeenAt = @ReceivedAt,
+           LoudSince = @LoudSince,
+           IsSample = 0
+     WHERE Id = @DeviceId;
+
+    COMMIT;
+
+    SELECT CAST(1 AS BIT) AS Success,
+           N'Reading recorded.' AS Message,
+           @Threshold AS Threshold,
+           @Status AS Status;
+END
+GO
+
+-- 18c) WORKING-HOURS ANALYTICS: hourly rolled-up sensor readings --------------
+CREATE OR ALTER PROCEDURE dbo.usp_Noise_HourlyReadings
+    @From    DATETIME2(0),
+    @To      DATETIME2(0),
+    @TableNo INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT hr.HourUtc,
+           t.TableNo,
+           CAST(ROUND(hr.LevelSum * 1.0 / NULLIF(hr.ReadingCount, 0), 0) AS INT) AS AvgLevel,
+           hr.MinLevel,
+           hr.MaxLevel,
+           hr.ReadingCount,
+           hr.IsSample
+    FROM dbo.DeviceHourlyReading AS hr
+    JOIN dbo.LibraryTable AS t ON t.Id = hr.TableId
+    WHERE hr.HourUtc >= @From
+      AND hr.HourUtc < @To
+      AND (@TableNo IS NULL OR t.TableNo = @TableNo)
+    ORDER BY hr.HourUtc, t.TableNo;
+END
+GO
+
+-- 18d) SETTINGS: get and save working hours -----------------------------------
+CREATE OR ALTER PROCEDURE dbo.usp_Settings_WorkingHours_Get
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (1)
+           CAST(WorkStartHour AS INT) AS StartHour,
+           CAST(WorkEndHour AS INT)   AS EndHour,
+           ExcludeWeekends
+    FROM dbo.LibrarySetting
+    WHERE Id = 1;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Settings_WorkingHours_Set
+    @StartHour       INT,
+    @EndHour         INT,
+    @ExcludeWeekends BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @StartHour IS NULL OR @EndHour IS NULL OR @StartHour < 0 OR @StartHour > 22
+       OR @EndHour < 1 OR @EndHour > 23 OR @EndHour <= @StartHour
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               N'Opening hour must be earlier than closing hour (0 to 23).' AS Message,
+               CAST(NULL AS INT) AS StartHour,
+               CAST(NULL AS INT) AS EndHour,
+               CAST(NULL AS BIT) AS ExcludeWeekends;
+        RETURN;
+    END
+
+    UPDATE dbo.LibrarySetting
+       SET WorkStartHour   = @StartHour,
+           WorkEndHour     = @EndHour,
+           ExcludeWeekends = ISNULL(@ExcludeWeekends, 0),
+           UpdatedAt       = SYSUTCDATETIME()
+     WHERE Id = 1;
+
+    IF @@ROWCOUNT = 0
+        INSERT INTO dbo.LibrarySetting (Id, WorkStartHour, WorkEndHour, ExcludeWeekends)
+        VALUES (1, @StartHour, @EndHour, ISNULL(@ExcludeWeekends, 0));
+
+    SELECT CAST(1 AS BIT) AS Success,
+           N'Working hours saved.' AS Message,
+           CAST(@StartHour AS INT) AS StartHour,
+           CAST(@EndHour AS INT) AS EndHour,
+           CAST(ISNULL(@ExcludeWeekends, 0) AS BIT) AS ExcludeWeekends;
 END
 GO
 
@@ -1055,18 +1251,22 @@ BEGIN
     JOIN dbo.LibrarySession AS s ON s.Id = sm.SessionId
     WHERE s.IsSample = 1;
 
+    DELETE FROM dbo.DeviceHourlyReading WHERE IsSample = 1;
     DELETE FROM dbo.Alert WHERE IsSample = 1;
     DELETE FROM dbo.LibrarySession WHERE IsSample = 1;
     DELETE FROM dbo.Student
     WHERE IsSample = 1 AND NOT EXISTS (SELECT 1 FROM dbo.SessionMember AS sm WHERE sm.StudentId = Student.Id);
     DELETE FROM dbo.Device
-    WHERE IsSample = 1 AND NOT EXISTS (SELECT 1 FROM dbo.Alert AS a WHERE a.DeviceId = Device.Id);
+    WHERE IsSample = 1
+      AND NOT EXISTS (SELECT 1 FROM dbo.Alert AS a WHERE a.DeviceId = Device.Id)
+      AND NOT EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading AS hr WHERE hr.DeviceId = Device.Id);
     DELETE FROM dbo.LibraryTable
     WHERE IsSample = 1
       AND NOT EXISTS (SELECT 1 FROM dbo.Device AS d WHERE d.TableId = LibraryTable.Id)
       AND NOT EXISTS (SELECT 1 FROM dbo.LibrarySession AS s WHERE s.TableId = LibraryTable.Id)
       AND NOT EXISTS (SELECT 1 FROM dbo.Alert AS a WHERE a.TableId = LibraryTable.Id)
-      AND NOT EXISTS (SELECT 1 FROM dbo.MaintenanceWindow AS m WHERE m.TableId = LibraryTable.Id);
+      AND NOT EXISTS (SELECT 1 FROM dbo.MaintenanceWindow AS m WHERE m.TableId = LibraryTable.Id)
+      AND NOT EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading AS hr WHERE hr.TableId = LibraryTable.Id);
 
     COMMIT;
 
@@ -1223,5 +1423,45 @@ BEGIN
     COMMIT;
 
     SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Layout saved. ', @Updated, N' table(s) updated.') AS Message;
+END
+GO
+
+-- 31) FACULTY CONSOLE: students, active sessions and recent visits -----------
+CREATE OR ALTER PROCEDURE dbo.usp_Faculty_Students_Overview
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT s.Id AS SessionId,
+           st.Id AS StudentId,
+           st.StudentNo,
+           st.FullName,
+           st.FirstName,
+           st.LastName,
+           st.MiddleInitial,
+           st.Section,
+           t.TableNo,
+           s.StartedAt,
+           s.EndedAt,
+           s.AvgLevel,
+           s.HadAlert,
+           CAST(CASE WHEN s.IsSample = 1 OR st.IsSample = 1 THEN 1 ELSE 0 END AS BIT) AS IsSample
+    FROM dbo.SessionMember AS sm
+    JOIN dbo.LibrarySession AS s  ON s.Id = sm.SessionId
+    JOIN dbo.Student        AS st ON st.Id = sm.StudentId
+    JOIN dbo.LibraryTable   AS t  ON t.Id = s.TableId
+    ORDER BY CASE WHEN s.EndedAt IS NULL THEN 0 ELSE 1 END, s.StartedAt DESC, s.Id DESC;
+
+    SELECT st.Id AS StudentId,
+           st.StudentNo,
+           st.FullName,
+           st.FirstName,
+           st.LastName,
+           st.MiddleInitial,
+           st.Section,
+           st.RegisteredAt,
+           st.IsSample
+    FROM dbo.Student AS st
+    ORDER BY st.FullName, st.Id;
 END
 GO

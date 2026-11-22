@@ -42,6 +42,37 @@ const fakeDb = {
     fakeDb.lastHistoryArgs = args;
     return [];
   },
+  getStudentsOverview: async () => ({
+    sessions: [
+      {
+        sessionId: 12,
+        studentId: 5,
+        studentNo: '21-0001',
+        fullName: 'Reyes, Ana',
+        section: 'BSIT-3D',
+        tableNo: 1,
+        startedAt: now,
+        endedAt: null,
+        avgLevel: null,
+        hadAlert: false,
+        isSample: true,
+      },
+    ],
+    students: [
+      {
+        studentId: 5,
+        studentNo: '21-0001',
+        fullName: 'Reyes, Ana',
+        section: 'BSIT-3D',
+        registeredAt: now,
+        isSample: true,
+      },
+    ],
+  }),
+  endSession: async ({ studentId }) =>
+    studentId === 5
+      ? { success: true, message: 'Session ended.' }
+      : { success: false, message: 'You do not have a table in use.' },
 };
 
 let server;
@@ -147,6 +178,55 @@ test('rewards accepts only the known periods', async () => {
   assert.equal(status, 200);
   assert.equal(body.period, 'week');
   assert.deepEqual(body.mostFrequent, []);
+});
+
+test('noise analytics validates period and returns working-hour buckets', async () => {
+  const bad = await call('GET', '/api/analytics/noise?period=year', { cookie: FACULTY });
+  assert.equal(bad.status, 400);
+
+  const badTable = await call('GET', '/api/analytics/noise?period=week&tableNo=abc', { cookie: FACULTY });
+  assert.equal(badTable.status, 400);
+
+  const { status, body } = await call('GET', '/api/analytics/noise?period=week&tableNo=1', { cookie: FACULTY });
+  assert.equal(status, 200);
+  assert.equal(body.period, 'week');
+  assert.equal(body.tableNo, 1);
+  assert.equal(body.hours.length, 10);
+  assert.equal(body.hours[0].label, '8 AM');
+  assert.equal(body.hours[9].label, '5 PM');
+});
+
+test('working hours settings require admin role and validate hour range', async () => {
+  assert.equal((await call('GET', '/api/settings/working-hours', { cookie: FACULTY })).status, 403);
+  assert.equal((await call('PUT', '/api/settings/working-hours', { cookie: FACULTY, body: { startHour: 7, endHour: 19, excludeWeekends: true } })).status, 403);
+
+  const invalid = await call('PUT', '/api/settings/working-hours', { cookie: ADMIN, body: { startHour: 18, endHour: 8, excludeWeekends: false } });
+  assert.equal(invalid.status, 400);
+
+  const saved = await call('PUT', '/api/settings/working-hours', { cookie: ADMIN, body: { startHour: 7, endHour: 19, excludeWeekends: true } });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.body.workingHours, { startHour: 7, endHour: 19, excludeWeekends: true });
+
+  const fetched = await call('GET', '/api/settings/working-hours', { cookie: ADMIN });
+  assert.equal(fetched.status, 200);
+  assert.deepEqual(fetched.body.workingHours, { startHour: 7, endHour: 19, excludeWeekends: true });
+
+  await call('PUT', '/api/settings/working-hours', { cookie: ADMIN, body: { startHour: 8, endHour: 17, excludeWeekends: false } });
+});
+
+test('students endpoint lists active sessions and can end a student session', async () => {
+  assert.equal((await call('GET', '/api/students')).status, 401);
+
+  const res = await call('GET', '/api/students', { cookie: FACULTY });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.summary.seatedNow, 1);
+  assert.equal(res.body.activeSessions[0].tableNo, 1);
+  assert.equal(res.body.activeSessions[0].tableStatus, 'ALERT');
+  assert.equal(res.body.directory[0].studentNo, '21-0001');
+
+  assert.equal((await call('POST', '/api/students/abc/end-session', { cookie: FACULTY })).status, 400);
+  assert.equal((await call('POST', '/api/students/999/end-session', { cookie: FACULTY })).status, 404);
+  assert.equal((await call('POST', '/api/students/5/end-session', { cookie: FACULTY })).status, 200);
 });
 
 test('saving the layout needs sign-in and is validated', async () => {

@@ -1,12 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  analyticsCsvText,
+  analyticsExportFileName,
   csvText,
   dailySummary,
   exportFileName,
   generatedLabel,
   rangeLabel,
   shapeRows,
+  studentsCsvText,
+  studentsExportFileName,
   subtitleLine,
   summaryCounts,
 } from './exportHistory.js';
@@ -75,4 +79,97 @@ test('labels read the way the report shows them', () => {
     subtitleLine({ typeLabel: 'All', tableLabel: 'All tables', range: 'Nov 10 – Nov 16, 2026', generatedAt: new Date(2026, 10, 16, 9, 41), by: 'Jane Doe' }),
     'Type: All · Table: All tables · Range: Nov 10 – Nov 16, 2026 · Generated Nov 16, 2026 9:41 AM by Jane Doe'
   );
+});
+
+test('analyticsExportFileName and analyticsCsvText format working-hours exports safely', () => {
+  const d = new Date(2026, 10, 16, 9, 41);
+  assert.equal(analyticsExportFileName('week', 'all', 'xlsx', d), 'shush-working-hours-week-all-2026-11-16.xlsx');
+  assert.equal(analyticsExportFileName('month', 3, 'csv', d), 'shush-working-hours-month-table-3-2026-11-16.csv');
+
+  const csv = analyticsCsvText(
+    {
+      period: 'week',
+      tableNo: 3,
+      overallAvgLevel: 1100,
+      peakHour: { hour: 14 },
+      quietestHour: { hour: 8 },
+      hours: [
+        { hour: 8, slotLabel: '8:00 AM – 9:00 AM', label: '8a', avgLevel: 850, sessionCount: 1, readingCount: 12, alertCount: 0 },
+        { hour: 14, slotLabel: '2:00 PM – 3:00 PM', label: '2p', avgLevel: 1450, sessionCount: 2, readingCount: 20, alertCount: 1 },
+      ],
+    },
+    { periodLabel: '7 Days', tableLabel: 'Table 3' }
+  );
+  assert.equal(csv.charCodeAt(0), 0xfeff);
+  const lines = csv.slice(1).split('\r\n');
+  assert.equal(lines.length, 3);
+  assert.equal(lines[0], '"Hour Slot","Label","Status","Avg Noise Level","Sessions","Sensor Readings","Alerts","Table","Period"');
+  assert.equal(lines[1], '"8:00 AM – 9:00 AM","8a","Quietest","850","1","12","0","Table 3","7 Days"');
+  assert.equal(lines[2], '"2:00 PM – 3:00 PM","2p","Peak (noisiest)","1450","2","20","1","Table 3","7 Days"');
+});
+
+test('studentsExportFileName and studentsCsvText format seated, visits and directory tabs', () => {
+  const d = new Date(2026, 10, 22, 18, 0);
+  assert.equal(studentsExportFileName('seated', 'xlsx', d), 'shush-students-seated-2026-11-22.xlsx');
+  assert.equal(studentsExportFileName('visits', 'csv', d), 'shush-students-visits-2026-11-22.csv');
+
+  const seatedCsv = studentsCsvText(
+    [
+      {
+        studentNo: '21-0001',
+        name: 'Reyes, Ana',
+        section: 'BSIT-3D',
+        tableNo: 2,
+        tableStatus: 'QUIET',
+        deviceLevel: 980,
+        startedAt: '2026-11-22T09:30:00Z',
+        durationMinutes: 25,
+        isSample: false,
+      },
+    ],
+    'seated'
+  );
+  assert.equal(seatedCsv.charCodeAt(0), 0xfeff);
+  const seatedLines = seatedCsv.slice(1).split('\r\n');
+  assert.equal(seatedLines[0], '"Student No.","Name","Section","Table","Table Status","Noise Level","Started At","Duration (min)","Sample data"');
+  assert.ok(seatedLines[1].includes('"21-0001","Reyes, Ana","BSIT-3D","Table 2","QUIET","980"'));
+
+  const visitsCsv = studentsCsvText(
+    [
+      {
+        studentNo: '21-0002',
+        name: 'Cruz, Ben',
+        section: 'BSCS-1D',
+        tableNo: 1,
+        startedAt: '2026-11-22T01:00:00Z',
+        endedAt: '2026-11-22T01:45:00Z',
+        durationMinutes: 45,
+        avgLevel: 1200,
+        hadAlert: true,
+        isSample: true,
+      },
+    ],
+    'visits'
+  );
+  const visitLines = visitsCsv.slice(1).split('\r\n');
+  assert.ok(visitLines[1].includes('"45","1200","Alert","Sample"'));
+
+  const dirCsv = studentsCsvText(
+    [
+      {
+        studentNo: '21-0001',
+        name: 'Reyes, Ana',
+        section: 'BSIT-3D',
+        activeSession: { tableNo: 2 },
+        totalSessions: 4,
+        avgNoiseLevel: 950,
+        alertCount: 0,
+        lastSeenAt: '2026-11-22T09:30:00Z',
+        isSample: false,
+      },
+    ],
+    'directory'
+  );
+  const dirLines = dirCsv.slice(1).split('\r\n');
+  assert.ok(dirLines[1].includes('"Seated","Table 2","4","950","0"'));
 });

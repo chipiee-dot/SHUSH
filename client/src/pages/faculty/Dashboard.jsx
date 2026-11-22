@@ -1,8 +1,9 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api.js';
-import { useErrorToast } from '../../components/Toast.jsx';
+import { useErrorToast, useToast } from '../../components/Toast.jsx';
 import { NAV_ICONS } from '../../components/navIcons.jsx';
 import Card from '../../components/Card.jsx';
-import { BarChart, DonutChart, MeterBar } from '../../components/charts.jsx';
+import { BarChart, DonutChart, MeterBar, WorkingHoursChart } from '../../components/charts.jsx';
 import CloudBackground from '../../components/CloudBackground.jsx';
 import CountUp from '../../components/CountUp.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -11,7 +12,14 @@ import SampleBadge from '../../components/SampleBadge.jsx';
 import Stat from '../../components/Stat.jsx';
 import StatusPill from '../../components/StatusPill.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import useClickOutside from '../../hooks/useClickOutside.js';
 import usePolling from '../../hooks/usePolling.js';
+import {
+  analyticsExportFileName,
+  buildAnalyticsWorkbook,
+  downloadAnalyticsCsvFile,
+  downloadBlob,
+} from '../../lib/exportHistory.js';
 import { STATUS_META, dateInputValue, formatNumber, formatTime, timeAgo } from '../../lib/format.js';
 
 const REFRESH_MS = 10000;
@@ -61,6 +69,443 @@ const SignalIcon = () => (
 const ClockIcon = () => (
   <svg {...ICON}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
 );
+const WaveIcon = () => (
+  <svg {...ICON}><path d="M3 12h3l2-6 4 12 3-8 2 2h4" /></svg>
+);
+
+const ANALYTICS_PERIODS = [
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: '7 Days' },
+  { value: 'month', label: '30 Days' },
+];
+
+const formatHourClock = (hour) => {
+  const h = ((Number(hour) % 24) + 24) % 24;
+  return `${h % 12 || 12}:00 ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+function AnalyticsPeriodToggle({ period, onChange }) {
+  const index = Math.max(0, ANALYTICS_PERIODS.findIndex((p) => p.value === period));
+  return (
+    <div
+      role="group"
+      aria-label="Analytics time range"
+      className="relative inline-grid grid-cols-3 rounded-xl border border-shush-lineStrong bg-shush-white p-1"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-shush-orange shadow-md transition-transform duration-300 ease-out"
+        style={{ transform: `translateX(${index * 100}%)` }}
+      />
+      {ANALYTICS_PERIODS.map((p) => (
+        <button
+          key={p.value}
+          type="button"
+          aria-pressed={period === p.value}
+          onClick={() => onChange(p.value)}
+          className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-1 ${
+            period === p.value ? 'text-white' : 'text-shush-inkSoft hover:text-shush-ink'
+          }`}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function WorkingHoursAnalyticsCard({ tables = [] }) {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [period, setPeriod] = useState('week');
+  const [tableNo, setTableNo] = useState('all');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState('');
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
+
+  const sortedTables = useMemo(
+    () => [...tables].sort((a, b) => a.tableNo - b.tableNo),
+    [tables]
+  );
+
+  const { data, error, loading, reload } = usePolling(
+    () => api.noiseAnalytics({ period, tableNo }),
+    REFRESH_MS,
+    [period, tableNo]
+  );
+  useErrorToast(error);
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  useClickOutside(menuRef, menuOpen, closeMenu);
+
+  useEffect(() => {
+    if (menuOpen) menuRef.current?.querySelector('[role="menuitem"]')?.focus();
+  }, [menuOpen]);
+
+  function onMenuKey(e) {
+    const items = [...(menuRef.current?.querySelectorAll('[role="menuitem"]') ?? [])];
+    const i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') items[(i + 1) % items.length]?.focus();
+    else if (e.key === 'ArrowUp') items[(i - 1 + items.length) % items.length]?.focus();
+    else if (e.key === 'Home') items[0]?.focus();
+    else if (e.key === 'End') items[items.length - 1]?.focus();
+    else if (e.key === 'Escape') {
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    } else return;
+    e.preventDefault();
+  }
+
+  const refreshing = loading && data !== null;
+  const peakHour = data?.peakHour ?? null;
+  const quietestHour = data?.quietestHour ?? null;
+  const contrast = data?.contrast ?? null;
+  const hours = data?.hours ?? [];
+  const overallAvgLevel = data?.overallAvgLevel ?? 0;
+  const totalAlerts = data?.totalAlerts ?? 0;
+  const totalSessions = data?.totalSessions ?? 0;
+  const totalReadings = data?.totalReadings ?? 0;
+  const workHours = data?.workHours ?? { start: 8, end: 17, excludeWeekends: false };
+  const workWindowText = `${formatHourClock(workHours.start)} – ${formatHourClock(workHours.end)}${
+    workHours.excludeWeekends ? ' · Mon–Fri' : ''
+  }`;
+  const tableLabel = tableNo === 'all' ? 'All tables' : `Table ${tableNo}`;
+  const periodLabel = ANALYTICS_PERIODS.find((p) => p.value === period)?.label ?? period;
+  const meterScale = Math.max(peakHour?.avgLevel ?? 0, quietestHour?.avgLevel ?? 0, 1);
+
+  async function exportAnalytics(type) {
+    setMenuOpen(false);
+    menuButtonRef.current?.focus();
+    if (!data || hours.length === 0) {
+      toast.error('Nothing to export yet.');
+      return;
+    }
+    setExporting(type);
+    const meta = {
+      periodLabel,
+      tableLabel,
+      workWindowText,
+      by: user ? `${user.firstName} ${user.lastName}`.trim() : '',
+      generatedAt: new Date(),
+    };
+    try {
+      const filename = analyticsExportFileName(period, tableNo, type);
+      if (type === 'xlsx') {
+        const blob = await buildAnalyticsWorkbook(data, meta);
+        downloadBlob(blob, filename);
+      } else {
+        downloadAnalyticsCsvFile(data, meta, filename);
+      }
+      toast.success('Analytics exported.');
+    } catch {
+      toast.error('Could not prepare the export.');
+    } finally {
+      setExporting('');
+    }
+  }
+
+  const activityLabel = (slot) => {
+    const parts = [`${formatNumber(slot.sessionCount)} session${slot.sessionCount === 1 ? '' : 's'}`];
+    if ((slot.readingCount ?? 0) > 0) {
+      parts.push(`${formatNumber(slot.readingCount)} reading${slot.readingCount === 1 ? '' : 's'}`);
+    }
+    return parts.join(' · ');
+  };
+
+  return (
+    <Card
+      icon={<WaveIcon />}
+      title="Peak vs. quietest working hours"
+      subtitle={`${workWindowText} · ${tableLabel.toLowerCase()} · session, sensor reading & alert contrast`}
+      action={
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="sr-only" htmlFor="analytics-table-filter">
+            Filter analytics by table
+          </label>
+          <select
+            id="analytics-table-filter"
+            aria-label="Filter analytics by table"
+            value={tableNo}
+            onChange={(e) => setTableNo(e.target.value)}
+            className="rounded-xl border border-shush-lineStrong bg-shush-white py-1.5 pl-3 pr-8 text-xs font-semibold text-shush-ink focus:border-shush-orange focus:ring-shush-orange"
+          >
+            <option value="all">All tables</option>
+            {sortedTables.map((t) => (
+              <option key={t.tableNo} value={String(t.tableNo)}>
+                Table {t.tableNo}
+              </option>
+            ))}
+          </select>
+
+          <AnalyticsPeriodToggle period={period} onChange={setPeriod} />
+
+          <div ref={menuRef} className="relative">
+            <button
+              ref={menuButtonRef}
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              disabled={Boolean(exporting) || !data || hours.length === 0}
+              onClick={() => setMenuOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-shush-lineStrong bg-shush-white px-3 py-1.5 text-xs font-semibold text-shush-ink transition hover:bg-shush-creamDeep disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-1"
+            >
+              {exporting ? 'Exporting…' : 'Export'}
+              {!exporting && (
+                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                aria-label="Export analytics format"
+                onKeyDown={onMenuKey}
+                className="absolute right-0 z-20 mt-2 w-60 rounded-xl border border-shush-line bg-shush-white p-1.5 shadow-[0_16px_36px_-18px_rgba(242,95,19,0.5)]"
+              >
+                {[
+                  ['xlsx', 'Excel report (.xlsx)', 'Summary cards & hourly table'],
+                  ['csv', 'CSV (.csv)', 'Plain hourly breakdown'],
+                ].map(([type, title, hint]) => (
+                  <button
+                    key={type}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => exportAnalytics(type)}
+                    className="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-shush-creamDeep focus:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange"
+                  >
+                    <span className="block text-sm font-semibold text-shush-ink">{title}</span>
+                    <span className="block text-xs text-shush-inkSoft">{hint}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      }
+    >
+      {!data ? (
+        loading ? (
+          <p className="py-8 text-sm text-shush-muted">Loading working-hours analytics…</p>
+        ) : (
+          <EmptyState
+            title="Could not load working-hours analytics"
+            text="The live cards on this dashboard are still updating."
+            action={
+              <button
+                type="button"
+                onClick={reload}
+                className="rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+              >
+                Try again
+              </button>
+            }
+          />
+        )
+      ) : !peakHour ? (
+        <EmptyState
+          title="No working-hours activity yet"
+          text={`No sessions, sensor readings or alerts recorded for ${tableLabel.toLowerCase()} during ${workWindowText} in this period.`}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              {period === 'today' && (
+                <button
+                  type="button"
+                  onClick={() => setPeriod('week')}
+                  className="rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+                >
+                  View last 7 days
+                </button>
+              )}
+              {tableNo !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setTableNo('all')}
+                  className="rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-medium text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+                >
+                  Show all tables
+                </button>
+              )}
+            </div>
+          }
+        />
+      ) : (
+        <div className={`grid gap-6 lg:grid-cols-12 transition-opacity ${refreshing ? 'opacity-70' : ''}`}>
+          <div className="space-y-3 lg:col-span-5">
+            <div className="rounded-xl border border-shush-danger/30 bg-shush-dangerSoft/40 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-shush-dangerSoft px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-shush-danger">
+                  Noisiest hour
+                  {peakHour.alertCount > 0 && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-shush-danger" aria-hidden="true" />
+                  )}
+                </span>
+                <span className="text-xs font-medium text-shush-inkSoft tabular-nums">
+                  {activityLabel(peakHour)}
+                </span>
+              </div>
+              <div className="mt-2 text-lg font-semibold tracking-tight text-shush-ink">
+                {peakHour.slotLabel}
+              </div>
+              <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
+                <div className="text-2xl font-semibold tracking-tight text-shush-danger tabular-nums">
+                  {peakHour.sessionCount > 0 || (peakHour.readingCount ?? 0) > 0 ? (
+                    <CountUp value={peakHour.avgLevel} />
+                  ) : (
+                    '—'
+                  )}{' '}
+                  <span className="text-xs font-medium text-shush-inkSoft">avg level</span>
+                </div>
+                <span className="rounded-full bg-shush-white/90 px-2.5 py-0.5 text-xs font-semibold text-shush-danger ring-1 ring-shush-danger/20 tabular-nums">
+                  {formatNumber(peakHour.alertCount)} alert{peakHour.alertCount === 1 ? '' : 's'}
+                </span>
+              </div>
+            </div>
+
+            {quietestHour ? (
+              <div className="rounded-xl border border-shush-success/25 bg-shush-successSoft/55 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-shush-success/20 bg-shush-successSoft px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-shush-success">
+                    Quietest hour
+                  </span>
+                  <span className="text-xs font-medium text-shush-inkSoft tabular-nums">
+                    {activityLabel(quietestHour)}
+                  </span>
+                </div>
+                <div className="mt-2 text-lg font-semibold tracking-tight text-shush-ink">
+                  {quietestHour.slotLabel}
+                </div>
+                <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="text-2xl font-semibold tracking-tight text-shush-success tabular-nums">
+                    {quietestHour.sessionCount > 0 || (quietestHour.readingCount ?? 0) > 0 ? (
+                      <CountUp value={quietestHour.avgLevel} />
+                    ) : (
+                      '—'
+                    )}{' '}
+                    <span className="text-xs font-medium text-shush-inkSoft">avg level</span>
+                  </div>
+                  <span className="rounded-full bg-shush-white/90 px-2.5 py-0.5 text-xs font-semibold text-shush-inkSoft ring-1 ring-shush-lineStrong tabular-nums">
+                    {formatNumber(quietestHour.alertCount)} alert{quietestHour.alertCount === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-shush-lineStrong bg-shush-cream p-4">
+                <span className="inline-flex items-center rounded-full bg-shush-successSoft px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-shush-success">
+                  Quietest hour
+                </span>
+                <p className="mt-2 text-xs text-shush-inkSoft">
+                  Waiting for a second active hour to compare noise levels.
+                </p>
+              </div>
+            )}
+
+            {contrast && (
+              <div className="rounded-xl border border-shush-line bg-shush-cream p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-shush-muted">
+                    Peak vs. quietest contrast
+                  </span>
+                  <span className="rounded-full bg-shush-goldSoft px-2.5 py-0.5 text-xs font-semibold text-shush-orange700 tabular-nums">
+                    {peakHour.avgLevel > 0
+                      ? `${contrast.quietPct}% quieter`
+                      : `${formatNumber(Math.abs(contrast.alertDelta))} fewer alert${Math.abs(contrast.alertDelta) === 1 ? '' : 's'}`}
+                  </span>
+                </div>
+                {peakHour.avgLevel > 0 && (
+                  <p className="mt-1 text-xs text-shush-inkSoft tabular-nums">
+                    -{formatNumber(contrast.levelDelta)} avg level difference from peak to quietest hour
+                  </p>
+                )}
+                {peakHour.avgLevel > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-shush-inkSoft">
+                        <span className="font-medium text-shush-danger">Peak ({peakHour.label})</span>
+                        <span className="font-semibold tabular-nums">{formatNumber(peakHour.avgLevel)}</span>
+                      </div>
+                      <MeterBar
+                        value={peakHour.avgLevel}
+                        max={meterScale}
+                        colorVar="--shush-danger"
+                        label="Peak hour noise level"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-shush-inkSoft">
+                        <span className="font-medium text-shush-success">Quietest ({quietestHour.label})</span>
+                        <span className="font-semibold tabular-nums">{formatNumber(quietestHour.avgLevel)}</span>
+                      </div>
+                      <MeterBar
+                        value={quietestHour.avgLevel}
+                        max={meterScale}
+                        colorVar="--shush-success"
+                        label="Quietest hour noise level"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col justify-between rounded-xl border border-shush-line bg-shush-cream/40 p-4 lg:col-span-7">
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-shush-muted">
+                  Hourly average noise level ({workWindowText})
+                </h3>
+                {data.hasSampleData && <SampleBadge />}
+              </div>
+              <WorkingHoursChart
+                hours={hours}
+                peakHour={peakHour}
+                quietestHour={quietestHour}
+                avgLevel={overallAvgLevel}
+                height={190}
+              />
+            </div>
+
+            <div className="mt-4 space-y-2 border-t border-shush-line pt-3 text-xs text-shush-inkSoft">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-shush-danger" aria-hidden="true" /> Peak (noisiest)
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-shush-success" aria-hidden="true" /> Quietest
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-shush-orange" aria-hidden="true" /> Above avg
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-shush-amber" aria-hidden="true" /> Below avg
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-shush-danger" aria-hidden="true" /> Alert triggered
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-shush-muted tabular-nums">
+                <span>
+                  Working-hours avg: <strong className="text-shush-ink">{overallAvgLevel > 0 ? formatNumber(overallAvgLevel) : '—'}</strong>
+                </span>
+                <span>
+                  {formatNumber(totalAlerts)} alert{totalAlerts === 1 ? '' : 's'} · {formatNumber(totalSessions)} session{totalSessions === 1 ? '' : 's'}
+                  {totalReadings > 0 ? ` · ${formatNumber(totalReadings)} reading${totalReadings === 1 ? '' : 's'}` : ''}
+                </span>
+              </div>
+              {data.alertsTruncated && (
+                <p className="text-[11px] text-shush-muted">
+                  Only the latest 500 alerts in this range are counted.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 function Chip({ label, children, alertDot }) {
   return (
@@ -216,6 +661,8 @@ export default function Dashboard() {
           hint={`${formatNumber(s.studentsToday)} students · ${formatNumber(s.alertsToday)} alerts`}
         />
       </div>
+
+      <WorkingHoursAnalyticsCard tables={tables} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Seat occupancy" subtitle="Seats taken right now">

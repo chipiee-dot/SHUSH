@@ -108,13 +108,25 @@ export default function TableDrawer({ table, isAdmin, onClose }) {
         </p>
       )}
 
-      {isAdmin && (
-        <Link
-          to={`/console/settings?table=${table.tableNo}`}
-          className="mt-5 inline-block rounded-xl bg-shush-orange px-4 py-2 text-base font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
-        >
-          Edit table
-        </Link>
+      {(table.occupancy.seated > 0 || isAdmin) && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {table.occupancy.seated > 0 && (
+            <Link
+              to={`/console/students?table=${table.tableNo}`}
+              className="inline-block rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-semibold text-shush-ink transition hover:bg-shush-creamDeep focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2"
+            >
+              View seated students
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              to={`/console/settings?table=${table.tableNo}`}
+              className="inline-block rounded-xl bg-shush-orange px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange600 active:bg-shush-orange700 focus:outline-none focus:ring-2 focus:ring-shush-orange focus:ring-offset-2"
+            >
+              Edit table
+            </Link>
+          )}
+        </div>
       )}
     </aside>
   );

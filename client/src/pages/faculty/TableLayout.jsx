@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useErrorToast, useToast } from '../../components/Toast.jsx';
@@ -205,8 +205,10 @@ export default function TableLayout() {
   const { data, error, loading, updatedAt, reload } = usePolling(api.layout, REFRESH_MS);
   useErrorToast(error);
   const isSmall = useMediaQuery('(max-width: 767px)');
+  const [searchParams] = useSearchParams();
+  const initialTable = Number(searchParams.get('table')) || null;
   const [view, setView] = useState(() => (window.matchMedia('(max-width: 767px)').matches ? 'list' : 'plan'));
-  const [selectedNo, setSelectedNo] = useState(null);
+  const [selectedNo, setSelectedNo] = useState(initialTable);
   const [filter, setFilter] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);

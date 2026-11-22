@@ -39,8 +39,12 @@ GRANT EXECUTE ON dbo.usp_Maintenance_Active    TO shush_app;
 GRANT EXECUTE ON dbo.usp_Maintenance_Start     TO shush_app;
 GRANT EXECUTE ON dbo.usp_Maintenance_End       TO shush_app;
 GRANT EXECUTE ON dbo.usp_Device_SetThreshold   TO shush_app;
-GRANT EXECUTE ON dbo.usp_Rewards_Sessions      TO shush_app;
-GRANT EXECUTE ON dbo.usp_History_Get           TO shush_app;
+GRANT EXECUTE ON dbo.usp_Rewards_Sessions        TO shush_app;
+GRANT EXECUTE ON dbo.usp_History_Get             TO shush_app;
+GRANT EXECUTE ON dbo.usp_Noise_HourlyReadings    TO shush_app;
+GRANT EXECUTE ON dbo.usp_Settings_WorkingHours_Get TO shush_app;
+GRANT EXECUTE ON dbo.usp_Settings_WorkingHours_Set TO shush_app;
+GRANT EXECUTE ON dbo.usp_Faculty_Students_Overview TO shush_app;
 GO
 
 -- Students, sessions and table management

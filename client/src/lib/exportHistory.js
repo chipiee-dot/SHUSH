@@ -320,3 +320,312 @@ export function downloadBlob(blob, filename) {
 export function downloadCsvFile(rows, filename) {
   downloadBlob(new Blob([csvText(rows)], { type: 'text/csv;charset=utf-8' }), filename);
 }
+
+// ---- Working-hours analytics export -------------------------------------------------------------------------
+
+function hourStatusLabel(hourRow, analytics) {
+  if (analytics?.peakHour && hourRow.hour === analytics.peakHour.hour) return 'Peak (noisiest)';
+  if (analytics?.quietestHour && hourRow.hour === analytics.quietestHour.hour) return 'Quietest';
+  const active =
+    (hourRow.sessionCount ?? 0) > 0 ||
+    (hourRow.readingCount ?? 0) > 0 ||
+    (hourRow.alertCount ?? 0) > 0;
+  if (!active) return 'No activity';
+  if ((analytics?.overallAvgLevel ?? 0) > 0 && (hourRow.avgLevel ?? 0) >= analytics.overallAvgLevel) {
+    return 'Above avg';
+  }
+  return 'Below avg';
+}
+
+export function analyticsExportFileName(period, tableNo, ext, date = new Date()) {
+  const tablePart =
+    tableNo === 'all' || tableNo === null || tableNo === undefined || tableNo === ''
+      ? 'all'
+      : `table-${tableNo}`;
+  return `shush-working-hours-${period || 'week'}-${tablePart}-${localDateKey(date)}.${ext}`;
+}
+
+export function analyticsCsvText(analytics = {}, meta = {}) {
+  const header = [
+    'Hour Slot',
+    'Label',
+    'Status',
+    'Avg Noise Level',
+    'Sessions',
+    'Sensor Readings',
+    'Alerts',
+    'Table',
+    'Period',
+  ];
+  const tableLabel =
+    meta.tableLabel ?? (analytics.tableNo != null ? `Table ${analytics.tableNo}` : 'All tables');
+  const periodLabel = meta.periodLabel ?? analytics.period ?? 'week';
+  const lines = (analytics.hours ?? []).map((h) =>
+    [
+      h.slotLabel ?? '',
+      h.label ?? '',
+      hourStatusLabel(h, analytics),
+      h.avgLevel ?? 0,
+      h.sessionCount ?? 0,
+      h.readingCount ?? 0,
+      h.alertCount ?? 0,
+      tableLabel,
+      periodLabel,
+    ]
+      .map(csvCell)
+      .join(',')
+  );
+  return `\uFEFF${[header.map(csvCell).join(','), ...lines].join('\r\n')}`;
+}
+
+export async function buildAnalyticsWorkbook(analytics = {}, meta = {}) {
+  const mod = await import('exceljs');
+  const ExcelJS = mod.default ?? mod;
+  const generatedAt = meta.generatedAt ?? new Date();
+  const tableLabel =
+    meta.tableLabel ?? (analytics.tableNo != null ? `Table ${analytics.tableNo}` : 'All tables');
+  const periodLabel = meta.periodLabel ?? analytics.period ?? 'week';
+  const windowLabel = meta.workWindowText ?? '8:00 AM – 5:00 PM';
+  const subtitle = `Period: ${periodLabel} · Table: ${tableLabel} · Hours: ${windowLabel} · Generated ${generatedLabel(generatedAt)}${meta.by ? ` by ${meta.by}` : ''}`;
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = meta.by || 'SHUSH';
+  wb.created = generatedAt;
+
+  const ws = wb.addWorksheet('Working-hours noise', {
+    properties: { tabColor: { argb: argb('F25F13') } },
+    views: [{ state: 'frozen', ySplit: 7, showGridLines: false }],
+  });
+  [24, 10, 18, 18, 12, 16, 12].forEach((w, i) => {
+    ws.getColumn(i + 1).width = w;
+  });
+
+  titleRows(ws, 'G', 'SHUSH · Working-hours noise analytics', subtitle);
+  ws.getRow(3).height = 8;
+  ws.getRow(4).height = 20;
+  ws.getRow(5).height = 34;
+
+  const peakText = analytics.peakHour
+    ? `${analytics.peakHour.label} (${analytics.peakHour.avgLevel})`
+    : '—';
+  const quietText = analytics.quietestHour
+    ? `${analytics.quietestHour.label} (${analytics.quietestHour.avgLevel})`
+    : '—';
+  const contrastText = analytics.contrast
+    ? `${analytics.contrast.quietPct}% (-${analytics.contrast.levelDelta})`
+    : '—';
+
+  summaryBox(ws, ['A', 'B'], 'NOISIEST HOUR', peakText, KIND_COLORS.alert);
+  summaryBox(ws, ['C', 'D'], 'QUIETEST HOUR', quietText, { fill: 'FDF3C9', text: '7A5A00' });
+  summaryBox(ws, ['E', 'E'], 'QUIETER BY', contrastText, KIND_COLORS.session);
+  summaryBox(ws, ['F', 'G'], 'WORKING-HOURS AVG', analytics.overallAvgLevel ?? 0, TOTAL_COLORS);
+  ws.getRow(6).height = 8;
+
+  headerRow(ws, 7, [
+    'Hour Slot',
+    'Label',
+    'Status',
+    'Avg Noise Level',
+    'Sessions',
+    'Sensor Readings',
+    'Alerts',
+  ]);
+
+  const hours = analytics.hours ?? [];
+  hours.forEach((h, i) => {
+    const row = ws.getRow(8 + i);
+    const zebra = i % 2 === 0 ? C.white : C.cream;
+    const status = hourStatusLabel(h, analytics);
+
+    row.getCell(1).value = h.slotLabel ?? '';
+    row.getCell(2).value = h.label ?? '';
+    row.getCell(3).value = status;
+    row.getCell(4).value = h.avgLevel ?? 0;
+    row.getCell(5).value = h.sessionCount ?? 0;
+    row.getCell(6).value = h.readingCount ?? 0;
+    row.getCell(7).value = h.alertCount ?? 0;
+
+    for (let c = 1; c <= 7; c += 1) {
+      const cell = row.getCell(c);
+      cell.font = { name: 'Calibri', size: 10.5, color: { argb: argb(C.ink) } };
+      cell.fill = solid(zebra);
+      cell.border = BORDER;
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: c >= 4 || c === 2 ? 'center' : 'left',
+        indent: c >= 4 || c === 2 ? 0 : 1,
+      };
+      if (c >= 4) cell.numFmt = '#,##0';
+    }
+
+    if (status === 'Peak (noisiest)') {
+      const cell = row.getCell(3);
+      cell.fill = solid(KIND_COLORS.alert.fill);
+      cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: argb(KIND_COLORS.alert.text) } };
+    } else if (status === 'Quietest') {
+      const cell = row.getCell(3);
+      cell.fill = solid('FDF3C9');
+      cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: argb('7A5A00') } };
+    }
+  });
+
+  ws.autoFilter = { from: 'A7', to: `G${7 + Math.max(hours.length, 1)}` };
+  ws.pageSetup = {
+    orientation: 'landscape',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    printTitlesRow: '7:7',
+    paperSize: 9,
+  };
+  ws.headerFooter.oddFooter = '&CSHUSH Working-hours analytics · Page &P of &N';
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+export function downloadAnalyticsCsvFile(analytics, meta, filename) {
+  downloadBlob(new Blob([analyticsCsvText(analytics, meta)], { type: 'text/csv;charset=utf-8' }), filename);
+}
+
+// ---- Students export -----------------------------------------------------------------------------------------
+
+const STUDENT_EXPORT_META = {
+  seated: {
+    title: 'SHUSH · Seated students',
+    headers: ['Student No.', 'Name', 'Section', 'Table', 'Table Status', 'Noise Level', 'Started At', 'Duration (min)', 'Sample data'],
+  },
+  visits: {
+    title: 'SHUSH · Student visits',
+    headers: ['Student No.', 'Name', 'Section', 'Table', 'Started At', 'Ended At', 'Duration (min)', 'Avg Noise Level', 'Alert', 'Sample data'],
+  },
+  directory: {
+    title: 'SHUSH · Student directory',
+    headers: ['Student No.', 'Name', 'Section', 'Status', 'Table', 'Total Visits', 'Avg Noise Level', 'Alerts', 'Last Seen', 'Sample data'],
+  },
+};
+
+function formatExportTimestamp(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${localDateKey(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function shapeStudentExportRows(rows = [], tab = 'seated') {
+  if (tab === 'visits') {
+    return rows.map((r) => [
+      r.studentNo ?? '—',
+      r.name ?? '',
+      r.section ?? '—',
+      r.tableNo != null ? `Table ${r.tableNo}` : '—',
+      formatExportTimestamp(r.startedAt),
+      formatExportTimestamp(r.endedAt),
+      r.durationMinutes ?? 0,
+      r.avgLevel ?? '—',
+      r.hadAlert ? 'Alert' : 'Quiet',
+      r.isSample ? 'Sample' : '',
+    ]);
+  }
+  if (tab === 'directory') {
+    return rows.map((r) => [
+      r.studentNo ?? '—',
+      r.name ?? '',
+      r.section ?? '—',
+      r.activeSession ? 'Seated' : 'Not seated',
+      r.activeSession ? `Table ${r.activeSession.tableNo}` : '—',
+      r.totalSessions ?? 0,
+      r.avgNoiseLevel ?? '—',
+      r.alertCount ?? 0,
+      formatExportTimestamp(r.lastSeenAt),
+      r.isSample ? 'Sample' : '',
+    ]);
+  }
+  return rows.map((r) => [
+    r.studentNo ?? '—',
+    r.name ?? '',
+    r.section ?? '—',
+    r.tableNo != null ? `Table ${r.tableNo}` : '—',
+    r.tableStatus ?? '—',
+    r.deviceLevel ?? '—',
+    formatExportTimestamp(r.startedAt),
+    r.durationMinutes ?? 0,
+    r.isSample ? 'Sample' : '',
+  ]);
+}
+
+export function studentsExportFileName(tab, ext, date = new Date()) {
+  return `shush-students-${tab || 'seated'}-${localDateKey(date)}.${ext}`;
+}
+
+export function studentsCsvText(rows = [], tab = 'seated') {
+  const cfg = STUDENT_EXPORT_META[tab] ?? STUDENT_EXPORT_META.seated;
+  const lines = shapeStudentExportRows(rows, tab).map((cols) => cols.map(csvCell).join(','));
+  return `\uFEFF${[cfg.headers.map(csvCell).join(','), ...lines].join('\r\n')}`;
+}
+
+export async function buildStudentsWorkbook(rows = [], meta = {}) {
+  const mod = await import('exceljs');
+  const ExcelJS = mod.default ?? mod;
+  const tab = meta.tab ?? 'seated';
+  const cfg = STUDENT_EXPORT_META[tab] ?? STUDENT_EXPORT_META.seated;
+  const generatedAt = meta.generatedAt ?? new Date();
+  const tableLabel = meta.tableLabel ?? 'All tables';
+  const sectionLabel = meta.sectionLabel ?? 'All sections';
+  const subtitle = `Table: ${tableLabel} · Section: ${sectionLabel} · Generated ${generatedLabel(generatedAt)}${meta.by ? ` by ${meta.by}` : ''}`;
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = meta.by || 'SHUSH';
+  wb.created = generatedAt;
+
+  const ws = wb.addWorksheet('Students', {
+    properties: { tabColor: { argb: argb('F25F13') } },
+    views: [{ state: 'frozen', ySplit: 4, showGridLines: false }],
+  });
+
+  const lastCol = String.fromCharCode(64 + cfg.headers.length);
+  cfg.headers.forEach((h, i) => {
+    ws.getColumn(i + 1).width = h === 'Name' ? 28 : h.includes('At') || h === 'Last Seen' ? 19 : 15;
+  });
+
+  titleRows(ws, lastCol, cfg.title, subtitle);
+  ws.getRow(3).height = 8;
+  headerRow(ws, 4, cfg.headers);
+
+  const shaped = shapeStudentExportRows(rows, tab);
+  shaped.forEach((cols, i) => {
+    const row = ws.getRow(5 + i);
+    const zebra = i % 2 === 0 ? C.white : C.cream;
+    cols.forEach((val, cIdx) => {
+      const cell = row.getCell(cIdx + 1);
+      cell.value = val;
+      cell.font = { name: 'Calibri', size: 10.5, color: { argb: argb(C.ink) } };
+      cell.fill = solid(zebra);
+      cell.border = BORDER;
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: typeof val === 'number' ? 'center' : 'left',
+        indent: typeof val === 'number' ? 0 : 1,
+      };
+      if (typeof val === 'number') cell.numFmt = '#,##0';
+    });
+  });
+
+  ws.autoFilter = { from: 'A4', to: `${lastCol}${4 + Math.max(shaped.length, 1)}` };
+  ws.pageSetup = {
+    orientation: 'landscape',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    printTitlesRow: '4:4',
+    paperSize: 9,
+  };
+  ws.headerFooter.oddFooter = '&CSHUSH Students · Page &P of &N';
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+export function downloadStudentsCsvFile(rows, tab, filename) {
+  downloadBlob(new Blob([studentsCsvText(rows, tab)], { type: 'text/csv;charset=utf-8' }), filename);
+}

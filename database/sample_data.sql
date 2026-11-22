@@ -121,6 +121,40 @@ BEGIN
         END
         SET @tableNo = @tableNo + 1;
     END
+
+    -- Ambient hourly sensor roll-ups across working hours (08:00-17:00 local = 00:00-09:00 UTC)
+    -- including hours where no student session was active.
+    DECLARE @hr INT = 0;
+    DECLARE @hrUtc DATETIME2(0);
+    DECLARE @hrAvg INT;
+    DECLARE @hrCount INT;
+    SET @tableNo = 1;
+    WHILE @tableNo <= 6
+    BEGIN
+        SELECT @tableId = t.Id, @deviceId = (SELECT Id FROM dbo.Device WHERE TableId = t.Id)
+        FROM dbo.LibraryTable AS t WHERE t.TableNo = @tableNo;
+
+        SET @midnight = CAST(CAST(DATEADD(DAY, -@day, SYSUTCDATETIME()) AS DATE) AS DATETIME2(0));
+        SET @hr = 0;
+        WHILE @hr <= 9
+        BEGIN
+            SET @hrUtc = DATEADD(HOUR, @hr, @midnight);
+            IF NOT EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading WHERE TableId = @tableId AND HourUtc = @hrUtc)
+            BEGIN
+                SET @hrCount = 12 + ABS(CHECKSUM(NEWID())) % 24;
+                -- Quiet morning (08-10 local) vs busier midday/afternoon (13-15 local)
+                SET @hrAvg = CASE
+                    WHEN @hr IN (0, 1, 9) THEN 880 + ABS(CHECKSUM(NEWID())) % 220
+                    WHEN @hr IN (5, 6, 7) THEN 1320 + ABS(CHECKSUM(NEWID())) % 320
+                    ELSE 1050 + ABS(CHECKSUM(NEWID())) % 260
+                END;
+                INSERT INTO dbo.DeviceHourlyReading (TableId, DeviceId, HourUtc, ReadingCount, LevelSum, MinLevel, MaxLevel, IsSample)
+                VALUES (@tableId, @deviceId, @hrUtc, @hrCount, CAST(@hrAvg AS BIGINT) * @hrCount, @hrAvg - 80, @hrAvg + 110, 1);
+            END
+            SET @hr = @hr + 1;
+        END
+        SET @tableNo = @tableNo + 1;
+    END
     SET @day = @day - 1;
 END
 

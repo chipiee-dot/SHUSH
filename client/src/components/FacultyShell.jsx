@@ -19,6 +19,11 @@ const LINKS = [
     icon: NAV_ICONS.layout,
   },
   {
+    to: '/console/students',
+    label: 'Students',
+    icon: NAV_ICONS.students,
+  },
+  {
     to: '/console/rewards',
     label: 'Rewards',
     icon: NAV_ICONS.rewards,

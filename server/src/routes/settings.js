@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 import { sendDatabaseError, toInt, wrap } from './helpers.js';
 import { findFreeSpot } from '../services/tablePlacement.js';
 import { validateLayoutChanges } from '../services/layoutRules.js';
+import { getRuntimeWorkingHours, setRuntimeWorkingHours } from '../services/noiseAnalytics.js';
 
 const MAX_THRESHOLD = 4095; // ESP32 ADC is 12-bit
 const MAX_DEVICE_CODE = 20;
@@ -209,6 +210,52 @@ export function createSettingsRouter(db, config) {
       const result = await db.clearSampleData();
       if (!result?.success) return res.status(400).json({ message: result?.message ?? 'Could not remove sample data.' });
       return res.json({ message: result.message });
+    })
+  );
+
+  // ---- Working hours configuration ----------------------------------------
+  router.get(
+    '/working-hours',
+    adminOnly,
+    wrap(async (req, res) => {
+      const dbHours = db.getWorkingHours ? await db.getWorkingHours().catch(() => null) : null;
+      const workingHours =
+        dbHours && Number.isInteger(Number(dbHours.startHour)) && Number.isInteger(Number(dbHours.endHour))
+          ? {
+              startHour: Number(dbHours.startHour),
+              endHour: Number(dbHours.endHour),
+              excludeWeekends: Boolean(dbHours.excludeWeekends),
+            }
+          : getRuntimeWorkingHours();
+      return res.json({ workingHours });
+    })
+  );
+
+  router.put(
+    '/working-hours',
+    adminOnly,
+    wrap(async (req, res) => {
+      const body = req.body ?? {};
+      const startHour = toInt(body.startHour);
+      const endHour = toInt(body.endHour);
+      const excludeWeekends = Boolean(body.excludeWeekends);
+
+      if (startHour === null || startHour < 0 || startHour > 22) {
+        return res.status(400).json({ message: 'Opening hour must be between 12:00 AM and 10:00 PM.' });
+      }
+      if (endHour === null || endHour < 1 || endHour > 23 || endHour <= startHour) {
+        return res.status(400).json({ message: 'Closing hour must be later than the opening hour.' });
+      }
+
+      const dbResult = db.setWorkingHours
+        ? await db.setWorkingHours({ startHour, endHour, excludeWeekends }).catch(() => null)
+        : null;
+      if (dbResult && dbResult.success === false) {
+        return res.status(400).json({ message: dbResult.message ?? 'Could not save working hours.' });
+      }
+
+      const workingHours = setRuntimeWorkingHours({ startHour, endHour, excludeWeekends });
+      return res.json({ message: dbResult?.message ?? 'Working hours saved.', workingHours });
     })
   );
 

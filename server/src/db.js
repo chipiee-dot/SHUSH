@@ -5,18 +5,14 @@ const camelize = (row) =>
 
 export function createDb(dbConfig) {
     const config = {
-        server: 'localhost',
-        port: 1433,
-        database: dbConfig.database,
-        user: dbConfig.user,
-        password: dbConfig.password,
         connectionTimeout: 15000,
         requestTimeout: 30000,
+        ...dbConfig,
         options: {
             encrypt: true,
             trustServerCertificate: true,
             enableArithAbort: true,
-            serverName: 'localhost',
+            ...dbConfig.options,
         },
     };
 
@@ -162,6 +158,38 @@ export function createDb(dbConfig) {
         );
     }
 
+    async function getHourlyReadings({ from, to, tableNo = null }) {
+        return rowsOf(
+            await run('usp_Noise_HourlyReadings', [
+                ['From', sql.DateTime2(0), from],
+                ['To', sql.DateTime2(0), to],
+                ['TableNo', sql.Int, tableNo],
+            ])
+        );
+    }
+
+    async function getWorkingHours() {
+        return oneOf(await run('usp_Settings_WorkingHours_Get'));
+    }
+
+    async function setWorkingHours({ startHour, endHour, excludeWeekends }) {
+        return oneOf(
+            await run('usp_Settings_WorkingHours_Set', [
+                ['StartHour', sql.Int, startHour],
+                ['EndHour', sql.Int, endHour],
+                ['ExcludeWeekends', sql.Bit, excludeWeekends ? 1 : 0],
+            ])
+        );
+    }
+
+    async function getStudentsOverview() {
+        const sets = await run('usp_Faculty_Students_Overview');
+        return {
+            sessions: rowsOf(sets, 0),
+            students: rowsOf(sets, 1),
+        };
+    }
+
     async function closeStaleSessions(now, maxHours) {
         await run('usp_Session_CloseStale', [
             ['Now', sql.DateTime2(0), now],
@@ -263,6 +291,10 @@ export function createDb(dbConfig) {
         recordDeviceReading,
         getRewardSessions,
         getHistory,
+        getHourlyReadings,
+        getWorkingHours,
+        setWorkingHours,
+        getStudentsOverview,
         closeStaleSessions,
         registerStudent,
         findStudent,

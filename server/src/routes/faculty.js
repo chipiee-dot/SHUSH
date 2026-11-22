@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { buildLayout } from '../services/tableStatus.js';
 import { MAX_SESSION_HOURS } from '../services/limits.js';
+import { computeWorkingHoursAnalytics, getRuntimeWorkingHours } from '../services/noiseAnalytics.js';
 import { computeRewards } from '../services/rewards.js';
+import { buildStudentsOverview, loadStudentsFromFallback } from '../services/studentsOverview.js';
 import {
   addDays,
   parseLocalDate,
@@ -35,6 +37,11 @@ const REWARD_PERIODS = {
   month: startOfLocalMonth,
 };
 const REWARD_MIN_SESSION_MINUTES = 30;
+const ANALYTICS_PERIOD_DAYS = {
+  today: 1,
+  week: 7,
+  month: 30,
+};
 
 export function createFacultyRouter(db, config) {
   const router = Router();
@@ -86,6 +93,67 @@ export function createFacultyRouter(db, config) {
     })
   );
 
+  // ---- Working-hours noise analytics ----------------------------------------
+  router.get(
+    '/analytics/noise',
+    auth,
+    wrap(async (req, res) => {
+      const period =
+        req.query.period === undefined || req.query.period === '' ? 'week' : String(req.query.period);
+      const days = ANALYTICS_PERIOD_DAYS[period];
+      if (!days) {
+        return res.status(400).json({ message: 'Unknown analytics period.' });
+      }
+
+      let tableNo = null;
+      if (req.query.tableNo !== undefined && req.query.tableNo !== '' && req.query.tableNo !== 'all') {
+        tableNo = toInt(req.query.tableNo);
+        if (tableNo === null || tableNo < 1) {
+          return res.status(400).json({ message: 'Choose a table or All tables.' });
+        }
+      }
+
+      const now = new Date();
+      const today = startOfLocalDay(now, offset);
+      const periodStart = addDays(today, -(days - 1));
+      const to = addDays(today, 1);
+
+      const [rewardSessions, alertHistory, hourlyReadings, dbHours] = await Promise.all([
+        db.getRewardSessions(),
+        db.getHistory({ from: periodStart, to, kind: 'alert', tableNo, top: HISTORY_ROWS }),
+        db.getHourlyReadings ? db.getHourlyReadings({ from: periodStart, to, tableNo }).catch(() => []) : [],
+        db.getWorkingHours ? db.getWorkingHours().catch(() => null) : null,
+      ]);
+
+      const wh = dbHours && Number.isInteger(Number(dbHours.startHour)) && Number.isInteger(Number(dbHours.endHour))
+        ? {
+            startHour: Number(dbHours.startHour),
+            endHour: Number(dbHours.endHour),
+            excludeWeekends: Boolean(dbHours.excludeWeekends),
+          }
+        : getRuntimeWorkingHours();
+
+      return res.json({
+        period,
+        periodStart,
+        generatedAt: now,
+        alertsTruncated: alertHistory.length >= HISTORY_ROWS,
+        ...computeWorkingHoursAnalytics(
+          { sessions: rewardSessions, alerts: alertHistory, hourlyReadings },
+          {
+            periodStart,
+            now,
+            offsetMinutes: offset,
+            workStartHour: wh.startHour,
+            workEndHour: wh.endHour,
+            excludeWeekends: wh.excludeWeekends,
+            tableNo,
+          }
+        ),
+      });
+    })
+  );
+
   // ---- Table layout ---------------------------------------------------------
   router.get(
     '/layout',
@@ -94,6 +162,49 @@ export function createFacultyRouter(db, config) {
       const now = new Date();
       const layout = await loadLayout(now);
       res.json({ generatedAt: now, ...layout });
+    })
+  );
+
+  // ---- Students (logged-in library visitors & table choices) ----------------
+  router.get(
+    '/students',
+    auth,
+    wrap(async (req, res) => {
+      const now = new Date();
+      const dayStart = startOfLocalDay(now, offset);
+      const [layout, raw] = await Promise.all([
+        loadLayout(now),
+        db.getStudentsOverview
+          ? db.getStudentsOverview().catch(() => loadStudentsFromFallback(db))
+          : loadStudentsFromFallback(db),
+      ]);
+
+      return res.json({
+        generatedAt: now,
+        ...buildStudentsOverview({
+          sessions: raw?.sessions ?? [],
+          students: raw?.students ?? [],
+          tables: layout.tables,
+          now,
+          dayStart,
+        }),
+      });
+    })
+  );
+
+  router.post(
+    '/students/:studentId/end-session',
+    auth,
+    wrap(async (req, res) => {
+      const studentId = toInt(req.params.studentId);
+      if (studentId === null || studentId < 1) {
+        return res.status(400).json({ message: 'Invalid student.' });
+      }
+      const result = await db.endSession({ studentId, now: new Date() });
+      if (!result?.success) {
+        return res.status(404).json({ message: result?.message ?? 'That student does not have an active session.' });
+      }
+      return res.json({ message: 'Student session ended.' });
     })
   );
 

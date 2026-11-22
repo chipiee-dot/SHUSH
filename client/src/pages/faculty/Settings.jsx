@@ -81,6 +81,12 @@ const INFO_ICON = icon(
     <path d="M12 8h.01" />
   </>
 );
+const CLOCK_ICON = icon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </>
+);
 
 // Only administrators see the settings. The server checks the same rule on every request.
 export default function Settings() {
@@ -192,6 +198,7 @@ function AdminSettings() {
           <DeviceSettings q={devicesQ} focusNo={focusNo} />
         </div>
         <aside className="min-w-0 space-y-6 xl:sticky xl:top-6">
+          <WorkingHoursSettings />
           <SampleDataSettings onCleared={reloadAll} />
         </aside>
       </div>
@@ -956,6 +963,147 @@ function GuideModal({ open, onClose }) {
         ))}
       </ol>
     </Modal>
+  );
+}
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => ({
+  value: h,
+  label: `${h % 12 || 12}:00 ${h < 12 ? 'AM' : 'PM'}`,
+}));
+
+const WORKING_HOUR_PRESETS = [
+  { startHour: 8, endHour: 17, label: '8 AM – 5 PM' },
+  { startHour: 7, endHour: 19, label: '7 AM – 7 PM' },
+  { startHour: 8, endHour: 20, label: '8 AM – 8 PM' },
+];
+
+function WorkingHoursSettings() {
+  const toast = useToast();
+  const q = usePolling(api.workingHours, 0);
+  useErrorToast(q.error);
+  const saved = q.data?.workingHours ?? null;
+
+  const [draft, setDraft] = useState({ startHour: 8, endHour: 17, excludeWeekends: false });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (saved) {
+      setDraft({
+        startHour: Number(saved.startHour),
+        endHour: Number(saved.endHour),
+        excludeWeekends: Boolean(saved.excludeWeekends),
+      });
+    }
+  }, [saved]);
+
+  const invalidRange = draft.endHour <= draft.startHour;
+  const dirty =
+    saved !== null &&
+    (draft.startHour !== Number(saved.startHour) ||
+      draft.endHour !== Number(saved.endHour) ||
+      draft.excludeWeekends !== Boolean(saved.excludeWeekends));
+
+  async function save(e) {
+    e.preventDefault();
+    if (invalidRange) {
+      toast.error('Closing hour must be later than opening hour.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await api.saveWorkingHours(draft);
+      toast.success(result.message || 'Working hours saved.');
+      q.reload();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card
+      icon={CLOCK_ICON}
+      title="Working hours"
+      subtitle="Hours compared in the Dashboard's Peak vs. quietest noise analytics."
+    >
+      <form onSubmit={save} className="space-y-4">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Working hours presets">
+          {WORKING_HOUR_PRESETS.map((p) => {
+            const active = draft.startHour === p.startHour && draft.endHour === p.endHour;
+            return (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => setDraft((d) => ({ ...d, startHour: p.startHour, endHour: p.endHour }))}
+                className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange ${
+                  active
+                    ? 'border-shush-orange bg-shush-goldSoft text-shush-ink'
+                    : 'border-shush-lineStrong bg-shush-white text-shush-inkSoft hover:bg-shush-creamDeep'
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block min-w-0">
+            <span className={LABEL}>Opens at</span>
+            <select
+              className={INPUT}
+              value={draft.startHour}
+              onChange={(e) => setDraft((d) => ({ ...d, startHour: Number(e.target.value) }))}
+            >
+              {HOUR_OPTIONS.slice(0, 23).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block min-w-0">
+            <span className={LABEL}>Closes at</span>
+            <select
+              className={`${INPUT} ${invalidRange ? INPUT_BAD : ''}`}
+              value={draft.endHour}
+              onChange={(e) => setDraft((d) => ({ ...d, endHour: Number(e.target.value) }))}
+            >
+              {HOUR_OPTIONS.slice(1).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {invalidRange && (
+          <p className="text-xs text-shush-danger">Closing hour must be later than opening hour.</p>
+        )}
+
+        <label className="flex items-start gap-2.5 rounded-xl border border-shush-line bg-shush-cream px-3 py-2.5 text-xs text-shush-ink">
+          <input
+            type="checkbox"
+            checked={draft.excludeWeekends}
+            onChange={(e) => setDraft((d) => ({ ...d, excludeWeekends: e.target.checked }))}
+            className="mt-0.5 rounded border-shush-lineStrong text-shush-orange focus:ring-shush-orange"
+          />
+          <span>
+            <strong className="block font-semibold">Exclude weekends (Sat–Sun)</strong>
+            <span className="text-shush-inkSoft">Only count Monday–Friday activity in analytics.</span>
+          </span>
+        </label>
+
+        <div className="flex justify-end">
+          <GlowButton type="submit" disabled={!dirty || invalidRange || saving} className={SMALL_BTN}>
+            {saving ? 'Saving…' : 'Save'}
+          </GlowButton>
+        </div>
+      </form>
+    </Card>
   );
 }
 

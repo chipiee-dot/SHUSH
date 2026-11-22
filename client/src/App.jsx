@@ -8,6 +8,7 @@ import Login from './pages/Login.jsx';
 import SignUp from './pages/SignUp.jsx';
 import Dashboard from './pages/faculty/Dashboard.jsx';
 import TableLayout from './pages/faculty/TableLayout.jsx';
+import Students from './pages/faculty/Students.jsx';
 import Rewards from './pages/faculty/Rewards.jsx';
 import History from './pages/faculty/History.jsx';
 import Settings from './pages/faculty/Settings.jsx';
@@ -44,6 +45,7 @@ export default function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="layout" element={<TableLayout />} />
+        <Route path="students" element={<Students />} />
         <Route path="rewards" element={<Rewards />} />
         <Route path="history" element={<History />} />
         <Route path="settings" element={<Settings />} />

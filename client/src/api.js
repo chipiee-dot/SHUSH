@@ -48,7 +48,12 @@ export const api = {
 
   // Faculty console
   dashboard: () => request('/dashboard'),
+  noiseAnalytics: (params) =>
+    request(`/analytics/noise${query(typeof params === 'string' ? { period: params } : params)}`),
   layout: () => request('/layout'),
+  students: () => request('/students'),
+  endStudentSession: (studentId) =>
+    request(`/students/${encodeURIComponent(studentId)}/end-session`, { method: 'POST' }),
   notifications: () => request('/notifications'),
   startMaintenance: (fields) => request('/maintenance', { method: 'POST', body: fields }),
   endMaintenance: (id) => request(`/maintenance/${encodeURIComponent(id)}/end`, { method: 'POST' }),
@@ -79,6 +84,8 @@ export const api = {
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { newTableNo, seats } }),
   saveLayout: (tables) => request('/settings/layout', { method: 'PUT', body: { tables } }),
   clearSampleData: () => request('/settings/sample-data/clear', { method: 'POST' }),
+  workingHours: () => request('/settings/working-hours'),
+  saveWorkingHours: (fields) => request('/settings/working-hours', { method: 'PUT', body: fields }),
   devices: () => request('/settings/devices'),
   saveThreshold: (deviceCode, threshold) =>
     request(`/settings/devices/${encodeURIComponent(deviceCode)}`, { method: 'PUT', body: { threshold } }),

@@ -65,3 +65,7 @@ GO
 -- Hardware: device readings (POST /api/device/readings)
 GRANT EXECUTE ON dbo.usp_Device_Reading        TO shush_app;
 GO
+
+-- Start-up check: lets the server tell whether the database is up to date
+GRANT EXECUTE ON dbo.usp_Schema_Version        TO shush_app;
+GO

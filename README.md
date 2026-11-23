@@ -8,7 +8,8 @@ SHUSH/
 │   ├── SHUSH.sql               # database, Faculty table, usp_SignUp, usp_Login
 │   └── create_app_login.sql    # SQL login the Node server uses (EXECUTE-only)
 ├── server/                     # Node + Express + mssql
-│   ├── .env.example            # copy to .env
+│   ├── .env.example            # copy to .env (each person makes their own)
+│   ├── scripts/doctor.js       # npm run doctor: checks the setup
 │   └── src/
 │       ├── server.js           # starts the server
 │       ├── app.js              # middleware, routes, serves the built React app
@@ -35,6 +36,8 @@ SHUSH/
 
 ## 2. Configure the server
 
+`server/.env` holds each person's own settings (database password, secret). It is **not** in Git, so every teammate creates theirs:
+
 ```
 cd server
 copy .env.example .env        # macOS/Linux: cp .env.example .env
@@ -45,25 +48,45 @@ Edit `server/.env`:
 | Setting | What to put |
 | --- | --- |
 | `DB_SERVER` | `localhost` (or the machine name / IP) |
-| `DB_PORT` | `1433` for a default instance — leave `DB_INSTANCE` empty |
-| `DB_INSTANCE` | e.g. `SQLEXPRESS` for a named instance — then leave `DB_PORT` empty |
-| `DB_USER` / `DB_PASSWORD` | `shush_app` and the password you set in step 1 |
-| `JWT_SECRET` | a long random string (command is in the file) |
+| `DB_PORT` | `1433` for a default instance, and leave `DB_INSTANCE` empty |
+| `DB_INSTANCE` | e.g. `SQLEXPRESS` for a named instance, and leave `DB_PORT` empty |
+| `DB_USER` / `DB_PASSWORD` | `shush_app` and the password in `database/create_app_login.sql` (the default is already filled in) |
+| `JWT_SECRET` | a long random string (the command is in the file). Each person makes their own |
 | `LIBRARY_UTC_OFFSET_MINUTES` | library time offset from UTC, `480` for Philippines (default) |
 | `DEVICE_OFFLINE_SECONDS` | seconds without a report before a device shows offline (default `120`) |
 
-`server/.env.example` lists every setting.
+If a value has a `#` or spaces in it (for example the password), put it in double quotes: `DB_PASSWORD="my#pass word"`.
 
 ## 3. Install and run
 
 Requires Node.js 18.11 or newer. From the `SHUSH` folder:
 
 ```
-npm run setup      # installs root, server and client packages (once)
+npm install        # one command: installs the root, server and client packages
+npm run doctor     # checks Node, packages, server/.env, the database and the port, and says what to fix
 npm run dev        # API on :3001, React on :5173
 ```
 
 Open **http://localhost:5173**. The server console prints `Connected to SQL Server database "SHUSH"` when the database connection works; you can also open http://localhost:3001/api/health.
+
+### After every `git pull`
+
+1. `npm install` (only needed if `package.json` changed, but it is harmless).
+2. If the pull changed anything in `database/`, run `database/SHUSH.sql` and then `database/create_app_login.sql` in SSMS again. Both are safe to re-run. The server prints a warning at start-up when the database is out of date, and `npm run doctor` shows it too.
+
+### Troubleshooting (most common first)
+
+| You see | Why | Fix |
+| --- | --- | --- |
+| `server/.env was not found` | `.env` is not in Git | `copy .env.example .env` in `server/` |
+| `Login failed for user 'shush_app'` | wrong password, login not created, or SQL Server is Windows-auth only | match `DB_PASSWORD` with `create_app_login.sql`, run it, enable *SQL Server and Windows Authentication*, restart the service |
+| `Failed to connect to localhost\SQLEXPRESS` | service stopped, TCP/IP off, or SQL Server Browser off | start the services, enable TCP/IP, or set `DB_PORT` (and empty `DB_INSTANCE`) |
+| `Could not find stored procedure` / `Invalid column name` | your database is older than the code | run `SHUSH.sql` then `create_app_login.sql` again |
+| `EXECUTE permission was denied` | new procedures were not granted | run `create_app_login.sql` again |
+| `Cannot find package 'express'` (or `vite`) | packages not installed | `npm install` from the `SHUSH` folder |
+| `Port 3001 is already in use` | an old server is still running | close it, or change `PORT` in `server/.env` |
+| Merge conflict in `client/dist/...` | a build folder was committed | `git rm -r --cached client/dist` once; it is ignored now |
+| Hot reload does not notice edits (network drive, some OneDrive/WSL folders) | file watching is off by default | start with `set VITE_POLLING=true` (macOS/Linux: `VITE_POLLING=true npm run dev`) |
 
 ### Single-server mode (no Vite)
 

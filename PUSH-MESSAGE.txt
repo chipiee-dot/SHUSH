@@ -1,1 +1,1 @@
-Apply the orange-gold-cloud theme, remove the two legacy labels, and widen the welcome and auth layouts.
+Make setup reliable for teammates and speed up page loads: add .env.example and npm run doctor, clear database errors, lazy-loaded pages, gzip and caching, faster session cleanup.

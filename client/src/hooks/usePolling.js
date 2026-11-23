@@ -38,10 +38,16 @@ export default function usePolling(fetcher, intervalMs = 0, deps = []) {
     }
 
     run();
-    const timer = intervalMs > 0 ? setInterval(run, intervalMs) : null;
+    // Nobody is looking at a hidden tab, so do not hit the server for it. Refresh once when it becomes visible again.
+    const tickIfVisible = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+    const timer = intervalMs > 0 ? setInterval(tickIfVisible, intervalMs) : null;
+    if (intervalMs > 0) document.addEventListener('visibilitychange', tickIfVisible);
     return () => {
       alive = false;
       if (timer) clearInterval(timer);
+      if (intervalMs > 0) document.removeEventListener('visibilitychange', tickIfVisible);
     };
   }, [tick, intervalMs, ...deps]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -130,7 +130,7 @@ Generated a secure random string for JWT token signing:
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-**Result**: `f6b10cf235f0f039e6542a9c1b939dba7c63abfaa8448ba91ef41495bd042a5fbcb4ade81a0507bd63dfc16ffa00664b`
+**Result**: a 96-character random string. Keep it private and make your own; do not copy one from a document.
 
 ### 3.2 Create .env File
 
@@ -151,7 +151,7 @@ DB_TRUST_SERVER_CERT=true   # Required for local SQL Server without SSL cert
 
 # Server Configuration
 PORT=3001
-JWT_SECRET=f6b10cf235f0f039e6542a9c1b939dba7c63abfaa8448ba91ef41495bd042a5fbcb4ade81a0507bd63dfc16ffa00664b
+JWT_SECRET=<paste the string you generated>
 COOKIE_SECURE=false         # false for HTTP (dev), true for HTTPS (prod)
 
 # Library Settings

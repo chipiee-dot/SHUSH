@@ -8,6 +8,11 @@
    Requires SQL Server 2016 SP1 or newer (uses CREATE OR ALTER).
    ============================================================================ */
 
+-- Same session options in SSMS and sqlcmd, so stored procedures behave the same on every machine.
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 -- 1) DATABASE -----------------------------------------------------------------
 IF DB_ID(N'SHUSH') IS NULL
     CREATE DATABASE SHUSH;
@@ -351,6 +356,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LibrarySession_Table_
     CREATE INDEX IX_LibrarySession_Table_Started ON dbo.LibrarySession (TableId, StartedAt);
 GO
 
+-- Open sessions (EndedAt IS NULL) are looked up on every page load: seats, stale-session cleanup.
+-- A plain index (not a filtered one), so it works no matter how the script is run.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LibrarySession_Open')
+    CREATE INDEX IX_LibrarySession_Open ON dbo.LibrarySession (EndedAt, StartedAt) INCLUDE (TableId);
+GO
+
 -- 9) SESSION MEMBERS (each member receives the session's table score) ---------
 IF OBJECT_ID(N'dbo.SessionMember', N'U') IS NULL
 BEGIN
@@ -361,6 +372,11 @@ BEGIN
         CONSTRAINT PK_SessionMember PRIMARY KEY (SessionId, StudentId)
     );
 END
+GO
+
+-- "Which sessions did this student have?" (active session, history, rewards).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_SessionMember_Student')
+    CREATE INDEX IX_SessionMember_Student ON dbo.SessionMember (StudentId, SessionId);
 GO
 
 -- 10) ALERTS (noise above threshold for 5 continuous seconds) -----------------
@@ -1092,7 +1108,7 @@ BEGIN
     UPDATE dbo.LibrarySession
        SET EndedAt = DATEADD(HOUR, @MaxHours, StartedAt)
      WHERE EndedAt IS NULL
-       AND DATEADD(HOUR, @MaxHours, StartedAt) <= @Now;
+       AND StartedAt <= DATEADD(HOUR, -@MaxHours, @Now);   -- same rule, written so the index can be used
 END
 GO
 
@@ -1471,5 +1487,17 @@ BEGIN
            st.IsSample
     FROM dbo.Student AS st
     ORDER BY st.FullName, st.Id;
+END
+GO
+
+-- 99) SCHEMA VERSION ------------------------------------------------------------
+-- The server compares this number with the one it was written for and says clearly
+-- when a teammate's database is out of date. Raise it (here AND in server/src/server.js
+-- and server/scripts/doctor.js) whenever you change tables or procedures.
+CREATE OR ALTER PROCEDURE dbo.usp_Schema_Version
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT CAST(1 AS INT) AS SchemaVersion;
 END
 GO

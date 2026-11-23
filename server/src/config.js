@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(here, '../.env') });
+const envPath = path.resolve(here, '../.env');
+const envLoaded = dotenv.config({ path: envPath });
 
 const env = process.env;
 const isProd = env.NODE_ENV === 'production';
@@ -27,7 +28,17 @@ if (!jwtSecret) {
     );
 }
 
+// server/.env is git-ignored, so a fresh clone does not have one. Say so clearly instead of failing later.
+export const envProblems = [];
+if (envLoaded.error) {
+    envProblems.push('server/.env was not found. Copy server/.env.example to server/.env and fill it in (npm run doctor checks it).');
+}
+if (!env.DB_USER || !env.DB_PASSWORD) {
+    envProblems.push('DB_USER or DB_PASSWORD is empty in server/.env. They must match the login created by database/create_app_login.sql.');
+}
+
 export const config = {
+    envPath,
     port: Number(env.PORT) || 3001,
     isProd,
     jwtSecret,
@@ -49,7 +60,8 @@ export const config = {
         password: env.DB_PASSWORD,
         connectionTimeout: 15000,
         requestTimeout: 15000,
-        pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
+        // min 2 keeps two connections open, so the first request after a quiet minute is not slowed by a new login.
+        pool: { max: 10, min: 2, idleTimeoutMillis: 300000 },
         options: {
             encrypt: bool(env.DB_ENCRYPT, true),
             trustServerCertificate: bool(env.DB_TRUST_SERVER_CERT, true),

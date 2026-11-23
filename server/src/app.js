@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import compression from 'compression';
 import express from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -35,6 +36,7 @@ export function createApp({ db, config }) {
       },
     })
   );
+  app.use(compression()); // gzip for the API and the built app: much smaller downloads
   app.use(express.json({ limit: '10kb' }));
   app.use(cookieParser());
 
@@ -59,8 +61,25 @@ export function createApp({ db, config }) {
   // ---- Built React app (after `npm run build`) --------------------------------
   const indexHtml = path.join(config.clientDist, 'index.html');
   if (fs.existsSync(indexHtml)) {
-    app.use(express.static(config.clientDist));
-    app.get('*', (req, res) => res.sendFile(indexHtml));
+    // Files in /assets have a hash in their name, so they can be cached for a year. index.html must always be re-checked.
+    app.use(
+      express.static(config.clientDist, {
+        index: false,
+        setHeaders(res, filePath) {
+          if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          } else if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+          }
+        },
+      })
+    );
+    app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(indexHtml);
+    });
   }
 
   // ---- Errors ---------------------------------------------------------------

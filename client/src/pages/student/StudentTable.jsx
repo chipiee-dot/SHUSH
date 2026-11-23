@@ -187,8 +187,16 @@ export default function StudentTable() {
     if (!student) return undefined;
     loadTables();
     if (seated) return undefined;
-    const timer = setInterval(loadTables, REFRESH_MS);
-    return () => clearInterval(timer);
+    // Skip the refresh while the tab is hidden; refresh once when the student comes back.
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') loadTables();
+    };
+    const timer = setInterval(refreshIfVisible, REFRESH_MS);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+    };
   }, [student, seated, loadTables]);
 
   if (!checking && !student) return <Navigate to="/student/login" replace />;

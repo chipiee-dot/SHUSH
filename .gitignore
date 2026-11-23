@@ -1,4 +1,10 @@
 node_modules/
 .env
+.env.*
+!.env.example
 .vs/
 *.vsidx
+# Build output: every teammate builds their own (npm run build). Committing it causes merge conflicts on every pull.
+client/dist/
+dist/
+*.log

@@ -51,6 +51,13 @@ export function createDb(dbConfig) {
         await pool.request().query('SELECT 1 AS ok');
     }
 
+    // The database script keeps a version number (usp_Schema_Version). The server compares it with the
+    // version it was written for, so an out-of-date database is reported clearly instead of failing later.
+    async function getSchemaVersion() {
+        const row = oneOf(await run('usp_Schema_Version'));
+        return row?.schemaVersion ?? null;
+    }
+
     async function signUp(data) {
         const sets = await run('usp_SignUp', [
             ['FacultyId', sql.NVarChar(30), data.facultyId],
@@ -190,11 +197,26 @@ export function createDb(dbConfig) {
         };
     }
 
+    // Closing sessions that ran past the maximum is a write. Every poll and every student request used to
+    // trigger it, so it now runs at most once per STALE_CHECK_MS (concurrent callers share one run).
+    const STALE_CHECK_MS = 10000;
+    let staleRun = null;
+    let staleLastAt = 0;
+
     async function closeStaleSessions(now, maxHours) {
-        await run('usp_Session_CloseStale', [
+        if (staleRun) return staleRun;
+        if (Date.now() - staleLastAt < STALE_CHECK_MS) return undefined;
+        staleRun = run('usp_Session_CloseStale', [
             ['Now', sql.DateTime2(0), now],
             ['MaxHours', sql.Int, maxHours],
-        ]);
+        ])
+            .then(() => {
+                staleLastAt = Date.now();
+            })
+            .finally(() => {
+                staleRun = null;
+            });
+        return staleRun;
     }
 
     async function registerStudent(data) {
@@ -296,6 +318,7 @@ export function createDb(dbConfig) {
         setWorkingHours,
         getStudentsOverview,
         closeStaleSessions,
+        getSchemaVersion,
         registerStudent,
         findStudent,
         getActiveStudentSession,

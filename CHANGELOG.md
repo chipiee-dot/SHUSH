@@ -22,3 +22,8 @@
 - Phase 7: `server/src/routes/student.js`, `StudentTable.jsx`, `StudentTableTile.jsx`, `StudentFloorPlan.jsx`, `student-table.css`. Student floor-plan view.
 - Phase 8: `History.jsx`, `lib/exportHistory.js`, `client/package.json` (adds `exceljs`). Styled Excel report, cleaner CSV, docs.
 
+
+## Stability and speed
+
+- Setup: `server/.env.example` (was missing), `npm install` now installs all three packages, `npm run doctor`, plain start-up messages for the common database errors, a database version check (`usp_Schema_Version`), `.gitignore` for `client/dist` and `.env.*`.
+- Speed: pages load on demand (first download about 60% smaller), gzip and long-lived caching for the built site, stale-session cleanup is sargable, indexed and runs at most every 10 seconds, two warm database connections, refreshing pauses in hidden tabs, Vite file polling is off unless `VITE_POLLING=true`.

@@ -1,20 +1,24 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { StudentAuthProvider } from './context/StudentAuthContext.jsx';
-import FacultyShell from './components/FacultyShell.jsx';
-import StudentShell from './components/StudentShell.jsx';
 import StartPage from './pages/StartPage.jsx';
-import Login from './pages/Login.jsx';
-import SignUp from './pages/SignUp.jsx';
-import Dashboard from './pages/faculty/Dashboard.jsx';
-import TableLayout from './pages/faculty/TableLayout.jsx';
-import Students from './pages/faculty/Students.jsx';
-import Rewards from './pages/faculty/Rewards.jsx';
-import History from './pages/faculty/History.jsx';
-import Settings from './pages/faculty/Settings.jsx';
-import StudentLogin from './pages/student/StudentLogin.jsx';
-import StudentSignUp from './pages/student/StudentSignUp.jsx';
-import StudentTable from './pages/student/StudentTable.jsx';
+
+// Only the landing page is loaded up front. Every other page is fetched when it is first opened, so the first
+// screen downloads far less code (a student never downloads the faculty console, and the other way round).
+const FacultyShell = lazy(() => import('./components/FacultyShell.jsx'));
+const StudentShell = lazy(() => import('./components/StudentShell.jsx'));
+const Login = lazy(() => import('./pages/Login.jsx'));
+const SignUp = lazy(() => import('./pages/SignUp.jsx'));
+const Dashboard = lazy(() => import('./pages/faculty/Dashboard.jsx'));
+const TableLayout = lazy(() => import('./pages/faculty/TableLayout.jsx'));
+const Students = lazy(() => import('./pages/faculty/Students.jsx'));
+const Rewards = lazy(() => import('./pages/faculty/Rewards.jsx'));
+const History = lazy(() => import('./pages/faculty/History.jsx'));
+const Settings = lazy(() => import('./pages/faculty/Settings.jsx'));
+const StudentLogin = lazy(() => import('./pages/student/StudentLogin.jsx'));
+const StudentSignUp = lazy(() => import('./pages/student/StudentSignUp.jsx'));
+const StudentTable = lazy(() => import('./pages/student/StudentTable.jsx'));
 
 function Splash() {
   return <div className="min-h-screen shush-cloud" aria-busy="true" />;
@@ -36,6 +40,7 @@ function GuestOnly({ children }) {
 
 export default function App() {
   return (
+    <Suspense fallback={<Splash />}>
     <Routes>
       <Route path="/" element={<StartPage />} />
 
@@ -65,5 +70,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

@@ -11,7 +11,7 @@ if (major < 18 || (major === 18 && minor < 11)) {
 }
 
 // Expected by this version of the code. Bump it together with usp_Schema_Version in database/SHUSH.sql.
-const EXPECTED_SCHEMA_VERSION = 1;
+const EXPECTED_SCHEMA_VERSION = 2;
 
 for (const problem of envProblems) console.warn(`[setup] ${problem}`);
 

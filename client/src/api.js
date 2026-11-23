@@ -82,6 +82,8 @@ export const api = {
   // Change a table's number (and optionally its seats) in one step.
   updateTable: (tableNo, { newTableNo, seats }) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { newTableNo, seats } }),
+  // Delete a table with its device and history. Refused while students are seated.
+  deleteTable: (tableNo) => request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'DELETE' }),
   saveLayout: (tables) => request('/settings/layout', { method: 'PUT', body: { tables } }),
   clearSampleData: () => request('/settings/sample-data/clear', { method: 'POST' }),
   workingHours: () => request('/settings/working-hours'),

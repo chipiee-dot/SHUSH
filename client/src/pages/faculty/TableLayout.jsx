@@ -214,6 +214,8 @@ export default function TableLayout() {
   const [saving, setSaving] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // the table waiting for delete confirmation
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const tileRefs = useRef(new Map());
   const canvasRef = useRef(null);
@@ -226,15 +228,15 @@ export default function TableLayout() {
     requestAnimationFrame(() => tileRefs.current.get(no)?.focus());
   }, [selectedNo]);
 
-  // Esc closes the drawer. The add-table modal handles its own Esc first.
+  // Esc closes the drawer. The add-table modal and the delete confirmation handle their own Esc first.
   useEffect(() => {
-    if (selectedNo === null || showAdd) return undefined;
+    if (selectedNo === null || showAdd || deleteTarget !== null) return undefined;
     function onKey(e) {
       if (e.key === 'Escape') closeDrawer();
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [selectedNo, showAdd, closeDrawer]);
+  }, [selectedNo, showAdd, deleteTarget, closeDrawer]);
 
   // Warn before the tab is closed with unsaved layout changes. (In-app navigation is covered by Cancel's confirmation.)
   useEffect(() => {
@@ -297,6 +299,25 @@ export default function TableLayout() {
       toast.error(err.message);
     } finally {
       setAddBusy(false);
+    }
+  }
+
+  async function handleDeleteTable() {
+    const no = deleteTarget?.tableNo;
+    if (no == null) return;
+    setDeleteBusy(true);
+    try {
+      const result = await api.deleteTable(no);
+      toast.success(result.message || `Table ${no} deleted.`);
+      setDeleteTarget(null);
+      setSelectedNo(null);
+      reload();
+    } catch (err) {
+      toast.error(err.message);
+      setDeleteTarget(null);
+      reload(); // the table may already be gone or someone may have sat down, so show what is saved now
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -498,7 +519,7 @@ export default function TableLayout() {
           </Card>
         </div>
 
-        {selected && <TableDrawer table={selected} onClose={closeDrawer} />}
+        {selected && <TableDrawer table={selected} onClose={closeDrawer} onDelete={setDeleteTarget} />}
       </div>
 
       {/* Keeps the last tiles reachable above the bottom sheet on small screens. */}
@@ -530,6 +551,20 @@ export default function TableLayout() {
         onCancel={() => setConfirmCancel(false)}
       >
         You moved tables on the floor plan but have not saved. If you discard, the saved layout stays as it is.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={`Delete Table ${deleteTarget?.tableNo ?? ''}?`}
+        tone="danger"
+        confirmLabel="Yes, delete it"
+        cancelLabel="Keep it"
+        busyLabel="Deleting…"
+        onConfirm={handleDeleteTable}
+        onCancel={() => setDeleteTarget(null)}
+        busy={deleteBusy}
+      >
+        This permanently removes the table, its device and its history: sessions, alerts, noise readings and maintenance periods. This cannot be undone.
       </ConfirmDialog>
 
       {showAdd && (

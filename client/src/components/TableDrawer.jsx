@@ -10,7 +10,7 @@ import { STATUS_META, formatNumber, formatTime, timeAgo } from '../lib/format.js
  * Focus moves to the heading when it first opens. Closing (button or Esc) is handled by the parent,
  * which also returns focus to the tile.
  */
-export default function TableDrawer({ table, onClose }) {
+export default function TableDrawer({ table, onClose, onDelete }) {
   const headingRef = useRef(null);
 
   // Runs on open only: the drawer stays mounted when polling refreshes or another tile is picked.
@@ -123,7 +123,22 @@ export default function TableDrawer({ table, onClose }) {
         >
           Edit table
         </Link>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(table)}
+            disabled={table.occupancy.seated > 0}
+            className="inline-block rounded-xl border border-shush-danger/50 bg-shush-white px-4 py-2 text-sm font-semibold text-shush-danger transition hover:bg-shush-danger/10 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-danger focus-visible:ring-offset-2"
+          >
+            Delete table
+          </button>
+        )}
       </div>
+      {onDelete && table.occupancy.seated > 0 && (
+        <p className="mt-2 text-xs text-shush-inkSoft">
+          Students are seated here. End their sessions before deleting this table.
+        </p>
+      )}
     </aside>
   );
 }

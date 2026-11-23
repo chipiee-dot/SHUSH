@@ -290,6 +290,10 @@ export function createDb(dbConfig) {
         );
     }
 
+    async function deleteTable({ tableNo }) {
+        return oneOf(await run('usp_Table_Delete', [['TableNo', sql.Int, tableNo]]));
+    }
+
     async function saveLayout(changes) {
         return oneOf(await run('usp_Layout_Save', [['Json', sql.NVarChar(sql.MAX), JSON.stringify(changes)]]));
     }
@@ -327,6 +331,7 @@ export function createDb(dbConfig) {
         addTable,
         setTableSeats,
         updateTable,
+        deleteTable,
         saveLayout,
         clearSampleData,
     };

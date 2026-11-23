@@ -37,6 +37,11 @@ const fakeDb = {
     fakeDb.lastLayout = changes;
     return { success: true, message: `Layout saved. ${changes.length} table(s) updated.` };
   },
+  deleteTable: async ({ tableNo }) => {
+    if (tableNo === 1) return { success: false, message: 'Table 1 has 3 students seated. End their sessions first, then delete the table.' };
+    if (tableNo === 2) return { success: true, message: 'Table 2 deleted.' };
+    return { success: false, message: 'That table does not exist.' };
+  },
   getRewardSessions: async () => [],
   getHistory: async (args) => {
     fakeDb.lastHistoryArgs = args;
@@ -246,4 +251,14 @@ test('saving the layout needs sign-in and is validated', async () => {
     cookie: FACULTY, body: { tables: [{ tableNo: 2, col: 11, row: 0, width: 2, height: 2 }] },
   });
   assert.equal(outside.status, 400);
+});
+
+test('deleting a table needs sign-in and reports seated and unknown tables', async () => {
+  assert.equal((await call('DELETE', '/api/settings/tables/2')).status, 401);
+  assert.equal((await call('DELETE', '/api/settings/tables/abc', { cookie: FACULTY })).status, 400);
+  assert.equal((await call('DELETE', '/api/settings/tables/1', { cookie: FACULTY })).status, 409);
+  assert.equal((await call('DELETE', '/api/settings/tables/99', { cookie: FACULTY })).status, 404);
+  const ok = await call('DELETE', '/api/settings/tables/2', { cookie: FACULTY });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.message, 'Table 2 deleted.');
 });

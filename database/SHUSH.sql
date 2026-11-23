@@ -1260,6 +1260,63 @@ BEGIN
 END
 GO
 
+-- 28c) TABLES: delete a table ---------------------------------------------------
+-- Permanently removes the table, its device and everything recorded for it (sessions, alerts,
+-- hourly readings, maintenance windows). A table with students seated right now is refused.
+-- All or nothing. The row lock is the same one usp_Session_Start takes, so nobody can sit down mid-delete.
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Table_Delete
+    @TableNo INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRANSACTION;
+
+    DECLARE @TableId INT, @Occupied INT;
+    SELECT @TableId = t.Id
+    FROM dbo.LibraryTable AS t WITH (UPDLOCK, HOLDLOCK)
+    WHERE t.TableNo = @TableNo AND t.IsActive = 1;
+
+    IF @TableId IS NULL
+    BEGIN
+        ROLLBACK;
+        SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
+    END
+
+    SELECT @Occupied = COUNT(*) FROM dbo.LibrarySession WHERE TableId = @TableId AND EndedAt IS NULL;
+    IF @Occupied > 0
+    BEGIN
+        ROLLBACK;
+        SELECT CAST(0 AS BIT) AS Success,
+               CONCAT(N'Table ', @TableNo, N' has ', @Occupied, N' ', CASE WHEN @Occupied = 1 THEN N'student' ELSE N'students' END,
+                      N' seated. End their sessions first, then delete the table.') AS Message;
+        RETURN;
+    END
+
+    DELETE FROM dbo.Alert
+    WHERE TableId = @TableId OR DeviceId IN (SELECT Id FROM dbo.Device WHERE TableId = @TableId);
+
+    DELETE FROM dbo.DeviceHourlyReading
+    WHERE TableId = @TableId OR DeviceId IN (SELECT Id FROM dbo.Device WHERE TableId = @TableId);
+
+    DELETE sm
+    FROM dbo.SessionMember AS sm
+    JOIN dbo.LibrarySession AS s ON s.Id = sm.SessionId
+    WHERE s.TableId = @TableId;
+
+    DELETE FROM dbo.LibrarySession WHERE TableId = @TableId;
+    DELETE FROM dbo.MaintenanceWindow WHERE TableId = @TableId;   -- windows for ALL tables (TableId NULL) stay
+    DELETE FROM dbo.Device WHERE TableId = @TableId;
+    DELETE FROM dbo.LibraryTable WHERE Id = @TableId;
+
+    COMMIT;
+
+    SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Table ', @TableNo, N' deleted.') AS Message;
+END
+GO
+
 -- 29) SAMPLE DATA: remove everything flagged IsSample --------------------------
 -- Real students, sessions and tables are never touched.
 CREATE OR ALTER PROCEDURE dbo.usp_SampleData_Clear
@@ -1498,6 +1555,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_Schema_Version
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT CAST(1 AS INT) AS SchemaVersion;
+    SELECT CAST(2 AS INT) AS SchemaVersion;
 END
 GO

@@ -302,6 +302,8 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
   const [showAdd, setShowAdd] = useState(false);
   const [newTable, setNewTable] = useState({ tableNo: '', seats: '4', device: '' });
   const [adding, setAdding] = useState(false);
+  const [deleting, setDeleting] = useState(null); // the table waiting for delete confirmation
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
 
@@ -392,6 +394,25 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
       if (touched) onChanged(); // part of the change went through, so show what is saved now
     } finally {
       setSavingNo(null);
+    }
+  }
+
+  async function deleteTable() {
+    const t = deleting;
+    if (!t) return;
+    setDeleteBusy(true);
+    try {
+      const result = await api.deleteTable(t.tableNo);
+      toast.success(result.message || `Table ${t.tableNo} deleted.`);
+      setDeleting(null);
+      closeEdit(t);
+      onChanged();
+    } catch (err) {
+      toast.error(err.message);
+      setDeleting(null);
+      onChanged(); // the table may already be gone or someone may have sat down, so show what is saved now
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -683,6 +704,27 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
                             </button>
                           </div>
                         </div>
+
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-shush-danger/40 pt-4">
+                          <p className="min-w-0 flex-1 text-xs text-shush-inkSoft">
+                            {t.occupied > 0
+                              ? `${t.occupied} ${t.occupied === 1 ? 'student is' : 'students are'} seated here. End their sessions before deleting this table.`
+                              : 'Deleting removes the table, its device and its history.'}
+                          </p>
+                          <button
+                            type="button"
+                            disabled={saving || t.occupied > 0}
+                            onClick={() => setDeleting(t)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-shush-danger px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-danger/90 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-shush-danger focus:ring-offset-2"
+                          >
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            </svg>
+                            Delete table
+                          </button>
+                        </div>
                       </div>
                     )}
                   </li>
@@ -692,6 +734,19 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
           )}
         </>
       )}
+      <ConfirmDialog
+        open={deleting !== null}
+        title={`Delete Table ${deleting?.tableNo ?? ''}?`}
+        tone="danger"
+        confirmLabel="Yes, delete it"
+        cancelLabel="Keep it"
+        busyLabel="Deleting…"
+        onConfirm={deleteTable}
+        onCancel={() => setDeleting(null)}
+        busy={deleteBusy}
+      >
+        This permanently removes the table, its device and its history: sessions, alerts, noise readings and maintenance periods. This cannot be undone.
+      </ConfirmDialog>
     </Card>
   );
 }

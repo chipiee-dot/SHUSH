@@ -56,7 +56,7 @@ export function createSettingsRouter(db, config) {
     })
   );
 
-  // ---- Tables: list, add, change seats or table number ---------------------
+  // ---- Tables: list, add, change seats or table number, delete ---------------------
 
   router.get(
     '/tables',
@@ -156,6 +156,24 @@ export function createSettingsRouter(db, config) {
       if (!result?.success) {
         const notFound = /does not exist/i.test(result?.message ?? '');
         return res.status(notFound ? 404 : 400).json({ message: result?.message ?? 'Could not save.' });
+      }
+      return res.json({ message: result.message });
+    })
+  );
+
+  // Delete a table together with its device and history. Refused while students are seated at it.
+  router.delete(
+    '/tables/:tableNo',
+    facultyOnly,
+    wrap(async (req, res) => {
+      const tableNo = toInt(req.params.tableNo);
+      if (tableNo === null) return res.status(400).json({ message: 'Unknown table.' });
+
+      const result = await db.deleteTable({ tableNo });
+      if (!result?.success) {
+        const message = result?.message ?? 'Could not delete the table.';
+        const status = /does not exist/i.test(message) ? 404 : /seated/i.test(message) ? 409 : 400;
+        return res.status(status).json({ message });
       }
       return res.json({ message: result.message });
     })

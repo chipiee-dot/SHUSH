@@ -27,3 +27,7 @@
 
 - Setup: `server/.env.example` (was missing), `npm install` now installs all three packages, `npm run doctor`, plain start-up messages for the common database errors, a database version check (`usp_Schema_Version`), `.gitignore` for `client/dist` and `.env.*`.
 - Speed: pages load on demand (first download about 60% smaller), gzip and long-lived caching for the built site, stale-session cleanup is sargable, indexed and runs at most every 10 seconds, two warm database connections, refreshing pauses in hidden tabs, Vite file polling is off unless `VITE_POLLING=true`.
+
+## Delete table
+
+- `database/SHUSH.sql`, `create_app_login.sql`, `server/src/db.js`, `routes/settings.js`, `server/src/server.js`, `server/scripts/doctor.js`, `server/test/api.test.js`, `client/src/api.js`, `Settings.jsx`, `TableLayout.jsx`, `TableDrawer.jsx`. Delete a table from Settings (Edit panel) and from the Table layout details panel (`usp_Table_Delete`, `DELETE /api/settings/tables/:tableNo`). Removes the table, its device and its history; refused while students are seated. Database version is now 2, so re-run `SHUSH.sql` and `create_app_login.sql`.

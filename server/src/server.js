@@ -18,6 +18,7 @@ for (const problem of envProblems) console.warn(`[setup] ${problem}`);
 const db = createDb(config.db);
 const app = createApp({ db, config });
 
+
 const server = app.listen(config.port, () => {
     console.log(`SHUSH server listening on http://localhost:${config.port}`);
     checkDatabase();
@@ -52,3 +53,13 @@ async function checkDatabase() {
         console.warn(`[setup] The database is out of date or missing permissions (${err.message}). In SSMS run database/SHUSH.sql and then database/create_app_login.sql again.`);
     }
 }
+
+// Listen on 0.0.0.0 so external devices (like the ESP32) can connect
+app.listen(config.port, '0.0.0.0', () => {
+    console.log(`SHUSH server listening on http://0.0.0.0:${config.port}`);
+    db.ping()
+        .then(() => console.log(`Connected to SQL Server database "${dbConfig.database}".`))
+        .catch((err) => {
+            console.error(`Could not connect to SQL Server: ${err.message}`);
+        });
+});

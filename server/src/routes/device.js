@@ -25,26 +25,43 @@ export function createDeviceRouter(db, config) {
             const level = toInt(req.body?.level);
             const status = String(req.body?.status ?? 'QUIET');
 
-            // 1. REPLY TO ESP32 IMMEDIATELY (This fixes the lag!)
-            res.json({ success: true });
+            let isMaintenance = false;
 
-            // 2. DO THE DATABASE WORK IN THE BACKGROUND
-            (async () => {
-                try {
-                    await db.recordDeviceReading({ deviceCode, level, receivedAt: new Date() });
+            try {
+                // 1. Check Maintenance
+                const sets = await db.run('usp_Maintenance_Active', [
+                    ['Now', sql.DateTime2(0), new Date()]
+                ]);
+                const activeMaintenance = sets[0] || [];
 
-                    if (status === 'ALERT') {
-                        await db.run('usp_Alert_Log', [
-                            ['DeviceCode', sql.NVarChar(20), deviceCode],
-                            ['Level', sql.Int, level],
-                            ['AlertedAt', sql.DateTime2(0), new Date()]
-                        ]);
-                        console.log(`[device] Successfully logged ALERT for ${deviceCode} at level ${level}`);
-                    }
-                } catch (err) {
-                    console.error('[device] Background DB Error:', err.message);
+                isMaintenance = activeMaintenance.some(m => {
+                    const appliesToAll = (m.AllTables === true || m.AllTables === 1);
+                    const appliesToMe = m.DeviceCode === deviceCode;
+                    return appliesToAll || appliesToMe;
+                });
+
+                // 2. Save Reading
+                await db.recordDeviceReading({ deviceCode, level, receivedAt: new Date() });
+
+                // 3. Save Alert (Only if NOT in maintenance)
+                if (status === 'ALERT' && !isMaintenance) {
+                    await db.run('usp_Alert_Log', [
+                        ['DeviceCode', sql.NVarChar(20), deviceCode],
+                        ['Level', sql.Int, level],
+                        ['AlertedAt', sql.DateTime2(0), new Date()]
+                    ]);
+                    console.log(`[device] Successfully logged ALERT for ${deviceCode}`);
                 }
-            })();
+
+            } catch (err) {
+                console.error('[device] DB Error:', err.message);
+            }
+
+            // 4. Reply to ESP32 instantly with the maintenance status
+            return res.json({
+                success: true,
+                maintenance: isMaintenance
+            });
         })
     );
 

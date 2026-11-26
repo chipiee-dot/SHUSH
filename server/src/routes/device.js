@@ -26,6 +26,8 @@ export function createDeviceRouter(db, config) {
             const status = String(req.body?.status ?? 'QUIET');
 
             let isMaintenance = false;
+            let currentThreshold = 70; // Default High
+            let currentLow = 50;       // Default Low
 
             try {
                 // 1. Check Maintenance
@@ -41,26 +43,46 @@ export function createDeviceRouter(db, config) {
                 });
 
                 // 2. Save Reading
-                await db.recordDeviceReading({ deviceCode, level, receivedAt: new Date() });
+                await db.run('usp_Device_Reading', [
+                    ['DeviceCode', sql.NVarChar(20), deviceCode],
+                    ['Level', sql.Int, level],
+                    ['ReceivedAt', sql.DateTime2(0), new Date()]
+                ]);
 
-                // 3. Save Alert (Only if NOT in maintenance)
+                // 3. Get the new threshold from the existing Layout procedure
+                const layoutSets = await db.run('usp_Layout_Get');
+                const devices = layoutSets[0] || [];
+
+                const myDevice = devices.find(d => d.DeviceCode === deviceCode || d.deviceCode === deviceCode);
+
+                if (myDevice) {
+                    const dbThreshold = myDevice.Threshold ?? myDevice.threshold;
+                    if (dbThreshold != null) {
+                        currentThreshold = dbThreshold;
+                    }
+                }
+
+                currentLow = currentThreshold - Math.round(currentThreshold * 0.3);
+                if (currentLow < 10) currentLow = 10;
+
+                // 4. Save Alert
                 if (status === 'ALERT' && !isMaintenance) {
                     await db.run('usp_Alert_Log', [
                         ['DeviceCode', sql.NVarChar(20), deviceCode],
                         ['Level', sql.Int, level],
                         ['AlertedAt', sql.DateTime2(0), new Date()]
                     ]);
-                    console.log(`[device] Successfully logged ALERT for ${deviceCode}`);
                 }
 
             } catch (err) {
                 console.error('[device] DB Error:', err.message);
             }
 
-            // 4. Reply to ESP32 instantly with the maintenance status
             return res.json({
                 success: true,
-                maintenance: isMaintenance
+                maintenance: isMaintenance,
+                threshold: currentThreshold,
+                low: currentLow
             });
         })
     );

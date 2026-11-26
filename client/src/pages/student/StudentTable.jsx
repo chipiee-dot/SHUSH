@@ -5,6 +5,7 @@ import { useToast } from '../../components/Toast.jsx';
 import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import CloudBackground from '../../components/CloudBackground.jsx';
 import ConfirmTableDialog from '../../components/ConfirmTableDialog.jsx';
+import StudentCertificates from '../../components/StudentCertificates.jsx';
 import SeatRing from '../../components/SeatRing.jsx';
 import StudentFloorPlan from '../../components/StudentFloorPlan.jsx';
 import StudentTableTile, { StudentTableSkeleton, YourTable } from '../../components/StudentTableTile.jsx';
@@ -396,6 +397,8 @@ export default function StudentTable() {
           </div>
         </div>
       </div>
+
+      <StudentCertificates />
 
       {sorted && sorted.length === 0 && !loadFailed && (
         <p className="text-sm text-shush-inkSoft">No tables are set up yet.</p>

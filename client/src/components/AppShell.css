@@ -196,6 +196,7 @@
   padding: 8px 28px 28px;
   overflow-y: auto;
   scrollbar-width: thin;
+  scrollbar-color: var(--shush-orange) transparent;
 }
 
 @media (max-width: 759px) {

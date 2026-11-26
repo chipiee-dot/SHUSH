@@ -200,6 +200,22 @@ export function createSettingsRouter(db, config) {
     })
   );
 
+  // Remove a table's device. Only the device is disconnected: the table and its records stay.
+  router.delete(
+    '/tables/:tableNo/device',
+    facultyOnly,
+    wrap(async (req, res) => {
+      const tableNo = toInt(req.params.tableNo);
+      if (tableNo === null) return res.status(400).json({ message: 'Unknown table.' });
+      const result = await db.removeDevice({ tableNo });
+      if (!result?.success) {
+        const message = result?.message ?? 'Could not remove the device.';
+        return res.status(/does not exist|no device/i.test(message) ? 404 : 400).json({ message });
+      }
+      return res.json({ message: result.message });
+    })
+  );
+
   // Any signed-in faculty member can move / resize tables. Save moved / resized tables in one step. Body: { tables: [{ tableNo, col, row, width, height, seats? }] }.
   // Send changed tables only (the JSON body limit is 10kb; at most 100 entries are accepted).
   router.put(

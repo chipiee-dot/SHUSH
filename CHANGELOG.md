@@ -31,3 +31,8 @@
 ## Delete table
 
 - `database/SHUSH.sql`, `create_app_login.sql`, `server/src/db.js`, `routes/settings.js`, `server/src/server.js`, `server/scripts/doctor.js`, `server/test/api.test.js`, `client/src/api.js`, `Settings.jsx`, `TableLayout.jsx`, `TableDrawer.jsx`. Delete a table from Settings (Edit panel) and from the Table layout details panel (`usp_Table_Delete`, `DELETE /api/settings/tables/:tableNo`). Removes the table, its device and its history; refused while students are seated. Database version is now 2, so re-run `SHUSH.sql` and `create_app_login.sql`.
+
+## Session timer and Remove device
+
+- `client/src/pages/student/StudentLogin.jsx`. The "Log out of your session?" pop-up now shows time in the library, time left with a live draining bar, and the time the session ends.
+- `Settings.jsx`, `api.js`, `server/src/routes/settings.js`, `server/src/db.js`, `database/SHUSH.sql`, `create_app_login.sql`, `server.js`, `doctor.js`, `api.test.js`. **Remove device** in Settings (Edit panel) now disconnects only the device (`usp_Device_Remove`, `DELETE /api/settings/tables/:tableNo/device`). The table and its records are kept; the same device code can be connected again. Database version is now 3, so re-run `SHUSH.sql` and `create_app_login.sql`.

@@ -35,6 +35,22 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Orange scrollbars everywhere: the page, side panels, pop-ups, tables and the floor plan. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--shush-orange) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--shush-orange);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--shush-orange-600); background-clip: content-box; }
+
 /* ---- Sign Up page ---- */
 
 /* Soundwave subtle glow effects */
@@ -154,4 +170,25 @@ input[type="number"] {
 @media (prefers-reduced-motion: reduce) {
   .shush-rise, .shush-grow { animation: none; }
   .shush-pulse-ring { animation: none; opacity: 0; }
+}
+
+/* ---- Printing a certificate ----
+   printCertificate() puts the picture in #shush-print and adds .printing-certificate to the body.
+   Only that picture is printed, on one landscape page. */
+#shush-print { display: none; }
+@media print {
+  @page { size: A4 landscape; margin: 0; }
+  body.printing-certificate > *:not(#shush-print) { display: none !important; }
+  body.printing-certificate { background: #fff; }
+  body.printing-certificate #shush-print {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+  body.printing-certificate #shush-print img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 }

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import { buildLayout, isUnderMaintenance } from '../services/tableStatus.js';
 import { MAX_SESSION_HOURS } from '../services/limits.js';
+import { createRewardPeriods } from '../services/rewardPeriods.js';
 import { normalizeStudentNo, validateStudentSignup } from '../services/validators.js';
 import { sendDatabaseError, toInt, wrap } from './helpers.js';
 
@@ -72,6 +73,8 @@ export function createStudentRouter(db, config) {
             return res.status(401).json({ message: 'Your session has ended. Please sign in again.' });
         }
     }
+
+    const rewardPeriods = createRewardPeriods({ db, offsetMinutes: config.utcOffsetMinutes ?? 480 });
 
     const signupLimit = limiter(60 * 60 * 1000, 30, 'Too many sign-up attempts. Please try again later.');
     const lookupLimit = limiter(15 * 60 * 1000, 60, 'Too many attempts. Please wait a few minutes.');
@@ -171,6 +174,22 @@ export function createStudentRouter(db, config) {
                 student,
                 session: sessionInfo(current),
             });
+        })
+    );
+
+    // ---- The student's own certificates -------------------------------------------
+    // A rewards period that is overdue is closed first, so a certificate shows up even if no faculty
+    // member has opened the Rewards page since the month ended.
+    router.get(
+        '/certificates',
+        requireStudent,
+        wrap(async (req, res) => {
+            try {
+                await rewardPeriods.ensureCurrent(new Date());
+            } catch (err) {
+                console.warn('[student] rewards periods are unavailable:', err.message);
+            }
+            res.json({ certificates: await rewardPeriods.certificatesOfStudent(req.student.id) });
         })
     );
 

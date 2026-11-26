@@ -1,7 +1,7 @@
 /* ============================================================================
    SHUSH - database (SQL Server / SSMS, T-SQL)
    Covers: Sign Up + Log In, and the faculty console (dashboard, table layout,
-   rewards, history, maintenance, device settings).
+   rewards and certificates, history, maintenance, device settings).
 
    Run this whole script in SSMS (New Query -> Execute / F5).
    Safe to run again on an existing SHUSH database: every step checks first.
@@ -227,7 +227,7 @@ BEGIN
     (
         Id          INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Device PRIMARY KEY,
         DeviceCode  NVARCHAR(20)      NOT NULL CONSTRAINT UQ_Device_Code UNIQUE,   -- e.g. SHUSH-T03
-        TableId     INT               NOT NULL CONSTRAINT UQ_Device_Table UNIQUE
+        TableId     INT               NULL     -- NULL = removed from its table (its history is kept)
                                       CONSTRAINT FK_Device_Table REFERENCES dbo.LibraryTable (Id),
         Threshold   INT               NOT NULL CONSTRAINT DF_Device_Threshold DEFAULT (1600)
                                       CONSTRAINT CK_Device_Threshold CHECK (Threshold BETWEEN 0 AND 4095),
@@ -242,6 +242,22 @@ GO
 
 IF COL_LENGTH(N'dbo.Device', N'LoudSince') IS NULL
     ALTER TABLE dbo.Device ADD LoudSince DATETIME2(0) NULL;
+GO
+
+-- 6a) A device can be removed from its table without touching the table or its records.
+-- Older databases: allow TableId to be empty and keep "one device per table" with a unique index instead.
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Device') AND name = N'TableId' AND is_nullable = 0)
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = N'UQ_Device_Table' AND parent_object_id = OBJECT_ID(N'dbo.Device'))
+        ALTER TABLE dbo.Device DROP CONSTRAINT UQ_Device_Table;
+    IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Device_Table' AND parent_object_id = OBJECT_ID(N'dbo.Device'))
+        ALTER TABLE dbo.Device DROP CONSTRAINT FK_Device_Table;
+    ALTER TABLE dbo.Device ALTER COLUMN TableId INT NULL;
+    ALTER TABLE dbo.Device ADD CONSTRAINT FK_Device_Table FOREIGN KEY (TableId) REFERENCES dbo.LibraryTable (Id);
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Device_Table' AND object_id = OBJECT_ID(N'dbo.Device'))
+    CREATE UNIQUE INDEX UX_Device_Table ON dbo.Device (TableId) WHERE TableId IS NOT NULL;
 GO
 
 -- 6b) HOURLY ROLLED-UP SENSOR READINGS (ambient + occupied noise per table/hour)
@@ -602,6 +618,7 @@ GO
 -- 18a) DEVICE SETTINGS: connect a device to a table (or change the table's device code)
 -- A table has at most one device and a device belongs to one table. If the table already has a device,
 -- its code is changed and the old readings are cleared (alerts already recorded are kept).
+-- A code that was removed from a table earlier is simply connected again (its history stays with it).
 -- Returns: Success, Message
 CREATE OR ALTER PROCEDURE dbo.usp_Device_Assign
     @TableNo    INT,
@@ -609,6 +626,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Device_Assign
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
     SET @DeviceCode = LTRIM(RTRIM(@DeviceCode));
     IF @DeviceCode IS NULL OR LEN(@DeviceCode) < 1 OR LEN(@DeviceCode) > 20
@@ -617,32 +635,93 @@ BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'Device code must be 1 to 20 letters, numbers or dashes.' AS Message; RETURN;
     END
 
-    DECLARE @TableId INT;
+    DECLARE @TableId INT, @CurrentId INT, @OrphanId INT;
     SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
     IF @TableId IS NULL
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
     END
 
-    IF EXISTS (SELECT 1 FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId <> @TableId)
+    IF EXISTS (SELECT 1 FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId IS NOT NULL AND TableId <> @TableId)
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to another table.') AS Message; RETURN;
     END
 
-    IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId)
+    SELECT @CurrentId = Id FROM dbo.Device WHERE TableId = @TableId;
+    IF @CurrentId IS NOT NULL AND EXISTS (SELECT 1 FROM dbo.Device WHERE Id = @CurrentId AND DeviceCode = @DeviceCode)
     BEGIN
-        IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId AND DeviceCode = @DeviceCode)
+        SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to Table ', @TableNo, N'.') AS Message; RETURN;
+    END
+
+    SELECT @OrphanId = Id FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId IS NULL;
+
+    BEGIN TRANSACTION;
+
+    IF @OrphanId IS NOT NULL
+    BEGIN
+        -- Connect the removed device again. A different device already on this table is released first.
+        IF @CurrentId IS NOT NULL
         BEGIN
-            SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to Table ', @TableNo, N'.') AS Message; RETURN;
+            IF EXISTS (SELECT 1 FROM dbo.Alert WHERE DeviceId = @CurrentId)
+               OR EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading WHERE DeviceId = @CurrentId)
+                UPDATE dbo.Device
+                   SET TableId = NULL, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL
+                 WHERE Id = @CurrentId;
+            ELSE
+                DELETE FROM dbo.Device WHERE Id = @CurrentId;
         END
+        UPDATE dbo.Device
+           SET TableId = @TableId, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL, IsSample = 0
+         WHERE Id = @OrphanId;
+    END
+    ELSE IF @CurrentId IS NOT NULL
         UPDATE dbo.Device
            SET DeviceCode = @DeviceCode, LastLevel = NULL, LastStatus = NULL, LastSeenAt = NULL, IsSample = 0
          WHERE TableId = @TableId;
-    END
     ELSE
         INSERT INTO dbo.Device (DeviceCode, TableId, IsSample) VALUES (@DeviceCode, @TableId, 0);
 
+    COMMIT;
+
     SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is now connected to Table ', @TableNo, N'.') AS Message;
+END
+GO
+
+-- 18a-2) DEVICE SETTINGS: remove the device from a table ------------------------
+-- Only the device is disconnected. The table, its sessions, alerts and noise history are not touched.
+-- A device with recorded history stays in the database without a table (connect its code again any time);
+-- a device with no history at all is deleted.
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Device_Remove
+    @TableNo INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @TableId INT, @DeviceId INT, @DeviceCode NVARCHAR(20);
+    SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
+    END
+
+    SELECT @DeviceId = Id, @DeviceCode = DeviceCode FROM dbo.Device WHERE TableId = @TableId;
+    IF @DeviceId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @TableNo, N' has no device.') AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Alert WHERE DeviceId = @DeviceId)
+       OR EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading WHERE DeviceId = @DeviceId)
+        UPDATE dbo.Device
+           SET TableId = NULL, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL
+         WHERE Id = @DeviceId;
+    ELSE
+        DELETE FROM dbo.Device WHERE Id = @DeviceId;
+
+    SELECT CAST(1 AS BIT) AS Success,
+           CONCAT(N'Device ', @DeviceCode, N' removed from Table ', @TableNo, N'. The table and its records were kept.') AS Message;
 END
 GO
 
@@ -672,6 +751,15 @@ BEGIN
     BEGIN
         SELECT CAST(0 AS BIT) AS Success,
                N'That device does not exist.' AS Message,
+               CAST(NULL AS INT) AS Threshold,
+               CAST(NULL AS NVARCHAR(12)) AS Status;
+        RETURN;
+    END
+
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               N'That device is not connected to a table.' AS Message,
                CAST(NULL AS INT) AS Threshold,
                CAST(NULL AS NVARCHAR(12)) AS Status;
         RETURN;
@@ -1261,7 +1349,7 @@ END
 GO
 
 -- 28c) TABLES: delete a table ---------------------------------------------------
--- Permanently removes the table, its device and everything recorded for it (sessions, alerts,
+-- Permanently removes the table, its device (see below) and everything recorded for it (sessions, alerts,
 -- hourly readings, maintenance windows). A table with students seated right now is refused.
 -- All or nothing. The row lock is the same one usp_Session_Start takes, so nobody can sit down mid-delete.
 -- Returns: Success, Message
@@ -1295,11 +1383,8 @@ BEGIN
         RETURN;
     END
 
-    DELETE FROM dbo.Alert
-    WHERE TableId = @TableId OR DeviceId IN (SELECT Id FROM dbo.Device WHERE TableId = @TableId);
-
-    DELETE FROM dbo.DeviceHourlyReading
-    WHERE TableId = @TableId OR DeviceId IN (SELECT Id FROM dbo.Device WHERE TableId = @TableId);
+    DELETE FROM dbo.Alert WHERE TableId = @TableId;
+    DELETE FROM dbo.DeviceHourlyReading WHERE TableId = @TableId;
 
     DELETE sm
     FROM dbo.SessionMember AS sm
@@ -1308,7 +1393,16 @@ BEGIN
 
     DELETE FROM dbo.LibrarySession WHERE TableId = @TableId;
     DELETE FROM dbo.MaintenanceWindow WHERE TableId = @TableId;   -- windows for ALL tables (TableId NULL) stay
-    DELETE FROM dbo.Device WHERE TableId = @TableId;
+
+    -- Its device goes too, unless it still has history on another table: then it is kept without a table.
+    DELETE FROM dbo.Device
+    WHERE TableId = @TableId
+      AND NOT EXISTS (SELECT 1 FROM dbo.Alert AS a WHERE a.DeviceId = Device.Id)
+      AND NOT EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading AS hr WHERE hr.DeviceId = Device.Id);
+    UPDATE dbo.Device
+       SET TableId = NULL, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL
+     WHERE TableId = @TableId;
+
     DELETE FROM dbo.LibraryTable WHERE Id = @TableId;
 
     COMMIT;
@@ -1331,6 +1425,12 @@ BEGIN
     FROM dbo.SessionMember AS sm
     JOIN dbo.LibrarySession AS s ON s.Id = sm.SessionId
     WHERE s.IsSample = 1;
+
+    -- Certificates won by sample students go with them.
+    DELETE c
+    FROM dbo.Certificate AS c
+    JOIN dbo.Student AS st ON st.Id = c.StudentId
+    WHERE st.IsSample = 1;
 
     DELETE FROM dbo.DeviceHourlyReading WHERE IsSample = 1;
     DELETE FROM dbo.Alert WHERE IsSample = 1;
@@ -1547,6 +1647,196 @@ BEGIN
 END
 GO
 
+-- 31) REWARD PERIODS AND CERTIFICATES --------------------------------------------
+-- A rewards period is the stretch of time the leaderboards count. It ends when faculty press "End period"
+-- or by itself one calendar month after it started. When it ends, the #1 Most Frequent Visitor and the
+-- #1 Quietest Visitor each get a certificate, and a new period starts at that moment (counts restart at zero).
+-- EndedAt IS NULL = the current period. There is only ever one.
+IF OBJECT_ID(N'dbo.RewardPeriod', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.RewardPeriod
+    (
+        Id         INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_RewardPeriod PRIMARY KEY,
+        StartedAt  DATETIME2(0)      NOT NULL,
+        EndedAt    DATETIME2(0)      NULL,
+        EndReason  NVARCHAR(10)      NULL CONSTRAINT CK_RewardPeriod_Reason CHECK (EndReason IN (N'manual', N'auto')),
+        EndedBy    NVARCHAR(30)      NULL,   -- Faculty ID when ended by hand; NULL when it ended by itself
+        CONSTRAINT CK_RewardPeriod_Range CHECK (EndedAt IS NULL OR EndedAt >= StartedAt)
+    );
+END
+GO
+
+-- At most one open period (a second NULL EndedAt is refused).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_RewardPeriod_Open')
+    CREATE UNIQUE INDEX UX_RewardPeriod_Open ON dbo.RewardPeriod (EndedAt) WHERE EndedAt IS NULL;
+GO
+
+-- Category: 'frequent' (Most Frequent Visitor, Value = visits) or 'quietest' (Quietest Visitor, Value = average
+-- table noise level). One certificate per category per period.
+IF OBJECT_ID(N'dbo.Certificate', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Certificate
+    (
+        Id            INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Certificate PRIMARY KEY,
+        PeriodId      INT               NOT NULL CONSTRAINT FK_Certificate_Period  REFERENCES dbo.RewardPeriod (Id),
+        Category      NVARCHAR(10)      NOT NULL CONSTRAINT CK_Certificate_Category CHECK (Category IN (N'frequent', N'quietest')),
+        StudentId     INT               NOT NULL CONSTRAINT FK_Certificate_Student REFERENCES dbo.Student (Id),
+        Value         INT               NOT NULL,
+        SessionCount  INT               NOT NULL,
+        IssuedAt      DATETIME2(0)      NOT NULL CONSTRAINT DF_Certificate_Issued DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT UQ_Certificate_PeriodCategory UNIQUE (PeriodId, Category)
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Certificate_Student')
+    CREATE INDEX IX_Certificate_Student ON dbo.Certificate (StudentId, IssuedAt DESC);
+GO
+
+-- The current period. The very first call creates it, starting at @DefaultStart (the server sends the start
+-- of the current month, so the first period matches the old "This month" view).
+-- Returns: Id, StartedAt
+CREATE OR ALTER PROCEDURE dbo.usp_RewardPeriod_Current
+    @Now          DATETIME2(0),
+    @DefaultStart DATETIME2(0)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.RewardPeriod WHERE EndedAt IS NULL)
+    BEGIN
+        BEGIN TRY
+            INSERT INTO dbo.RewardPeriod (StartedAt)
+            VALUES (ISNULL((SELECT MAX(EndedAt) FROM dbo.RewardPeriod), @DefaultStart));
+        END TRY
+        BEGIN CATCH
+            -- Another request created it first (unique index); that one is the current period.
+            IF ERROR_NUMBER() NOT IN (2601, 2627) THROW;
+        END CATCH
+    END
+
+    SELECT TOP (1) Id, StartedAt
+    FROM dbo.RewardPeriod
+    WHERE EndedAt IS NULL;
+END
+GO
+
+-- End a period, issue its certificates and start the next period at the same moment. All or nothing.
+-- @Certificates is a JSON array of { category, studentId, value, sessionCount } (empty or NULL = none).
+-- Returns: Success, Message, NewPeriodId, CertificateCount
+CREATE OR ALTER PROCEDURE dbo.usp_RewardPeriod_Close
+    @PeriodId     INT,
+    @EndedAt      DATETIME2(0),
+    @Reason       NVARCHAR(10),
+    @EndedBy      NVARCHAR(30)  = NULL,
+    @Certificates NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @Reason NOT IN (N'manual', N'auto')
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'Unknown reason.' AS Message, CAST(NULL AS INT) AS NewPeriodId, 0 AS CertificateCount;
+        RETURN;
+    END
+
+    DECLARE @NewPeriodId INT, @Count INT = 0;
+
+    BEGIN TRANSACTION;
+
+    -- Lock the row so two requests cannot close the same period twice.
+    IF NOT EXISTS (SELECT 1 FROM dbo.RewardPeriod WITH (UPDLOCK, HOLDLOCK)
+                   WHERE Id = @PeriodId AND EndedAt IS NULL AND StartedAt <= @EndedAt)
+    BEGIN
+        ROLLBACK;
+        SELECT CAST(0 AS BIT) AS Success, N'That rewards period is already closed.' AS Message, CAST(NULL AS INT) AS NewPeriodId, 0 AS CertificateCount;
+        RETURN;
+    END
+
+    UPDATE dbo.RewardPeriod
+    SET EndedAt = @EndedAt, EndReason = @Reason, EndedBy = @EndedBy
+    WHERE Id = @PeriodId;
+
+    IF ISNULL(@Certificates, N'') <> N''
+    BEGIN
+        INSERT INTO dbo.Certificate (PeriodId, Category, StudentId, Value, SessionCount, IssuedAt)
+        SELECT @PeriodId, j.Category, j.StudentId, j.Value, j.SessionCount, @EndedAt
+        FROM OPENJSON(@Certificates)
+             WITH (Category     NVARCHAR(10) '$.category',
+                   StudentId    INT          '$.studentId',
+                   Value        INT          '$.value',
+                   SessionCount INT          '$.sessionCount') AS j;
+        SET @Count = @@ROWCOUNT;
+    END
+
+    INSERT INTO dbo.RewardPeriod (StartedAt) VALUES (@EndedAt);
+    SET @NewPeriodId = SCOPE_IDENTITY();
+
+    COMMIT;
+
+    SELECT CAST(1 AS BIT) AS Success, N'Rewards period ended.' AS Message, @NewPeriodId AS NewPeriodId, @Count AS CertificateCount;
+END
+GO
+
+-- Closed periods, newest first (for the Export window's period picker).
+-- Returns: Id, StartedAt, EndedAt, EndReason, CertificateCount
+CREATE OR ALTER PROCEDURE dbo.usp_RewardPeriod_List
+    @Top INT = 24
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (@Top) p.Id, p.StartedAt, p.EndedAt, p.EndReason,
+           (SELECT COUNT(*) FROM dbo.Certificate AS c WHERE c.PeriodId = p.Id) AS CertificateCount
+    FROM dbo.RewardPeriod AS p
+    WHERE p.EndedAt IS NOT NULL
+    ORDER BY p.EndedAt DESC, p.Id DESC;
+END
+GO
+
+-- Certificates of one closed period (@PeriodId NULL = the most recently closed one).
+-- Result 1: the period (Id, StartedAt, EndedAt, EndReason); result 2: its certificates.
+CREATE OR ALTER PROCEDURE dbo.usp_Certificate_ByPeriod
+    @PeriodId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @PeriodId IS NULL
+        SELECT @PeriodId = (SELECT TOP (1) Id FROM dbo.RewardPeriod WHERE EndedAt IS NOT NULL ORDER BY EndedAt DESC, Id DESC);
+
+    SELECT Id, StartedAt, EndedAt, EndReason
+    FROM dbo.RewardPeriod
+    WHERE Id = @PeriodId AND EndedAt IS NOT NULL;
+
+    SELECT c.Id, c.PeriodId, c.Category, c.StudentId, c.Value, c.SessionCount, c.IssuedAt,
+           st.StudentNo, st.FullName, st.FirstName, st.MiddleInitial, st.LastName, st.Section
+    FROM dbo.Certificate AS c
+    JOIN dbo.Student     AS st ON st.Id = c.StudentId
+    WHERE c.PeriodId = @PeriodId
+    ORDER BY CASE c.Category WHEN N'frequent' THEN 0 ELSE 1 END;
+END
+GO
+
+-- Every certificate one student has earned, newest first (student side).
+CREATE OR ALTER PROCEDURE dbo.usp_Certificate_ByStudent
+    @StudentId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT c.Id, c.PeriodId, c.Category, c.StudentId, c.Value, c.SessionCount, c.IssuedAt,
+           p.StartedAt AS PeriodStartedAt, p.EndedAt AS PeriodEndedAt, p.EndReason AS PeriodEndReason,
+           st.StudentNo, st.FullName, st.FirstName, st.MiddleInitial, st.LastName, st.Section
+    FROM dbo.Certificate  AS c
+    JOIN dbo.RewardPeriod AS p  ON p.Id = c.PeriodId
+    JOIN dbo.Student      AS st ON st.Id = c.StudentId
+    WHERE c.StudentId = @StudentId
+    ORDER BY p.EndedAt DESC, CASE c.Category WHEN N'frequent' THEN 0 ELSE 1 END;
+END
+GO
+
 -- 99) SCHEMA VERSION ------------------------------------------------------------
 -- The server compares this number with the one it was written for and says clearly
 -- when a teammate's database is out of date. Raise it (here AND in server/src/server.js
@@ -1555,6 +1845,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_Schema_Version
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT CAST(2 AS INT) AS SchemaVersion;
+    SELECT CAST(4 AS INT) AS SchemaVersion;
 END
 GO

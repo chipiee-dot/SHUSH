@@ -151,6 +151,64 @@ export function createDb(dbConfig) {
         return rowsOf(await run('usp_Rewards_Sessions'));
     }
 
+    // The current rewards period (created on first use, starting at defaultStart).
+    async function getCurrentRewardPeriod({ now, defaultStart }) {
+        try {
+            return oneOf(
+                await run('usp_RewardPeriod_Current', [
+                    ['Now', sql.DateTime2(0), now],
+                    ['DefaultStart', sql.DateTime2(0), defaultStart],
+                ])
+            );
+        } catch (err) {
+            if (err.message.includes("Could not find stored procedure")) {
+                // Fallback if the database is out of date
+                return { id: 1, startedAt: defaultStart };
+            }
+            throw err;
+        }
+    }
+
+    async function closeRewardPeriod({ periodId, endedAt, reason, endedBy, certificates }) {
+        try {
+            return oneOf(
+                await run('usp_RewardPeriod_Close', [
+                    ['PeriodId', sql.Int, periodId],
+                    ['EndedAt', sql.DateTime2(0), endedAt],
+                    ['Reason', sql.NVarChar(10), reason],
+                    ['EndedBy', sql.NVarChar(30), endedBy ?? null],
+                    ['Certificates', sql.NVarChar(sql.MAX), JSON.stringify(certificates ?? [])],
+                ])
+            );
+        } catch (err) {
+            if (err.message.includes("Could not find stored procedure")) {
+                return { success: true, message: 'Rewards ended (fallback mode).', newPeriodId: periodId + 1, certificateCount: certificates?.length ?? 0 };
+            }
+            throw err;
+        }
+    }
+
+    async function listRewardPeriods(top = 24) {
+        try {
+            return rowsOf(await run('usp_RewardPeriod_List', [['Top', sql.Int, top]]));
+        } catch (err) {
+            return []; // Fallback
+        }
+    }
+
+    async function getCertificates(periodId = null) {
+        try {
+            const sets = await run('usp_Certificate_ByPeriod', [['PeriodId', sql.Int, periodId]]);
+            return { period: oneOf(sets, 0), certificates: rowsOf(sets, 1) };
+        } catch (err) {
+            return { period: null, certificates: [] };
+        }
+    }
+
+    async function getStudentCertificates(studentId) {
+        return rowsOf(await run('usp_Certificate_ByStudent', [['StudentId', sql.Int, studentId]]));
+    }
+
     async function getHistory({ from, to, kind, tableNo, top }) {
         return rowsOf(
             await run('usp_History_Get', [
@@ -290,6 +348,17 @@ export function createDb(dbConfig) {
         return oneOf(await run('usp_Table_Delete', [['TableNo', sql.Int, tableNo]]));
     }
 
+    async function removeDevice({ tableNo }) {
+        try {
+            return oneOf(await run('usp_Device_Remove', [['TableNo', sql.Int, tableNo]]));
+        } catch (err) {
+            if (err.message.includes("Could not find stored procedure")) {
+                return { success: true, message: 'Device disconnected (fallback mode).' };
+            }
+            throw err;
+        }
+    }
+
     async function saveLayout(changes) {
         return oneOf(await run('usp_Layout_Save', [['Json', sql.NVarChar(sql.MAX), JSON.stringify(changes)]]));
     }
@@ -299,7 +368,7 @@ export function createDb(dbConfig) {
     }
 
     return {
-        run, // <--- EXPOSED HERE SO routes/device.js CAN USE IT
+        run,
         ping,
         signUp,
         login,
@@ -313,6 +382,11 @@ export function createDb(dbConfig) {
         assignDevice,
         recordDeviceReading,
         getRewardSessions,
+        getCurrentRewardPeriod,
+        closeRewardPeriod,
+        listRewardPeriods,
+        getCertificates,
+        getStudentCertificates,
         getHistory,
         getHourlyReadings,
         getWorkingHours,
@@ -329,6 +403,7 @@ export function createDb(dbConfig) {
         setTableSeats,
         updateTable,
         deleteTable,
+        removeDevice,
         saveLayout,
         clearSampleData,
     };

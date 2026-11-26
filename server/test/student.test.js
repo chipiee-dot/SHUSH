@@ -62,6 +62,13 @@ const fakeDb = {
   },
   clearSampleData: async () => ({ success: true, message: 'Sample data removed. Real records were kept.' }),
   getRewardSessions: async () => [],
+  getCurrentRewardPeriod: async () => ({ id: 1, startedAt: new Date(Date.now() - 86400000) }),
+  getStudentCertificates: async (studentId) =>
+    studentId === 1
+      ? [{ id: 4, periodId: 2, category: 'quietest', studentId: 1, value: 612, sessionCount: 5, issuedAt: new Date('2026-11-30T16:00:00Z'),
+           periodStartedAt: new Date('2026-10-31T16:00:00Z'), periodEndedAt: new Date('2026-11-30T16:00:00Z'), periodEndReason: 'auto',
+           studentNo: '21-0001', fullName: 'Dela Cruz, Juan M.', firstName: 'Juan', lastName: 'Dela Cruz', middleInitial: 'M', section: 'BSIT-3D' }]
+      : [],
   getDashboardSummary: async () => ({ sessionsToday: 0, studentsToday: 0, alertsToday: 0 }),
   getRecentAlerts: async () => [],
 };
@@ -150,6 +157,18 @@ test('tables show free seats, and a session is started and ended', async () => {
   const end = await call('POST', '/api/student/session/end', { cookie: student() });
   assert.equal(end.status, 200);
   assert.equal((await call('POST', '/api/student/session/end', { cookie: student() })).status, 404);
+});
+
+test('a student sees their own certificates, and only when signed in as a student', async () => {
+  assert.equal((await call('GET', '/api/student/certificates')).status, 401);
+  assert.equal((await call('GET', '/api/student/certificates', { cookie: faculty() })).status, 401);
+
+  const { status, body } = await call('GET', '/api/student/certificates', { cookie: student() });
+  assert.equal(status, 200);
+  assert.equal(body.certificates.length, 1);
+  const [c] = body.certificates;
+  assert.deepEqual([c.number, c.category, c.name, c.value, c.sessionCount], ['SHUSH-00004', 'quietest', 'Juan M. Dela Cruz', 612, 5]);
+  assert.equal(c.period.endReason, 'auto');
 });
 
 test('a full table is refused with a clear message and shows as not open', async () => {

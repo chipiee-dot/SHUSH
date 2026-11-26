@@ -7,7 +7,8 @@
 //   Quietest Visitor      - lowest average table noise over the period, using
 //                           only sessions of at least `minSessionMinutes`
 //   Quiet Streak          - consecutive most-recent sessions with no ALERT
-//                           (all time; resets after any ALERT)
+//                           (resets after any ALERT; counted from `streakStart`,
+//                           which the server sets to the start of the current rewards period)
 
 const TOP_N = 5;
 
@@ -30,9 +31,10 @@ function groupByStudent(rows) {
 
 const byValueThenName = (order) => (a, b) => (order === 'asc' ? a.value - b.value : b.value - a.value) || a.name.localeCompare(b.name);
 
-export function computeRewards(rows, { periodStart, now, minSessionMinutes = 30, top = TOP_N }) {
+export function computeRewards(rows, { periodStart, now, minSessionMinutes = 30, top = TOP_N, streakStart = null }) {
   const students = groupByStudent(rows);
   const start = new Date(periodStart);
+  const streakFrom = streakStart ? new Date(streakStart) : null;
   const inPeriod = (session) => new Date(session.startedAt) >= start && new Date(session.startedAt) <= now;
   const durationMinutes = (session) =>
     (new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 60000;
@@ -68,9 +70,10 @@ export function computeRewards(rows, { periodStart, now, minSessionMinutes = 30,
       });
     }
 
-    // Walk back from the latest session until an alert breaks the run.
+    // Walk back from the latest session until an alert (or the start of the streak window) breaks the run.
     const run = [];
     for (let i = student.sessions.length - 1; i >= 0 && !student.sessions[i].hadAlert; i -= 1) {
+      if (streakFrom && new Date(student.sessions[i].startedAt) < streakFrom) break;
       run.push(student.sessions[i]);
     }
     if (run.length > 0) {

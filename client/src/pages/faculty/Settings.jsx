@@ -304,6 +304,8 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(null); // the table waiting for delete confirmation
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [removingDevice, setRemovingDevice] = useState(null); // the table whose device is waiting for confirmation
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
 
@@ -394,6 +396,27 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
       if (touched) onChanged(); // part of the change went through, so show what is saved now
     } finally {
       setSavingNo(null);
+    }
+  }
+
+  // Disconnects the device only. The table and its records stay.
+  async function removeDevice() {
+    const t = removingDevice;
+    if (!t) return;
+    setRemoveBusy(true);
+    try {
+      const result = await api.removeDevice(t.tableNo);
+      toast.success(result.message || `Device removed from Table ${t.tableNo}.`);
+      // Forget a typed device code, but keep any number or seat changes still being edited.
+      setDrafts((d) => (d[t.tableNo] ? { ...d, [t.tableNo]: { ...d[t.tableNo], device: '' } } : d));
+      setRemovingDevice(null);
+      onChanged();
+    } catch (err) {
+      toast.error(err.message);
+      setRemovingDevice(null);
+      onChanged(); // the device may already be gone, so show what is saved now
+    } finally {
+      setRemoveBusy(false);
     }
   }
 
@@ -705,6 +728,22 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
                           </div>
                         </div>
 
+                        {t.hasDevice && (
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-shush-danger/40 pt-4">
+                            <p className="min-w-0 flex-1 text-xs text-shush-inkSoft">
+                              Disconnect <span className="font-mono">{t.deviceCode}</span> from this table. The table and its records stay.
+                            </p>
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() => setRemovingDevice(t)}
+                              className="rounded-xl border border-shush-danger/50 bg-shush-white px-4 py-2 text-sm font-semibold text-shush-danger transition hover:bg-shush-danger/10 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-danger focus-visible:ring-offset-2"
+                            >
+                              Remove device
+                            </button>
+                          </div>
+                        )}
+
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-shush-danger/40 pt-4">
                           <p className="min-w-0 flex-1 text-xs text-shush-inkSoft">
                             {t.occupied > 0
@@ -734,6 +773,19 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
           )}
         </>
       )}
+      <ConfirmDialog
+        open={removingDevice !== null}
+        title={`Remove device from Table ${removingDevice?.tableNo ?? ''}?`}
+        tone="danger"
+        confirmLabel="Yes, remove device"
+        cancelLabel="Keep it"
+        busyLabel="Removing…"
+        onConfirm={removeDevice}
+        onCancel={() => setRemovingDevice(null)}
+        busy={removeBusy}
+      >
+        {`Device ${removingDevice?.deviceCode ?? ''} is disconnected. The table, its sessions and its noise history are kept. You can connect a device again any time.`}
+      </ConfirmDialog>
       <ConfirmDialog
         open={deleting !== null}
         title={`Delete Table ${deleting?.tableNo ?? ''}?`}

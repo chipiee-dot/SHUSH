@@ -42,6 +42,11 @@ const fakeDb = {
     if (tableNo === 2) return { success: true, message: 'Table 2 deleted.' };
     return { success: false, message: 'That table does not exist.' };
   },
+  removeDevice: async ({ tableNo }) => {
+    if (tableNo === 1) return { success: true, message: 'Device SHUSH-T01 removed from Table 1. The table and its records were kept.' };
+    if (tableNo === 2) return { success: false, message: 'Table 2 has no device.' };
+    return { success: false, message: 'That table does not exist.' };
+  },
   getRewardSessions: async () => [],
   getHistory: async (args) => {
     fakeDb.lastHistoryArgs = args;
@@ -261,4 +266,14 @@ test('deleting a table needs sign-in and reports seated and unknown tables', asy
   const ok = await call('DELETE', '/api/settings/tables/2', { cookie: FACULTY });
   assert.equal(ok.status, 200);
   assert.equal(ok.body.message, 'Table 2 deleted.');
+});
+
+test('removing a device needs sign-in and only reports on the device', async () => {
+  assert.equal((await call('DELETE', '/api/settings/tables/1/device')).status, 401);
+  assert.equal((await call('DELETE', '/api/settings/tables/abc/device', { cookie: FACULTY })).status, 400);
+  assert.equal((await call('DELETE', '/api/settings/tables/2/device', { cookie: FACULTY })).status, 404);
+  assert.equal((await call('DELETE', '/api/settings/tables/99/device', { cookie: FACULTY })).status, 404);
+  const ok = await call('DELETE', '/api/settings/tables/1/device', { cookie: FACULTY });
+  assert.equal(ok.status, 200);
+  assert.match(ok.body.message, /table and its records were kept/);
 });

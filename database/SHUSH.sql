@@ -227,7 +227,7 @@ BEGIN
     (
         Id          INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Device PRIMARY KEY,
         DeviceCode  NVARCHAR(20)      NOT NULL CONSTRAINT UQ_Device_Code UNIQUE,   -- e.g. SHUSH-T03
-        TableId     INT               NOT NULL CONSTRAINT UQ_Device_Table UNIQUE
+        TableId     INT               NULL     -- NULL = removed from its table (its history is kept)
                                       CONSTRAINT FK_Device_Table REFERENCES dbo.LibraryTable (Id),
         Threshold   INT               NOT NULL CONSTRAINT DF_Device_Threshold DEFAULT (1600)
                                       CONSTRAINT CK_Device_Threshold CHECK (Threshold BETWEEN 0 AND 4095),
@@ -242,6 +242,22 @@ GO
 
 IF COL_LENGTH(N'dbo.Device', N'LoudSince') IS NULL
     ALTER TABLE dbo.Device ADD LoudSince DATETIME2(0) NULL;
+GO
+
+-- 6a) A device can be removed from its table without touching the table or its records.
+-- Older databases: allow TableId to be empty and keep "one device per table" with a unique index instead.
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.Device') AND name = N'TableId' AND is_nullable = 0)
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = N'UQ_Device_Table' AND parent_object_id = OBJECT_ID(N'dbo.Device'))
+        ALTER TABLE dbo.Device DROP CONSTRAINT UQ_Device_Table;
+    IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Device_Table' AND parent_object_id = OBJECT_ID(N'dbo.Device'))
+        ALTER TABLE dbo.Device DROP CONSTRAINT FK_Device_Table;
+    ALTER TABLE dbo.Device ALTER COLUMN TableId INT NULL;
+    ALTER TABLE dbo.Device ADD CONSTRAINT FK_Device_Table FOREIGN KEY (TableId) REFERENCES dbo.LibraryTable (Id);
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Device_Table' AND object_id = OBJECT_ID(N'dbo.Device'))
+    CREATE UNIQUE INDEX UX_Device_Table ON dbo.Device (TableId) WHERE TableId IS NOT NULL;
 GO
 
 -- 6b) HOURLY ROLLED-UP SENSOR READINGS (ambient + occupied noise per table/hour)
@@ -602,6 +618,7 @@ GO
 -- 18a) DEVICE SETTINGS: connect a device to a table (or change the table's device code)
 -- A table has at most one device and a device belongs to one table. If the table already has a device,
 -- its code is changed and the old readings are cleared (alerts already recorded are kept).
+-- A code that was removed from a table earlier is simply connected again (its history stays with it).
 -- Returns: Success, Message
 CREATE OR ALTER PROCEDURE dbo.usp_Device_Assign
     @TableNo    INT,
@@ -609,6 +626,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Device_Assign
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
     SET @DeviceCode = LTRIM(RTRIM(@DeviceCode));
     IF @DeviceCode IS NULL OR LEN(@DeviceCode) < 1 OR LEN(@DeviceCode) > 20
@@ -617,32 +635,93 @@ BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'Device code must be 1 to 20 letters, numbers or dashes.' AS Message; RETURN;
     END
 
-    DECLARE @TableId INT;
+    DECLARE @TableId INT, @CurrentId INT, @OrphanId INT;
     SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
     IF @TableId IS NULL
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
     END
 
-    IF EXISTS (SELECT 1 FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId <> @TableId)
+    IF EXISTS (SELECT 1 FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId IS NOT NULL AND TableId <> @TableId)
     BEGIN
         SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to another table.') AS Message; RETURN;
     END
 
-    IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId)
+    SELECT @CurrentId = Id FROM dbo.Device WHERE TableId = @TableId;
+    IF @CurrentId IS NOT NULL AND EXISTS (SELECT 1 FROM dbo.Device WHERE Id = @CurrentId AND DeviceCode = @DeviceCode)
     BEGIN
-        IF EXISTS (SELECT 1 FROM dbo.Device WHERE TableId = @TableId AND DeviceCode = @DeviceCode)
+        SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to Table ', @TableNo, N'.') AS Message; RETURN;
+    END
+
+    SELECT @OrphanId = Id FROM dbo.Device WHERE DeviceCode = @DeviceCode AND TableId IS NULL;
+
+    BEGIN TRANSACTION;
+
+    IF @OrphanId IS NOT NULL
+    BEGIN
+        -- Connect the removed device again. A different device already on this table is released first.
+        IF @CurrentId IS NOT NULL
         BEGIN
-            SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is already connected to Table ', @TableNo, N'.') AS Message; RETURN;
+            IF EXISTS (SELECT 1 FROM dbo.Alert WHERE DeviceId = @CurrentId)
+               OR EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading WHERE DeviceId = @CurrentId)
+                UPDATE dbo.Device
+                   SET TableId = NULL, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL
+                 WHERE Id = @CurrentId;
+            ELSE
+                DELETE FROM dbo.Device WHERE Id = @CurrentId;
         END
+        UPDATE dbo.Device
+           SET TableId = @TableId, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL, IsSample = 0
+         WHERE Id = @OrphanId;
+    END
+    ELSE IF @CurrentId IS NOT NULL
         UPDATE dbo.Device
            SET DeviceCode = @DeviceCode, LastLevel = NULL, LastStatus = NULL, LastSeenAt = NULL, IsSample = 0
          WHERE TableId = @TableId;
-    END
     ELSE
         INSERT INTO dbo.Device (DeviceCode, TableId, IsSample) VALUES (@DeviceCode, @TableId, 0);
 
+    COMMIT;
+
     SELECT CAST(1 AS BIT) AS Success, CONCAT(N'Device ', @DeviceCode, N' is now connected to Table ', @TableNo, N'.') AS Message;
+END
+GO
+
+-- 18a-2) DEVICE SETTINGS: remove the device from a table ------------------------
+-- Only the device is disconnected. The table, its sessions, alerts and noise history are not touched.
+-- A device with recorded history stays in the database without a table (connect its code again any time);
+-- a device with no history at all is deleted.
+-- Returns: Success, Message
+CREATE OR ALTER PROCEDURE dbo.usp_Device_Remove
+    @TableNo INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @TableId INT, @DeviceId INT, @DeviceCode NVARCHAR(20);
+    SELECT @TableId = Id FROM dbo.LibraryTable WHERE TableNo = @TableNo AND IsActive = 1;
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, N'That table does not exist.' AS Message; RETURN;
+    END
+
+    SELECT @DeviceId = Id, @DeviceCode = DeviceCode FROM dbo.Device WHERE TableId = @TableId;
+    IF @DeviceId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success, CONCAT(N'Table ', @TableNo, N' has no device.') AS Message; RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.Alert WHERE DeviceId = @DeviceId)
+       OR EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading WHERE DeviceId = @DeviceId)
+        UPDATE dbo.Device
+           SET TableId = NULL, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL
+         WHERE Id = @DeviceId;
+    ELSE
+        DELETE FROM dbo.Device WHERE Id = @DeviceId;
+
+    SELECT CAST(1 AS BIT) AS Success,
+           CONCAT(N'Device ', @DeviceCode, N' removed from Table ', @TableNo, N'. The table and its records were kept.') AS Message;
 END
 GO
 
@@ -672,6 +751,15 @@ BEGIN
     BEGIN
         SELECT CAST(0 AS BIT) AS Success,
                N'That device does not exist.' AS Message,
+               CAST(NULL AS INT) AS Threshold,
+               CAST(NULL AS NVARCHAR(12)) AS Status;
+        RETURN;
+    END
+
+    IF @TableId IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success,
+               N'That device is not connected to a table.' AS Message,
                CAST(NULL AS INT) AS Threshold,
                CAST(NULL AS NVARCHAR(12)) AS Status;
         RETURN;
@@ -1261,7 +1349,7 @@ END
 GO
 
 -- 28c) TABLES: delete a table ---------------------------------------------------
--- Permanently removes the table, its device and everything recorded for it (sessions, alerts,
+-- Permanently removes the table, its device (see below) and everything recorded for it (sessions, alerts,
 -- hourly readings, maintenance windows). A table with students seated right now is refused.
 -- All or nothing. The row lock is the same one usp_Session_Start takes, so nobody can sit down mid-delete.
 -- Returns: Success, Message
@@ -1295,11 +1383,8 @@ BEGIN
         RETURN;
     END
 
-    DELETE FROM dbo.Alert
-    WHERE TableId = @TableId OR DeviceId IN (SELECT Id FROM dbo.Device WHERE TableId = @TableId);
-
-    DELETE FROM dbo.DeviceHourlyReading
-    WHERE TableId = @TableId OR DeviceId IN (SELECT Id FROM dbo.Device WHERE TableId = @TableId);
+    DELETE FROM dbo.Alert WHERE TableId = @TableId;
+    DELETE FROM dbo.DeviceHourlyReading WHERE TableId = @TableId;
 
     DELETE sm
     FROM dbo.SessionMember AS sm
@@ -1308,7 +1393,16 @@ BEGIN
 
     DELETE FROM dbo.LibrarySession WHERE TableId = @TableId;
     DELETE FROM dbo.MaintenanceWindow WHERE TableId = @TableId;   -- windows for ALL tables (TableId NULL) stay
-    DELETE FROM dbo.Device WHERE TableId = @TableId;
+
+    -- Its device goes too, unless it still has history on another table: then it is kept without a table.
+    DELETE FROM dbo.Device
+    WHERE TableId = @TableId
+      AND NOT EXISTS (SELECT 1 FROM dbo.Alert AS a WHERE a.DeviceId = Device.Id)
+      AND NOT EXISTS (SELECT 1 FROM dbo.DeviceHourlyReading AS hr WHERE hr.DeviceId = Device.Id);
+    UPDATE dbo.Device
+       SET TableId = NULL, LastStatus = NULL, LastLevel = NULL, LastSeenAt = NULL, LoudSince = NULL
+     WHERE TableId = @TableId;
+
     DELETE FROM dbo.LibraryTable WHERE Id = @TableId;
 
     COMMIT;
@@ -1555,6 +1649,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_Schema_Version
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT CAST(2 AS INT) AS SchemaVersion;
+    SELECT CAST(3 AS INT) AS SchemaVersion;
 END
 GO

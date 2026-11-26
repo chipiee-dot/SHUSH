@@ -79,6 +79,8 @@ export const api = {
   // Connect a device to a table (or change its code).
   assignDevice: (tableNo, deviceCode) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}/device`, { method: 'PUT', body: { deviceCode } }),
+  // Disconnect a table's device. The table and its records are kept.
+  removeDevice: (tableNo) => request(`/settings/tables/${encodeURIComponent(tableNo)}/device`, { method: 'DELETE' }),
   // Change a table's number (and optionally its seats) in one step.
   updateTable: (tableNo, { newTableNo, seats }) =>
     request(`/settings/tables/${encodeURIComponent(tableNo)}`, { method: 'PUT', body: { newTableNo, seats } }),

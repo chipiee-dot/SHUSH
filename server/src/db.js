@@ -51,8 +51,6 @@ export function createDb(dbConfig) {
         await pool.request().query('SELECT 1 AS ok');
     }
 
-    // The database script keeps a version number (usp_Schema_Version). The server compares it with the
-    // version it was written for, so an out-of-date database is reported clearly instead of failing later.
     async function getSchemaVersion() {
         const row = oneOf(await run('usp_Schema_Version'));
         return row?.schemaVersion ?? null;
@@ -197,8 +195,6 @@ export function createDb(dbConfig) {
         };
     }
 
-    // Closing sessions that ran past the maximum is a write. Every poll and every student request used to
-    // trigger it, so it now runs at most once per STALE_CHECK_MS (concurrent callers share one run).
     const STALE_CHECK_MS = 10000;
     let staleRun = null;
     let staleLastAt = 0;
@@ -294,6 +290,10 @@ export function createDb(dbConfig) {
         return oneOf(await run('usp_Table_Delete', [['TableNo', sql.Int, tableNo]]));
     }
 
+    async function removeDevice({ tableNo }) {
+        return oneOf(await run('usp_Device_Remove', [['TableNo', sql.Int, tableNo]]));
+    }
+
     async function saveLayout(changes) {
         return oneOf(await run('usp_Layout_Save', [['Json', sql.NVarChar(sql.MAX), JSON.stringify(changes)]]));
     }
@@ -303,6 +303,7 @@ export function createDb(dbConfig) {
     }
 
     return {
+        run, // <--- EXPOSED HERE SO routes/device.js CAN USE IT
         ping,
         signUp,
         login,
@@ -332,6 +333,7 @@ export function createDb(dbConfig) {
         setTableSeats,
         updateTable,
         deleteTable,
+        removeDevice,
         saveLayout,
         clearSampleData,
     };

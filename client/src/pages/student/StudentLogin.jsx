@@ -17,6 +17,61 @@ const BOXES_FIT =
 const FOCUS_LINK =
   'rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
 
+// "H:MM:SS", never negative.
+function clock(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const sec = String(total % 60).padStart(2, '0');
+  return `${h}:${m}:${sec}`;
+}
+
+/** Live session summary: time in the library, time left (bar drains), and when the session ends. */
+function SessionTimer({ session }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const start = new Date(session.startedAt).getTime();
+  const end = new Date(session.endsAt).getTime();
+  const total = Math.max(1, end - start);
+  const left = Math.max(0, end - now);
+  const pct = Math.min(100, (left / total) * 100);
+  const low = left > 0 && pct <= 15;
+
+  return (
+    <div className="mt-3 border-t border-shush-line pt-3">
+      <div className="text-sm text-shush-inkSoft">Seated at Table {session.tableNo} since {formatTime(session.startedAt)}</div>
+      <div
+        className="mt-2 h-2.5 overflow-hidden rounded-full bg-shush-white"
+        role="progressbar"
+        aria-label="Session time left"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+      >
+        <div
+          className={`h-full rounded-full transition-[width] duration-1000 ease-linear motion-reduce:transition-none ${low ? 'bg-shush-danger' : 'bg-shush-orange'}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-2 flex items-end justify-between gap-3 tabular-nums">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-shush-muted">In library</div>
+          <div className="font-semibold text-shush-ink">{clock(now - start)}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs font-semibold uppercase tracking-wider text-shush-muted">Time left</div>
+          <div className={`font-semibold ${low ? 'text-shush-danger' : 'text-shush-ink'}`}>{left > 0 ? clock(left) : 'Time is up'}</div>
+        </div>
+      </div>
+      <div className="mt-1.5 text-xs text-shush-muted">Session ends at {formatTime(session.endsAt)}</div>
+    </div>
+  );
+}
+
 export default function StudentLogin() {
   const { setStudent, logout } = useStudentAuth();
   // Ctrl+Shift+F opens the faculty sign-in. Deliberately not shown anywhere on the page.
@@ -148,11 +203,7 @@ export default function StudentLogin() {
             <div className="mt-2 text-xs font-semibold uppercase tracking-wider text-shush-muted">Section</div>
             <div className="font-medium text-shush-ink">{found.student.section}</div>
             <div className="mt-2 text-xs text-shush-muted">Student number {found.student.studentNo}</div>
-            {seated && (
-              <p className="mt-3 text-sm text-shush-inkSoft">
-                You are seated at Table {found.session.tableNo}, since {formatTime(found.session.startedAt)}.
-              </p>
-            )}
+            {seated && <SessionTimer session={found.session} />}
           </div>
         )}
       </ConfirmDialog>

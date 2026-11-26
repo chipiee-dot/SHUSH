@@ -35,6 +35,22 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Orange scrollbars everywhere: the page, side panels, pop-ups, tables and the floor plan. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--shush-orange) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--shush-orange);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--shush-orange-600); background-clip: content-box; }
+
 /* ---- Sign Up page ---- */
 
 /* Soundwave subtle glow effects */

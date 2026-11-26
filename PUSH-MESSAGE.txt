@@ -1,1 +1,0 @@
-Add rewards periods and certificates: faculty Export modal (print/download, current-period stats), End period button, auto-close after one month, and a student certificates card.

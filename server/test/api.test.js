@@ -47,7 +47,20 @@ const fakeDb = {
     if (tableNo === 2) return { success: false, message: 'Table 2 has no device.' };
     return { success: false, message: 'That table does not exist.' };
   },
-  getRewardSessions: async () => [],
+  // Rewards periods and certificates
+  rewardRows: [],
+  lastClose: null,
+  getRewardSessions: async () => fakeDb.rewardRows,
+  getCurrentRewardPeriod: async () => ({ id: 3, startedAt: new Date(now.getTime() - 5 * 86400000) }),
+  closeRewardPeriod: async (args) => {
+    fakeDb.lastClose = args;
+    return { success: true, message: 'Rewards period ended.', newPeriodId: 4, certificateCount: args.certificates.length };
+  },
+  listRewardPeriods: async () => [{ id: 3, startedAt: new Date(now.getTime() - 40 * 86400000), endedAt: new Date(now.getTime() - 5 * 86400000), endReason: 'manual', certificateCount: 1 }],
+  getCertificates: async () => ({
+    period: { id: 3, startedAt: new Date(now.getTime() - 40 * 86400000), endedAt: new Date(now.getTime() - 5 * 86400000), endReason: 'manual' },
+    certificates: [{ id: 1, periodId: 3, category: 'frequent', studentId: 5, value: 12, sessionCount: 12, issuedAt: now, studentNo: '21-0001', fullName: 'Reyes, Ana', firstName: 'Ana', lastName: 'Reyes', middleInitial: null, section: 'BSIT-3D' }],
+  }),
   getHistory: async (args) => {
     fakeDb.lastHistoryArgs = args;
     return [];
@@ -185,6 +198,68 @@ test('rewards accepts only the known periods', async () => {
   assert.equal(status, 200);
   assert.equal(body.period, 'week');
   assert.deepEqual(body.mostFrequent, []);
+});
+
+test('rewards counts from the start of the current rewards period', async () => {
+  const week = await call('GET', '/api/rewards?period=week', { cookie: FACULTY });
+  assert.equal(week.body.rewardPeriod.id, 3);
+  assert.ok(week.body.rewardPeriod.closesAt, 'the page can show when the period closes by itself');
+
+  const all = await call('GET', '/api/rewards', { cookie: FACULTY });
+  assert.equal(all.body.period, 'period');
+  assert.equal(all.body.periodStart, all.body.rewardPeriod.startedAt);
+
+  // "month" was the old name for the whole period
+  assert.equal((await call('GET', '/api/rewards?period=month', { cookie: FACULTY })).body.period, 'period');
+});
+
+test('rewards still loads when the database has no rewards-period procedures yet', async () => {
+  const original = fakeDb.getCurrentRewardPeriod;
+  fakeDb.getCurrentRewardPeriod = async () => {
+    throw new Error('Could not find stored procedure dbo.usp_RewardPeriod_Current.');
+  };
+  try {
+    const { status, body } = await call('GET', '/api/rewards', { cookie: FACULTY });
+    assert.equal(status, 200);
+    assert.equal(body.rewardPeriod, null, 'the page hides the certificate buttons');
+    assert.deepEqual(body.mostFrequent, []);
+  } finally {
+    fakeDb.getCurrentRewardPeriod = original;
+  }
+});
+
+test('ending the rewards period issues certificates to the #1 of each award', async () => {
+  assert.equal((await call('POST', '/api/rewards/end-period')).status, 401);
+
+  const start = new Date(now.getTime() - 3 * 86400000).toISOString();
+  const end = new Date(now.getTime() - 3 * 86400000 + 45 * 60000).toISOString();
+  fakeDb.rewardRows = [
+    { studentId: 5, fullName: 'Reyes, Ana', section: 'BSIT-3D', sessionId: 1, startedAt: start, endedAt: end, avgLevel: 800, hadAlert: false, isSample: false },
+    { studentId: 6, fullName: 'Cruz, Ben', section: 'BSIT-3D', sessionId: 2, startedAt: start, endedAt: end, avgLevel: 500, hadAlert: false, isSample: false },
+    { studentId: 6, fullName: 'Cruz, Ben', section: 'BSIT-3D', sessionId: 3, startedAt: start, endedAt: end, avgLevel: 500, hadAlert: false, isSample: false },
+  ];
+  try {
+    const { status, body } = await call('POST', '/api/rewards/end-period', { cookie: FACULTY });
+    assert.equal(status, 200);
+    assert.match(body.message, /2 certificates issued/);
+    assert.equal(fakeDb.lastClose.reason, 'manual');
+    assert.equal(fakeDb.lastClose.endedBy, 'FAC-2024-0001');
+    assert.deepEqual(fakeDb.lastClose.certificates.map((c) => [c.category, c.studentId, c.value]), [['frequent', 6, 2], ['quietest', 6, 500]]);
+    assert.equal(body.certificates[0].number, 'SHUSH-00001');
+    assert.equal(body.certificates[0].name, 'Ana Reyes');
+  } finally {
+    fakeDb.rewardRows = [];
+  }
+});
+
+test('faculty can read the certificates of the last closed period', async () => {
+  assert.equal((await call('GET', '/api/rewards/certificates')).status, 401);
+  const { status, body } = await call('GET', '/api/rewards/certificates', { cookie: FACULTY });
+  assert.equal(status, 200);
+  assert.equal(body.period.id, 3);
+  assert.equal(body.certificates.length, 1);
+  assert.equal(body.periods.length, 1);
+  assert.equal((await call('GET', '/api/rewards/certificates?periodId=abc', { cookie: FACULTY })).status, 400);
 });
 
 test('noise analytics validates period and returns working-hour buckets', async () => {

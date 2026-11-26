@@ -58,6 +58,8 @@ export const api = {
   startMaintenance: (fields) => request('/maintenance', { method: 'POST', body: fields }),
   endMaintenance: (id) => request(`/maintenance/${encodeURIComponent(id)}/end`, { method: 'POST' }),
   rewards: (period) => request(`/rewards${query({ period })}`),
+  endRewardsPeriod: () => request('/rewards/end-period', { method: 'POST' }),
+  rewardCertificates: (periodId) => request(`/rewards/certificates${query({ periodId })}`),
   history: (params) => request(`/history${query(params)}`),
 
   // Students
@@ -66,6 +68,7 @@ export const api = {
   studentLogin: (studentNo) => request('/student/login', { method: 'POST', body: { studentNo } }),
   studentLogout: () => request('/student/logout', { method: 'POST' }),
   studentMe: () => request('/student/me'),
+  studentCertificates: () => request('/student/certificates'),
   studentTables: () => request('/student/tables'),
   studentStartSession: (tableNo) =>
     request('/student/session', { method: 'POST', body: { tableNo } }),

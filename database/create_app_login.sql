@@ -45,12 +45,17 @@ GRANT EXECUTE ON dbo.usp_Noise_HourlyReadings    TO shush_app;
 GRANT EXECUTE ON dbo.usp_Settings_WorkingHours_Get TO shush_app;
 GRANT EXECUTE ON dbo.usp_Settings_WorkingHours_Set TO shush_app;
 GRANT EXECUTE ON dbo.usp_Faculty_Students_Overview TO shush_app;
+GRANT EXECUTE ON dbo.usp_RewardPeriod_Current    TO shush_app;   -- rewards periods and certificates
+GRANT EXECUTE ON dbo.usp_RewardPeriod_Close      TO shush_app;
+GRANT EXECUTE ON dbo.usp_RewardPeriod_List       TO shush_app;
+GRANT EXECUTE ON dbo.usp_Certificate_ByPeriod    TO shush_app;
 GO
 
 -- Students, sessions and table management
 GRANT EXECUTE ON dbo.usp_Student_Register      TO shush_app;
 GRANT EXECUTE ON dbo.usp_Student_Find          TO shush_app;
 GRANT EXECUTE ON dbo.usp_Student_ActiveSession TO shush_app;
+GRANT EXECUTE ON dbo.usp_Certificate_ByStudent  TO shush_app;   -- a student's own certificates
 GRANT EXECUTE ON dbo.usp_Session_Start         TO shush_app;
 GRANT EXECUTE ON dbo.usp_Session_End           TO shush_app;
 GRANT EXECUTE ON dbo.usp_Session_CloseStale    TO shush_app;

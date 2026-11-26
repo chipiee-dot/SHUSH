@@ -1,1 +1,1 @@
-Make setup reliable for teammates and speed up page loads: add .env.example and npm run doctor, clear database errors, lazy-loaded pages, gzip and caching, faster session cleanup.
+Add rewards periods and certificates: faculty Export modal (print/download, current-period stats), End period button, auto-close after one month, and a student certificates card.

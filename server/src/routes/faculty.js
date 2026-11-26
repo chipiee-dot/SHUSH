@@ -4,6 +4,7 @@ import { buildLayout } from '../services/tableStatus.js';
 import { MAX_SESSION_HOURS } from '../services/limits.js';
 import { computeWorkingHoursAnalytics, getRuntimeWorkingHours } from '../services/noiseAnalytics.js';
 import { computeRewards } from '../services/rewards.js';
+import { createRewardPeriods, REWARD_MIN_SESSION_MINUTES } from '../services/rewardPeriods.js';
 import { buildStudentsOverview, loadStudentsFromFallback } from '../services/studentsOverview.js';
 import {
   addDays,
@@ -32,11 +33,6 @@ const HISTORY_DEFAULT_DAYS = 7;
 const HISTORY_MAX_DAYS = 366;
 const HISTORY_ROWS = 500;
 
-const REWARD_PERIODS = {
-  week: startOfLocalWeek,
-  month: startOfLocalMonth,
-};
-const REWARD_MIN_SESSION_MINUTES = 30;
 const ANALYTICS_PERIOD_DAYS = {
   today: 1,
   week: 7,
@@ -48,6 +44,8 @@ export function createFacultyRouter(db, config) {
   const auth = requireAuth(config);
   const offset = config.utcOffsetMinutes;
   const offlineAfterMs = config.deviceOfflineAfterMs;
+
+  const rewardPeriods = createRewardPeriods({ db, offsetMinutes: offset, minSessionMinutes: REWARD_MIN_SESSION_MINUTES });
 
   async function loadLayout(now) {
     await db.closeStaleSessions(now, MAX_SESSION_HOURS);
@@ -293,23 +291,74 @@ export function createFacultyRouter(db, config) {
   );
 
   // ---- Rewards ---------------------------------------------------------------
+  // period=period (everything since the current rewards period started) or period=week (this week, but never
+  // before the current period started). "month" is accepted as an older name for "period".
   router.get(
     '/rewards',
     auth,
     wrap(async (req, res) => {
-      const period = req.query.period === 'week' ? 'week' : 'month';
+      const period = req.query.period === 'week' ? 'week' : 'period';
       const now = new Date();
-      const periodStart = REWARD_PERIODS[period](now, offset);
+
+      // The rewards period is closed here when it is overdue. If the database has not been updated yet
+      // (no rewards-period procedures), the page still works with calendar months and without certificates.
+      let current = null;
+      try {
+        current = await rewardPeriods.ensureCurrent(now);
+      } catch (err) {
+        console.warn('[rewards] rewards periods are unavailable:', err.message);
+      }
+
+      const currentStart = current ? new Date(current.startedAt) : startOfLocalMonth(now, offset);
+      const weekStart = startOfLocalWeek(now, offset);
+      const periodStart = period === 'week' && weekStart > currentStart ? weekStart : currentStart;
+
       const rows = await db.getRewardSessions();
       res.json({
         period,
         periodStart,
+        rewardPeriod: current,
         ...computeRewards(rows, {
           periodStart,
           now,
           minSessionMinutes: REWARD_MIN_SESSION_MINUTES,
+          streakStart: currentStart,
         }),
       });
+    })
+  );
+
+  // End the current rewards period now: certificates go to the #1 of each award and the counts restart.
+  router.post(
+    '/rewards/end-period',
+    auth,
+    wrap(async (req, res) => {
+      const result = await rewardPeriods.endNow(new Date(), req.user?.facultyId);
+      if (!result.ended) return res.status(409).json({ message: result.message });
+      const issued = await rewardPeriods.certificatesFor(result.closedPeriodId);
+      return res.json({
+        message:
+          result.certificateCount > 0
+            ? `Rewards period ended. ${result.certificateCount} certificate${result.certificateCount === 1 ? '' : 's'} issued.`
+            : 'Rewards period ended. Nobody qualified for a certificate this time.',
+        rewardPeriod: result.current,
+        ...issued,
+      });
+    })
+  );
+
+  // Certificates of the last closed period (or ?periodId=), plus the list of closed periods.
+  router.get(
+    '/rewards/certificates',
+    auth,
+    wrap(async (req, res) => {
+      let periodId = null;
+      if (req.query.periodId !== undefined && req.query.periodId !== '') {
+        periodId = toInt(req.query.periodId);
+        if (periodId === null) return res.status(400).json({ message: 'Unknown rewards period.' });
+      }
+      await rewardPeriods.ensureCurrent(new Date()); // an overdue period is closed (and its certificates issued) first
+      return res.json(await rewardPeriods.certificatesFor(periodId));
     })
   );
 

@@ -151,6 +151,44 @@ export function createDb(dbConfig) {
         return rowsOf(await run('usp_Rewards_Sessions'));
     }
 
+    // The current rewards period (created on first use, starting at defaultStart).
+    async function getCurrentRewardPeriod({ now, defaultStart }) {
+        return oneOf(
+            await run('usp_RewardPeriod_Current', [
+                ['Now', sql.DateTime2(0), now],
+                ['DefaultStart', sql.DateTime2(0), defaultStart],
+            ])
+        );
+    }
+
+    // Ends a period, issues its certificates and starts the next period, all in one step.
+    // certificates: [{ category, studentId, value, sessionCount }]
+    async function closeRewardPeriod({ periodId, endedAt, reason, endedBy, certificates }) {
+        return oneOf(
+            await run('usp_RewardPeriod_Close', [
+                ['PeriodId', sql.Int, periodId],
+                ['EndedAt', sql.DateTime2(0), endedAt],
+                ['Reason', sql.NVarChar(10), reason],
+                ['EndedBy', sql.NVarChar(30), endedBy ?? null],
+                ['Certificates', sql.NVarChar(sql.MAX), JSON.stringify(certificates ?? [])],
+            ])
+        );
+    }
+
+    async function listRewardPeriods(top = 24) {
+        return rowsOf(await run('usp_RewardPeriod_List', [['Top', sql.Int, top]]));
+    }
+
+    // periodId null = the most recently closed period. Returns { period, certificates }.
+    async function getCertificates(periodId = null) {
+        const sets = await run('usp_Certificate_ByPeriod', [['PeriodId', sql.Int, periodId]]);
+        return { period: oneOf(sets, 0), certificates: rowsOf(sets, 1) };
+    }
+
+    async function getStudentCertificates(studentId) {
+        return rowsOf(await run('usp_Certificate_ByStudent', [['StudentId', sql.Int, studentId]]));
+    }
+
     async function getHistory({ from, to, kind, tableNo, top }) {
         return rowsOf(
             await run('usp_History_Get', [
@@ -317,6 +355,11 @@ export function createDb(dbConfig) {
         assignDevice,
         recordDeviceReading,
         getRewardSessions,
+        getCurrentRewardPeriod,
+        closeRewardPeriod,
+        listRewardPeriods,
+        getCertificates,
+        getStudentCertificates,
         getHistory,
         getHourlyReadings,
         getWorkingHours,

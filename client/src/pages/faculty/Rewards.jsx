@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { api } from '../../api.js';
-import { useErrorToast } from '../../components/Toast.jsx';
+import { useErrorToast, useToast } from '../../components/Toast.jsx';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
+import RewardsExportModal from '../../components/RewardsExportModal.jsx';
 import Card from '../../components/Card.jsx';
 import CountUp from '../../components/CountUp.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -8,12 +10,13 @@ import PageHeader from '../../components/PageHeader.jsx';
 import { NAV_ICONS } from '../../components/navIcons.jsx';
 import usePolling from '../../hooks/usePolling.js';
 import { formatDateTime } from '../../lib/format.js';
+import { libraryDate } from '../../lib/certificate.js';
 
 const REFRESH_MS = 30000;
 const STAGGER_MS = 40;
 const PERIODS = [
   { value: 'week', label: 'This week' },
-  { value: 'month', label: 'This month' },
+  { value: 'period', label: 'This period' },
 ];
 
 // Avatar fills cycle orange, amber, gold; all take ink text (white on these fails contrast).
@@ -196,16 +199,41 @@ function PeriodToggle({ period, onChange }) {
   );
 }
 
+const RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-orange focus-visible:ring-offset-2';
+
 export default function Rewards() {
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState('period');
+  const [exporting, setExporting] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const toast = useToast();
   // Tag the data with its period so the entrance replays only when a new period's data arrives,
   // not on the 30-second refresh.
-  const { data, error, loading, updatedAt } = usePolling(
+  const { data, error, loading, updatedAt, reload } = usePolling(
     () => api.rewards(period).then((d) => ({ ...d, period })),
     REFRESH_MS,
     [period],
   );
   useErrorToast(error);
+
+  // Period buttons need the rewards-period tables. On a database that has not been updated they stay hidden.
+  const rewardPeriod = data?.rewardPeriod ?? null;
+
+  async function handleEnd() {
+    setEnding(true);
+    try {
+      const result = await api.endRewardsPeriod();
+      toast.success(result.message);
+      setConfirmEnd(false);
+      reload();
+      if (result.certificates?.length) setExporting(true);
+    } catch (err) {
+      toast.error(err.message);
+      setConfirmEnd(false);
+    } finally {
+      setEnding(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -219,8 +247,34 @@ export default function Rewards() {
             : 'Each visit is scored by the table\u2019s average noise level during that student\u2019s session.'
         }
       >
+        <div className="flex flex-wrap items-center gap-3">
         <PeriodToggle period={period} onChange={setPeriod} />
+        {rewardPeriod && (
+          <>
+            <button
+              type="button"
+              onClick={() => setExporting(true)}
+              className={`rounded-xl bg-shush-orange px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-orange600 ${RING}`}
+            >
+              Export
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmEnd(true)}
+              className={`rounded-xl border border-shush-lineStrong bg-shush-white px-4 py-2 text-sm font-semibold text-shush-ink transition hover:bg-shush-creamDeep ${RING}`}
+            >
+              End period
+            </button>
+          </>
+        )}
+        </div>
       </PageHeader>
+
+      {rewardPeriod && (
+        <p className="text-xs text-shush-inkSoft">
+          Rewards period started {libraryDate(rewardPeriod.startedAt)}. It closes by itself on {libraryDate(rewardPeriod.closesAt)}, or when you end it.
+        </p>
+      )}
 
       {!data ? (
         loading && <p className="text-sm text-shush-muted">Loading rewards…</p>
@@ -251,6 +305,19 @@ export default function Rewards() {
           />
         </div>
       )}
+
+      <RewardsExportModal open={exporting} onClose={() => setExporting(false)} data={data} />
+      <ConfirmDialog
+        open={confirmEnd}
+        title="End this rewards period?"
+        confirmLabel="End period"
+        busyLabel="Ending…"
+        onConfirm={handleEnd}
+        onCancel={() => setConfirmEnd(false)}
+        busy={ending}
+      >
+        Certificates go to the #1 Most Frequent Visitor and the #1 Quietest Visitor, and the counts start again from zero. This cannot be undone.
+      </ConfirmDialog>
 
       {data?.hasSampleData && (
         <p className="text-xs text-shush-orange700">

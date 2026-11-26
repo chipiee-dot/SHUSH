@@ -80,7 +80,7 @@ if (!fs.existsSync(envFile)) {
       try {
         const res = await pool.request().execute('dbo.usp_Schema_Version');
         const version = res.recordset?.[0]?.SchemaVersion;
-        const expected = 3;
+        const expected = 4;
         if (version === expected) ok(`database version ${version} is up to date`);
         else fail(`database version is ${version ?? 'unknown'}, expected ${expected}`, 'In SSMS run database/SHUSH.sql and then database/create_app_login.sql again.');
       } catch (err) {

@@ -153,7 +153,6 @@ export function createDb(dbConfig) {
 
     // The current rewards period (created on first use, starting at defaultStart).
     async function getCurrentRewardPeriod({ now, defaultStart }) {
-<<<<<<< HEAD
         try {
             return oneOf(
                 await run('usp_RewardPeriod_Current', [
@@ -204,38 +203,6 @@ export function createDb(dbConfig) {
         } catch (err) {
             return { period: null, certificates: [] };
         }
-=======
-        return oneOf(
-            await run('usp_RewardPeriod_Current', [
-                ['Now', sql.DateTime2(0), now],
-                ['DefaultStart', sql.DateTime2(0), defaultStart],
-            ])
-        );
-    }
-
-    // Ends a period, issues its certificates and starts the next period, all in one step.
-    // certificates: [{ category, studentId, value, sessionCount }]
-    async function closeRewardPeriod({ periodId, endedAt, reason, endedBy, certificates }) {
-        return oneOf(
-            await run('usp_RewardPeriod_Close', [
-                ['PeriodId', sql.Int, periodId],
-                ['EndedAt', sql.DateTime2(0), endedAt],
-                ['Reason', sql.NVarChar(10), reason],
-                ['EndedBy', sql.NVarChar(30), endedBy ?? null],
-                ['Certificates', sql.NVarChar(sql.MAX), JSON.stringify(certificates ?? [])],
-            ])
-        );
-    }
-
-    async function listRewardPeriods(top = 24) {
-        return rowsOf(await run('usp_RewardPeriod_List', [['Top', sql.Int, top]]));
-    }
-
-    // periodId null = the most recently closed period. Returns { period, certificates }.
-    async function getCertificates(periodId = null) {
-        const sets = await run('usp_Certificate_ByPeriod', [['PeriodId', sql.Int, periodId]]);
-        return { period: oneOf(sets, 0), certificates: rowsOf(sets, 1) };
->>>>>>> aff67a4769b555b9f2641d3843ae61ed94647282
     }
 
     async function getStudentCertificates(studentId) {
@@ -382,7 +349,6 @@ export function createDb(dbConfig) {
     }
 
     async function removeDevice({ tableNo }) {
-<<<<<<< HEAD
         try {
             return oneOf(await run('usp_Device_Remove', [['TableNo', sql.Int, tableNo]]));
         } catch (err) {
@@ -391,9 +357,6 @@ export function createDb(dbConfig) {
             }
             throw err;
         }
-=======
-        return oneOf(await run('usp_Device_Remove', [['TableNo', sql.Int, tableNo]]));
->>>>>>> aff67a4769b555b9f2641d3843ae61ed94647282
     }
 
     async function saveLayout(changes) {

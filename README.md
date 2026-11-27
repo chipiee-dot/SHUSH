@@ -116,13 +116,14 @@ npm start          # serves the API and the built site on http://localhost:3001
 | --- | --- | --- |
 | Dashboard: summary, device status, recent alerts, maintenance mode | `/console/dashboard` | Faculty |
 | Table layout: floor plan, seats, live status. **Edit layout** to move and resize tables | `/console/layout` | Faculty |
-| Rewards: most frequent, quietest, quiet streak (this week or month) | `/console/rewards` | Faculty |
+| Students: seated now, recent visits and a directory, with a details panel and **End session** | `/console/students` | Faculty |
+| Rewards: most frequent, quietest, quiet streak (this week or this rewards period), **End period** and certificates | `/console/rewards` | Faculty |
 | History: alerts, maintenance and sessions, with Excel and CSV export | `/console/history` | Faculty |
-| Settings: device alert thresholds | `/console/settings` | Faculty |
+| Settings: tables and seats, device codes, alert thresholds, working hours, sample data | `/console/settings` | Faculty |
 
 The top bar has notifications (recent alerts and maintenance ending soon) and the profile menu with sign out.
 
-API routes: `GET /api/dashboard`, `GET /api/layout`, `GET|POST /api/maintenance`, `POST /api/maintenance/:id/end`, `GET /api/notifications`, `GET /api/rewards?period=week|month`, `GET /api/history`, and the Settings routes under `/api/settings/...` (device thresholds, tables, layout, working hours), all for any signed-in faculty.
+API routes: `GET /api/dashboard`, `GET /api/layout`, `GET|POST /api/maintenance`, `POST /api/maintenance/:id/end`, `GET /api/notifications`, `GET /api/analytics/noise`, `GET /api/students`, `POST /api/students/:studentId/end-session`, `GET /api/rewards?period=week|period`, `POST /api/rewards/end-period`, `GET /api/rewards/certificates`, `GET /api/history`, and the Settings routes under `/api/settings/...` (device thresholds, tables, layout, working hours), all for any signed-in faculty.
 
 Run the server tests with `npm test --prefix server`.
 
@@ -141,8 +142,8 @@ Students use their own cookie (`shush_student`) and cannot open faculty pages, a
 On **Table layout**, press **Edit layout** (768px and wider). Nothing changes for anyone else until you press **Save layout** and confirm.
 
 - **Move:** drag a table (or focus it and use the arrow keys). Tables snap to the 12-column grid and cannot overlap; an invalid drop springs back.
-- **Resize:** drag the right edge, bottom edge or corner (or Shift + arrow keys). Width is 1-10 and height is 1-4 cells.
-- **Seat rule:** chairs sit on the two longer sides. Each cell added to or removed from the long side adds or removes 2 chairs: `seatsAfter = seatsBefore + 2 * (max(newW,newH) - max(oldW,oldH))`. Changing only the short side keeps the seats. A resize below 1 seat, below the students seated now, or above 20 seats is refused. Exact seat counts can still be set in **Settings**.
+- **Resize:** drag the right edge, bottom edge or corner (or Shift + arrow keys). Only the width can change (1-10 cells). Every table is exactly 2 rows tall.
+- **Seat rule:** chairs sit on the two long sides. Because the height is fixed at 2, each cell of width beyond 2 adds 2 chairs and each cell removed takes 2 away: `seatsAfter = seatsBefore + 2 * (max(newW,newH) - max(oldW,oldH))`. Widths 1 and 2 keep the same seats. A resize below 1 seat, below the students seated now, or above 20 seats is refused. Exact seat counts can still be set in **Settings**.
 - **Undo / Reset / Cancel:** Undo steps back, Reset returns to the saved layout, Cancel asks before discarding.
 - **Database:** saving calls `dbo.usp_Layout_Save` (granted to `shush_app` in `create_app_login.sql`). It uses `OPENJSON`, so it needs SQL Server 2016 or newer and database compatibility level 130 or higher. Re-run `SHUSH.sql` and `create_app_login.sql` after updating.
 
@@ -166,9 +167,9 @@ On **Settings**, faculty can add a table by its number and seat count. Column an
 ## Not built yet
 
 - "Forgot password?" is a placeholder; there is no reset flow or email sending.
-- Device data ingest (heartbeats, alerts) is not built yet. Until it is, the console shows sample data for the seeded devices.
+- Device firmware is not in this repository. The server side exists (`POST /api/device/readings`, see `HARDWARE-INTEGRATION.md`); without a real device the console shows sample data for the seeded devices.
 - Maintenance mode is recorded and shown, but alerts are not suppressed until device ingest exists.
-- Threshold changes are saved, but devices only pick them up once device sync exists.
+- Threshold changes are saved and returned to a device in the server's reply to its next reading. Settings shows a Low (Warning) box, but only the High (Alert) value is saved.
 - Student sign-in uses the student number only (no password), so anyone who knows a number can sign in as that student. A PIN is a sensible next step.
 - Each student signs in on their own and takes one seat. A table holds as many students as it has seats.
 - Quietest Visitor needs device noise readings, so real sessions only appear in Most Frequent and Quiet Streak until devices report.

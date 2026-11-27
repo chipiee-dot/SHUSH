@@ -288,7 +288,6 @@ function inspect(t, d) {
 }
 
 function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged }) {
-<<<<<<< HEAD
     const toast = useToast();
     const { data, loading } = q;
     const tables = data?.tables ?? [];
@@ -303,22 +302,6 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
     const [removeBusy, setRemoveBusy] = useState(false);
     const [query, setQuery] = useState('');
     const [filter, setFilter] = useState('all');
-=======
-  const toast = useToast();
-  const { data, loading } = q;
-  const tables = data?.tables ?? [];
-  const [drafts, setDrafts] = useState({}); // { [tableNo]: { number, seats, device } } while editing
-  const [savingNo, setSavingNo] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newTable, setNewTable] = useState({ tableNo: '', seats: '4', device: '' });
-  const [adding, setAdding] = useState(false);
-  const [deleting, setDeleting] = useState(null); // the table waiting for delete confirmation
-  const [deleteBusy, setDeleteBusy] = useState(false);
-  const [removingDevice, setRemovingDevice] = useState(null); // the table whose device is waiting for confirmation
-  const [removeBusy, setRemoveBusy] = useState(false);
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
->>>>>>> aff67a4769b555b9f2641d3843ae61ed94647282
 
     const toggleFilter = (key) => setFilter((cur) => (cur === key ? 'all' : key));
 
@@ -341,139 +324,10 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
         });
     }, [tables, query, filter]);
 
-<<<<<<< HEAD
     useEffect(() => {
         if (editingNo !== null && tables.length > 0 && !visible.some((t) => t.tableNo === editingNo)) {
             setQuery('');
             setFilter('all');
-=======
-  // A table opened from elsewhere (the attention list) must not stay hidden by the search or filter.
-  useEffect(() => {
-    if (editingNo !== null && tables.length > 0 && !visible.some((t) => t.tableNo === editingNo)) {
-      setQuery('');
-      setFilter('all');
-    }
-    // Only when a different table is opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingNo]);
-
-  const draftOf = (t) => ({
-    number: String(t.tableNo),
-    seats: String(t.seats),
-    device: t.deviceCode ?? '',
-    ...drafts[t.tableNo],
-  });
-  const setField = (t, field, value) => setDrafts((d) => ({ ...d, [t.tableNo]: { ...draftOf(t), [field]: value } }));
-
-  function closeEdit(t) {
-    setEditingNo(null);
-    setDrafts((d) => {
-      const next = { ...d };
-      delete next[t.tableNo];
-      return next;
-    });
-  }
-
-  // One Save for the table number, the seats and the device code.
-  async function saveTable(t) {
-    const { errors, changes, newNo, seats, device } = inspect(t, draftOf(t));
-    const problem = errors.number || errors.seats || errors.device;
-    if (problem) {
-      toast.error(problem);
-      return;
-    }
-    if (changes.length === 0) {
-      closeEdit(t);
-      return;
-    }
-    const renumbering = newNo !== t.tableNo;
-    const seatsChanged = seats !== t.seats;
-    const deviceChanged = device !== '' && device !== (t.deviceCode ?? '');
-
-    setSavingNo(t.tableNo);
-    let touched = false;
-    try {
-      if (deviceChanged) {
-        await api.assignDevice(t.tableNo, device); // by the current number, before any rename
-        touched = true;
-      }
-      if (renumbering) {
-        await api.updateTable(t.tableNo, { newTableNo: newNo, seats });
-        touched = true;
-      } else if (seatsChanged) {
-        await api.setTableSeats(t.tableNo, seats);
-        touched = true;
-      }
-      toast.success(`Table ${newNo} saved.`);
-      closeEdit(t);
-      onChanged();
-    } catch (err) {
-      toast.error(err.message);
-      if (touched) onChanged(); // part of the change went through, so show what is saved now
-    } finally {
-      setSavingNo(null);
-    }
-  }
-
-  // Disconnects the device only. The table and its records stay.
-  async function removeDevice() {
-    const t = removingDevice;
-    if (!t) return;
-    setRemoveBusy(true);
-    try {
-      const result = await api.removeDevice(t.tableNo);
-      toast.success(result.message || `Device removed from Table ${t.tableNo}.`);
-      // Forget a typed device code, but keep any number or seat changes still being edited.
-      setDrafts((d) => (d[t.tableNo] ? { ...d, [t.tableNo]: { ...d[t.tableNo], device: '' } } : d));
-      setRemovingDevice(null);
-      onChanged();
-    } catch (err) {
-      toast.error(err.message);
-      setRemovingDevice(null);
-      onChanged(); // the device may already be gone, so show what is saved now
-    } finally {
-      setRemoveBusy(false);
-    }
-  }
-
-  async function deleteTable() {
-    const t = deleting;
-    if (!t) return;
-    setDeleteBusy(true);
-    try {
-      const result = await api.deleteTable(t.tableNo);
-      toast.success(result.message || `Table ${t.tableNo} deleted.`);
-      setDeleting(null);
-      closeEdit(t);
-      onChanged();
-    } catch (err) {
-      toast.error(err.message);
-      setDeleting(null);
-      onChanged(); // the table may already be gone or someone may have sat down, so show what is saved now
-    } finally {
-      setDeleteBusy(false);
-    }
-  }
-
-  async function addTable(e) {
-    e.preventDefault();
-    const device = newTable.device.trim();
-    if (device !== '' && !DEVICE_RE.test(device)) {
-      toast.error('Device code must be 1 to 20 letters, numbers or dashes.');
-      return;
-    }
-    setAdding(true);
-    try {
-      const result = await api.addTable({ tableNo: newTable.tableNo, seats: newTable.seats });
-      const addedNo = result?.tableNo ?? Number(newTable.tableNo);
-      if (device) {
-        try {
-          await api.assignDevice(addedNo, device);
-          toast.success(`Table ${addedNo} added and device ${device} connected.`);
-        } catch (err) {
-          // The table exists; only the device connection failed.
-          toast.error(`Table ${addedNo} was added, but the device could not be connected: ${err.message}`);
->>>>>>> aff67a4769b555b9f2641d3843ae61ed94647282
         }
     }, [editingNo]);
 
@@ -825,7 +679,6 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
                                                     </Field>
                                                 </div>
 
-<<<<<<< HEAD
                                                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                                                     <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label="Pending changes">
                                                         {check.changes.length === 0 ? (
@@ -928,81 +781,6 @@ function TableSettings({ q, devices, editingNo, setEditingNo, focusNo, onChanged
             </ConfirmDialog>
         </Card>
     );
-=======
-                        {t.hasDevice && (
-                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-shush-danger/40 pt-4">
-                            <p className="min-w-0 flex-1 text-xs text-shush-inkSoft">
-                              Disconnect <span className="font-mono">{t.deviceCode}</span> from this table. The table and its records stay.
-                            </p>
-                            <button
-                              type="button"
-                              disabled={saving}
-                              onClick={() => setRemovingDevice(t)}
-                              className="rounded-xl border border-shush-danger/50 bg-shush-white px-4 py-2 text-sm font-semibold text-shush-danger transition hover:bg-shush-danger/10 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-shush-danger focus-visible:ring-offset-2"
-                            >
-                              Remove device
-                            </button>
-                          </div>
-                        )}
-
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-shush-danger/40 pt-4">
-                          <p className="min-w-0 flex-1 text-xs text-shush-inkSoft">
-                            {t.occupied > 0
-                              ? `${t.occupied} ${t.occupied === 1 ? 'student is' : 'students are'} seated here. End their sessions before deleting this table.`
-                              : 'Deleting removes the table, its device and its history.'}
-                          </p>
-                          <button
-                            type="button"
-                            disabled={saving || t.occupied > 0}
-                            onClick={() => setDeleting(t)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-shush-danger px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-shush-danger/90 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-shush-danger focus:ring-offset-2"
-                          >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <path d="M3 6h18" />
-                              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            </svg>
-                            Delete table
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </>
-      )}
-      <ConfirmDialog
-        open={removingDevice !== null}
-        title={`Remove device from Table ${removingDevice?.tableNo ?? ''}?`}
-        tone="danger"
-        confirmLabel="Yes, remove device"
-        cancelLabel="Keep it"
-        busyLabel="Removing…"
-        onConfirm={removeDevice}
-        onCancel={() => setRemovingDevice(null)}
-        busy={removeBusy}
-      >
-        {`Device ${removingDevice?.deviceCode ?? ''} is disconnected. The table, its sessions and its noise history are kept. You can connect a device again any time.`}
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={deleting !== null}
-        title={`Delete Table ${deleting?.tableNo ?? ''}?`}
-        tone="danger"
-        confirmLabel="Yes, delete it"
-        cancelLabel="Keep it"
-        busyLabel="Deleting…"
-        onConfirm={deleteTable}
-        onCancel={() => setDeleting(null)}
-        busy={deleteBusy}
-      >
-        This permanently removes the table, its device and its history: sessions, alerts, noise readings and maintenance periods. This cannot be undone.
-      </ConfirmDialog>
-    </Card>
-  );
->>>>>>> aff67a4769b555b9f2641d3843ae61ed94647282
 }
 
 // ---- Device thresholds -----------------------------------------------------------
